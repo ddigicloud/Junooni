@@ -1044,53 +1044,178 @@ const findCategoryById = (categories: any[], categoryId: string): any => {
 const createEnhancedFileDescription = (
   uploadedFile: any,
   enhancedImageAreaAnalysis: any,
-  globalIndex: number
+  globalIndex: number,
+  detailedAreaAnalysis?: any   // ← add this parameter
 ): string => {
   const area = uploadedFile.designArea;
   const fileType = uploadedFile.fileType;
-  
+
   if (fileType === 'canvas_layout') {
-    // For canvas layout files
-    const areaSpec = enhancedImageAreaAnalysis?.area_specifications?.[area];
-    const elementsInArea = enhancedImageAreaAnalysis?.detailed_element_breakdown?.[area] || [];
-    const complexity = enhancedImageAreaAnalysis?.design_complexity;
-    
+    const meta       = uploadedFile.originalMetadata;
+    const canvasDims = meta?.canvas_dimensions;
+    const printable  = meta?.printable_area;
+    const settings   = meta?.canvas_settings;
+    const elements   = meta?.design_elements || [];
+
+    const areaSpec         = enhancedImageAreaAnalysis?.area_specifications?.[area];
+    const complexity       = enhancedImageAreaAnalysis?.design_complexity;
+    const elementsEnhanced = enhancedImageAreaAnalysis?.detailed_element_breakdown?.[area] || [];
+
+    const canvasW_px = canvasDims?.width_pixels  ?? areaSpec?.canvas_width_pixels  ?? 0;
+    const canvasH_px = canvasDims?.height_pixels ?? areaSpec?.canvas_height_pixels ?? 0;
+    const canvasW_in = canvasDims?.width_inches  ?? areaSpec?.canvas_width_inches  ?? 0;
+    const canvasH_in = canvasDims?.height_inches ?? areaSpec?.canvas_height_inches ?? 0;
+
+    const printW_px = printable?.width  ?? 0;
+    const printH_px = printable?.height ?? 0;
+    const printX_px = printable?.x      ?? 0;
+    const printY_px = printable?.y      ?? 0;
+
+    // Axis-specific PPI
+    const ppiX = canvasW_px > 0 && canvasW_in > 0 ? canvasW_px / canvasW_in : 1;
+    const ppiY = canvasH_px > 0 && canvasH_in > 0 ? canvasH_px / canvasH_in : 1;
+
+    const printW_in = printW_px / ppiX;
+    const printH_in = printH_px / ppiY;
+
+    // ── Consumed design size — read from detailedAreaAnalysis (most accurate source) ──
+    // detailedAreaAnalysis.detailed_areas_breakdown[area].area_specifications.printable_area
+    // has width_inches/height_inches = the actual consumed design dimensions (11.17 × 9.19)
+    const detailedAreaSpec = detailedAreaAnalysis?.detailed_areas_breakdown?.[area]?.area_specifications;
+    const detailedPrintable = detailedAreaSpec?.printable_area;
+
+    let consumedW_in: number;
+    let consumedH_in: number;
+
+    if (detailedPrintable?.width_inches && detailedPrintable?.height_inches) {
+      // Best source — already computed correctly in generateDetailedAreaAnalysis
+      consumedW_in = detailedPrintable.width_inches;
+      consumedH_in = detailedPrintable.height_inches;
+    } else {
+      // Fallback — compute from element bounding box
+      let bbMinX = Infinity, bbMinY = Infinity, bbMaxX = -Infinity, bbMaxY = -Infinity;
+      let hasBB = false;
+
+      const elementsForBB = elementsEnhanced.length > 0 ? elementsEnhanced : elements;
+      elementsForBB.forEach((el: any) => {
+        const isEnhanced = !!el.element_type;
+        const x        = isEnhanced ? (el.pixel_dimensions?.position_x_pixels ?? 0) : (el.position?.x ?? 0);
+        const y        = isEnhanced ? (el.pixel_dimensions?.position_y_pixels ?? 0) : (el.position?.y ?? 0);
+        const w        = isEnhanced ? (el.pixel_dimensions?.width_pixels  ?? 0) : (el.dimensions?.width_pixels  ?? 0);
+        const h        = isEnhanced ? (el.pixel_dimensions?.height_pixels ?? 0) : (el.dimensions?.height_pixels ?? 0);
+        const rotation = isEnhanced ? (el.transformations?.rotation_degrees ?? 0) : (el.transformations?.rotation ?? 0);
+        const scaleX   = el.transformations?.scale_x ?? 1;
+        const scaleY   = el.transformations?.scale_y ?? 1;
+        const displayW = w * scaleX;
+        const displayH = h * scaleY;
+        const cx = x + displayW / 2;
+        const cy = y + displayH / 2;
+
+        if (Math.abs(rotation) > 0.1) {
+          const rad = (rotation * Math.PI) / 180;
+          const cos = Math.cos(rad), sin = Math.sin(rad);
+          const hw = displayW / 2, hh = displayH / 2;
+          [{ x: -hw, y: -hh }, { x: hw, y: -hh }, { x: hw, y: hh }, { x: -hw, y: hh }]
+            .forEach(c => {
+              const rx = cx + c.x * cos - c.y * sin;
+              const ry = cy + c.x * sin + c.y * cos;
+              bbMinX = Math.min(bbMinX, rx); bbMaxX = Math.max(bbMaxX, rx);
+              bbMinY = Math.min(bbMinY, ry); bbMaxY = Math.max(bbMaxY, ry);
+            });
+        } else {
+          bbMinX = Math.min(bbMinX, x); bbMaxX = Math.max(bbMaxX, x + displayW);
+          bbMinY = Math.min(bbMinY, y); bbMaxY = Math.max(bbMaxY, y + displayH);
+        }
+        hasBB = true;
+      });
+
+      if (hasBB && bbMinX !== Infinity) {
+        bbMinX = Math.max(bbMinX, printX_px); bbMaxX = Math.min(bbMaxX, printX_px + printW_px);
+        bbMinY = Math.max(bbMinY, printY_px); bbMaxY = Math.min(bbMaxY, printY_px + printH_px);
+        consumedW_in = Math.max(0, bbMaxX - bbMinX) / ppiX;
+        consumedH_in = Math.max(0, bbMaxY - bbMinY) / ppiY;
+      } else {
+        consumedW_in = 0;
+        consumedH_in = 0;
+      }
+    }
+
+    // Also get element physical dimensions from detailedAreaAnalysis if available
+    const detailedElements = detailedAreaAnalysis?.detailed_areas_breakdown?.[area]?.elements || [];
+    const elementsToShow   = elementsEnhanced.length > 0 ? elementsEnhanced
+                           : detailedElements.length > 0 ? detailedElements
+                           : elements;
+
     return `MANUFACTURING LAYOUT - ${area.toUpperCase()} AREA
 
 CANVAS SPECIFICATIONS:
-- Canvas: ${areaSpec?.canvas_width_pixels || 0} x ${areaSpec?.canvas_height_pixels || 0} pixels (${areaSpec?.canvas_width_inches || 0}" x ${areaSpec?.canvas_height_inches || 0}")
-- Printable Area: ${areaSpec?.printable_area?.width_pixels || 0} x ${areaSpec?.printable_area?.height_pixels || 0} pixels (${areaSpec?.printable_area?.width_inches || 0}" x ${areaSpec?.printable_area?.height_inches || 0}")
-- Printable Position: (${areaSpec?.printable_area?.x_pixels || 0}, ${areaSpec?.printable_area?.y_pixels || 0}) pixels
+- Canvas: ${canvasW_px} x ${canvasH_px} pixels (${canvasW_in}" x ${canvasH_in}")
+- Printable Area: ${printW_px} x ${printH_px} pixels (${printW_in.toFixed(2)}" x ${printH_in.toFixed(2)}")
+- Printable Position: (${printX_px}, ${printY_px}) pixels
+- Active Color: ${settings?.active_color || 'N/A'}
+- Total Elements: ${settings?.total_elements ?? elements.length}
 
-DESIGN ELEMENTS (${elementsInArea.length} total):
-${elementsInArea.map((element, idx) => `
-${idx + 1}. ${element.element_type.toUpperCase()} - ${element.element_name}
-   • ID: ${element.element_id}
-   • Dimensions: ${element.physical_dimensions?.width_inches?.toFixed(3) || 0}" x ${element.physical_dimensions?.height_inches?.toFixed(3) || 0}" (${element.physical_dimensions?.area_square_inches?.toFixed(2) || 0} sq in)
-   • Position: (${element.physical_dimensions?.position_x_inches?.toFixed(3) || 0}", ${element.physical_dimensions?.position_y_inches?.toFixed(3) || 0}")
-   • Print Quality: ${element.print_quality?.quality_rating || 'Unknown'} (${element.print_quality?.dpi || 0} DPI)
-   • Area Usage: ${element.area_utilization?.printable_area_consumed_percentage?.toFixed(1) || 0}% of printable area
-   • Transformations: ${element.transformations?.is_rotated ? `Rotated ${element.transformations.rotation_degrees?.toFixed(1) || 0}°` : 'No rotation'}${element.transformations?.is_scaled ? `, Scaled ${element.transformations.scale_x || 1}x` : ''}
-   • Positioning: ${element.positioning?.is_centered_horizontally ? 'H-Centered' : 'Left-aligned'}, ${element.positioning?.is_centered_vertically ? 'V-Centered' : 'Top-aligned'}
-`).join('')}
+CONSUMED DESIGN AREA (actual design size):
+- Width:  ${consumedW_in.toFixed(2)}"
+- Height: ${consumedH_in.toFixed(2)}"
+- Design Size: ${consumedW_in.toFixed(2)}" × ${consumedH_in.toFixed(2)}"
+
+DESIGN ELEMENTS (${elementsToShow.length} total):
+${elementsToShow.map((element: any, idx: number) => {
+  const isEnhanced   = !!element.element_type;
+  const isDetailed   = !!element.physical_dimensions;
+
+  const name    = isEnhanced ? element.element_name
+                : isDetailed ? element.element_name
+                : (element.image_info?.original_name || `Element ${idx + 1}`);
+  const type    = isEnhanced ? element.element_type?.toUpperCase()
+                : isDetailed ? element.element_type?.toUpperCase()
+                : (element.type?.toUpperCase() || 'IMAGE');
+  const id      = element.element_id || 'N/A';
+
+  const w_in    = isDetailed ? element.physical_dimensions?.width_inches  : element.dimensions?.width_inches;
+  const h_in    = isDetailed ? element.physical_dimensions?.height_inches : element.dimensions?.height_inches;
+  const area_sq = isDetailed ? element.physical_dimensions?.area_square_inches : ((w_in || 0) * (h_in || 0));
+  const x_in    = isDetailed ? element.physical_dimensions?.position_x_inches : element.position?.x_inches;
+  const y_in    = isDetailed ? element.physical_dimensions?.position_y_inches : element.position?.y_inches;
+
+  const dpi     = isDetailed ? element.print_quality?.dpi          : element.image_info?.print_dpi;
+  const quality = isDetailed ? element.print_quality?.quality_rating : element.image_info?.print_quality;
+
+  const rotation  = isDetailed ? element.transformations?.rotation_degrees : element.transformations?.rotation;
+  const isRotated = Math.abs(rotation || 0) > 0.1;
+  const isScaled  = isDetailed ? element.transformations?.is_scaled
+    : (Math.abs((element.transformations?.scale_x || 1) - 1) > 0.01 ||
+       Math.abs((element.transformations?.scale_y || 1) - 1) > 0.01);
+  const scaleX    = element.transformations?.scale_x;
+
+  return `
+${idx + 1}. ${type} - ${name}
+   • ID: ${id}
+   • Dimensions: ${w_in?.toFixed(3) || 0}" x ${h_in?.toFixed(3) || 0}" (${area_sq?.toFixed(2) || 0} sq in)
+   • Position: (${x_in?.toFixed(3) || 0}", ${y_in?.toFixed(3) || 0}")
+   • Print Quality: ${quality || 'Unknown'} (${dpi || 0} DPI)
+   • Transformations: ${isRotated ? `Rotated ${(rotation || 0).toFixed(1)}°` : 'No rotation'}${isScaled ? `, Scaled ${scaleX || 1}x` : ''}`;
+}).join('')}
 
 COMPLEXITY ANALYSIS:
-- Overall Rating: ${complexity?.complexity_rating || 'Unknown'}
-- Total Elements: ${complexity?.total_elements || 0}
-- Has Rotations: ${complexity?.complexity_factors?.has_rotations ? 'Yes' : 'No'}
-- Has Scaling: ${complexity?.complexity_factors?.has_scaling ? 'Yes' : 'No'}
-- Multi-Area Design: ${complexity?.complexity_factors?.multi_area_design ? 'Yes' : 'No'}
+- Overall Rating: ${detailedAreaAnalysis?.detailed_areas_breakdown?.[area]?.element_statistics ? 'Standard' : (enhancedImageAreaAnalysis?.design_complexity?.complexity_rating || 'Standard')}
+- Total Elements: ${settings?.total_elements ?? elements.length}
+- Has Rotations: ${(detailedAreaAnalysis?.detailed_areas_breakdown?.[area]?.element_statistics?.rotated_elements ?? 0) > 0 ? 'Yes' : 'No'}
+- Has Scaling: ${(detailedAreaAnalysis?.detailed_areas_breakdown?.[area]?.element_statistics?.scaled_elements ?? 0) > 0 ? 'Yes' : 'No'}
+- Multi-Area Design: ${(detailedAreaAnalysis?.areas_with_elements?.length ?? 0) > 1 ? 'Yes' : 'No'}
 
 MANUFACTURING NOTES:
 - Layout ready for production setup
 - All measurements verified for print accuracy
 - Element positioning optimized for print area
 - Generated: ${new Date().toISOString()}`;
+
   } else {
-    // For design element files
+    // For design element files — enhanced analysis as primary, fallback to basic metadata
     const elementDetails = enhancedImageAreaAnalysis?.detailed_element_breakdown?.[area]?.find(
-      el => el.element_name === uploadedFile.originalMetadata?.originalFileName ||
-           el.element_id === uploadedFile.originalMetadata?.elementId
+      (el: any) => el.element_name === uploadedFile.originalMetadata?.originalFileName ||
+                   el.element_id  === uploadedFile.originalMetadata?.elementId
     );
     
     if (elementDetails) {
@@ -1135,13 +1260,26 @@ ORIGINAL IMAGE INFO:${elementDetails.original_image_info ? `
 - No original image data available`}
 
 Generated: ${new Date().toISOString()}`;
+
     } else {
-      // Fallback for elements without detailed breakdown
-      return `${uploadedFile.designArea} design element ${uploadedFile.areaIndex + 1} - ${uploadedFile.originalMetadata?.originalFileName || 'Unknown file'}`;
+      // Fallback — use whatever basic metadata is on the file itself
+      const meta     = uploadedFile.originalMetadata;
+      const canvasPos = meta?.canvasPosition;
+      return `DESIGN ELEMENT - ${area.toUpperCase()} AREA
+
+ELEMENT DETAILS:
+- Name: ${meta?.originalFileName || 'Unknown file'}
+- Area Index: ${uploadedFile.areaIndex + 1}
+${canvasPos ? `
+CANVAS POSITION:
+- Position: (${canvasPos.x || 0}px, ${canvasPos.y || 0}px)
+- Dimensions: ${canvasPos.width || 0} x ${canvasPos.height || 0} pixels
+- Rotation: ${canvasPos.rotation || 0}°` : ''}
+
+Generated: ${new Date().toISOString()}`;
     }
   }
 };
-
 
 const extractAvailableAreas = (locationState: LocationState): string[] => {
   const areas = new Set<string>();
@@ -1951,6 +2089,7 @@ if (!mergedLocationStateRef.current && location.state) {
   const [selectedSalesChannels, setSelectedSalesChannels] = useState<string[]>([]);
   const [isLoadingSalesChannels, setIsLoadingSalesChannels] = useState(false);
   const [salesChannelsDirty, setSalesChannelsDirty] = useState(false);
+  const [currentVendorId, setCurrentVendorId] = useState<string | null>(null);
   // near other hooks at component top
   const didPopulateRef = useRef(false);
   const selectedSalesChannelsRef = useRef<string[]>([]);
@@ -2336,7 +2475,7 @@ useEffect(() => {
     if (mergedLocationStateRef.current) {
       isProcessing = true;
       const locationState = mergedLocationStateRef.current;
-      // console.log("Location state", locationState);
+       //console.log("Location state", locationState);
       
       // STEP 1: Extract and store pre-generated images FIRST
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
@@ -4972,6 +5111,7 @@ useEffect(() => {
     setIsLoadingSalesChannels(true);
     fetchCurrentVendor()
       .then(vendor => {
+        setCurrentVendorId(vendor?.id || null);
         let allowed: string[] = [];
         if (!vendor) {
           allowed = [SALES_CHANNEL_MARKETPLACE];
@@ -5620,7 +5760,8 @@ const combinedArtworkPayload = {
     file_description: createEnhancedFileDescription(
       uploadedFile, 
       locationState.enhancedImageAreaAnalysis, 
-      globalIndex
+      globalIndex,
+      locationState.detailedAreaAnalysis
     ),
     design_area: uploadedFile.designArea.toLowerCase(),
     file_category: uploadedFile.fileType,
@@ -6135,6 +6276,10 @@ const combinedArtworkPayload = {
           canvas_dimensions: img.metadata?.canvas_dimensions
         }))
       });
+    }
+    // ADD after the existing productMetadata assignments, before the product object is created:
+    if (currentVendorId) {
+      productMetadata.vendor_id = currentVendorId;
     }
     
     // Add product details if present

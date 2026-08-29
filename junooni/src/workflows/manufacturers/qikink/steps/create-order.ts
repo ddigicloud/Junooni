@@ -838,36 +838,64 @@ function isValidUrl(url: string): boolean {
 }
 
 /**
- * Extract width and height from "Printable Area" in manufacturing layout description
- * Format: "Printable Area: 180 x 225 pixels (10.7\" x 10.7\")"
- * We want to extract the inch values: 10.7 x 10.7
+ * Extract consumed design width and height from manufacturing layout description.
+ *
+ * Priority order:
+ *  1. "CONSUMED DESIGN AREA" section  → "Design Size: 11.17\" × 9.19\""
+ *  2. "Printable Area" inch values    → "(5.60\" x 7.36\")"  (legacy fallback)
+ *
+ * The consumed area is what the creator actually placed on the canvas —
+ * this is what Qikink needs for width_inches / height_inches.
  */
 function extractPrintableAreaDimensions(description: string): { width: string; height: string } {
-  if (!description) {
-    return { width: "", height: "" }
+  if (!description) return { width: "", height: "" }
+
+  // ── Priority 1: CONSUMED DESIGN AREA section ─────────────────────────────
+  // Matches:  "Design Size: 11.17" × 9.19""
+  // Also:     "Design Size: 11.17\" × 9.19\""  (escaped quotes)
+  const consumedMatch = description.match(
+    /Design Size:\s*(\d+(?:\.\d+)?)\s*\\*["']\s*[×x]\s*(\d+(?:\.\d+)?)\s*\\*["']/i
+  )
+  if (consumedMatch) {
+    const width  = consumedMatch[1]
+    const height = consumedMatch[2]
+    console.log(`   ✅ Extracted from CONSUMED DESIGN AREA: ${width}" × ${height}"`)
+    return { width, height }
   }
 
-  // Match pattern: "Printable Area: ... (10.7\" x 10.7\")" or "(10.7\\\" x 10.7\\\")"
-  // Handle both escaped and non-escaped quotes
-  const printableAreaMatch = description.match(/Printable Area:[^(]*\((\d+(?:\.\d+)?)\s*\\*"\s*x\s*(\d+(?:\.\d+)?)\s*\\*"\)/i)
-  
-  if (printableAreaMatch && printableAreaMatch.length >= 3) {
-    const width = printableAreaMatch[1]
+  // Also try the "Width:" / "Height:" lines inside CONSUMED DESIGN AREA
+  const widthMatch  = description.match(/CONSUMED DESIGN AREA[\s\S]*?Width:\s*(\d+(?:\.\d+)?)\s*\\*["']/i)
+  const heightMatch = description.match(/CONSUMED DESIGN AREA[\s\S]*?Height:\s*(\d+(?:\.\d+)?)\s*\\*["']/i)
+  if (widthMatch && heightMatch) {
+    const width  = widthMatch[1]
+    const height = heightMatch[1]
+    console.log(`   ✅ Extracted from CONSUMED DESIGN AREA (line format): ${width}" × ${height}"`)
+    return { width, height }
+  }
+
+  // ── Priority 2: Printable Area inch values (legacy fallback) ─────────────
+  // Matches:  "Printable Area: 180 x 206.91 pixels (5.60" x 7.36")"
+  const printableAreaMatch = description.match(
+    /Printable Area:[^(]*\((\d+(?:\.\d+)?)\s*\\*["']\s*x\s*(\d+(?:\.\d+)?)\s*\\*["']\)/i
+  )
+  if (printableAreaMatch) {
+    const width  = printableAreaMatch[1]
     const height = printableAreaMatch[2]
-    console.log(`   ✅ Extracted Printable Area dimensions: ${width}" x ${height}"`)
+    console.log(`   ⚠️ Consumed area not found — falling back to Printable Area: ${width}" x ${height}"`)
     return { width, height }
   }
 
-  // Fallback: try without "Printable Area:" prefix
-  const fallbackMatch = description.match(/\((\d+(?:\.\d+)?)\s*\\*"\s*x\s*(\d+(?:\.\d+)?)\s*\\*"\)/)
-  
-  if (fallbackMatch && fallbackMatch.length >= 3) {
-    const width = fallbackMatch[1]
+  // ── Last resort: first inch pair anywhere in the description ─────────────
+  const fallbackMatch = description.match(
+    /\((\d+(?:\.\d+)?)\s*\\*["']\s*x\s*(\d+(?:\.\d+)?)\s*\\*["']\)/
+  )
+  if (fallbackMatch) {
+    const width  = fallbackMatch[1]
     const height = fallbackMatch[2]
-    console.log(`   ✅ Extracted dimensions (fallback): ${width}" x ${height}"`)
+    console.log(`   ⚠️ Using first inch pair found (last resort): ${width}" x ${height}"`)
     return { width, height }
   }
 
-  console.log("   ⚠️ Could not extract Printable Area dimensions from description")
+  console.log("   ⚠️ Could not extract any dimensions from description")
   return { width: "", height: "" }
 }

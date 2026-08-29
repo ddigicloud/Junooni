@@ -311,7 +311,7 @@ export const captureCanvasImageForArea = async (
       }
     };
 
-    // Clean panel (left)
+    // ── Clean panel (left) ────────────────────────────────────────────────────
     const stageClean  = new Konva.Stage({ container: document.createElement('div'), width: canvasConfig.width, height: canvasConfig.height, pixelRatio: 2 });
     const layerClean  = new Konva.Layer();
     stageClean.add(layerClean);
@@ -322,27 +322,142 @@ export const captureCanvasImageForArea = async (
     const cleanDataURL = stageClean.toDataURL({ mimeType: 'image/png', quality: 1.0, pixelRatio: 2 });
     stageClean.destroy();
 
-    // Annotated panel (right) — simplified: same as clean + orange size badge
+    // ── Annotated panel (right) ───────────────────────────────────────────────
+    // Compute actual element bounding box (consumed design area, mirrors extractDesignImages)
+    let bbMinX = Infinity, bbMinY = Infinity, bbMaxX = -Infinity, bbMaxY = -Infinity;
+    sortedElements.forEach(element => {
+      const displayW = element.width  * (element.scaleX || 1);
+      const displayH = element.height * (element.scaleY || 1);
+      const cx = element.x + displayW / 2;
+      const cy = element.y + displayH / 2;
+      const rotation = element.rotation || 0;
+      if (Math.abs(rotation) > 0.1) {
+        const rad = (rotation * Math.PI) / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const hw = displayW / 2, hh = displayH / 2;
+        [{ x: -hw, y: -hh }, { x: hw, y: -hh }, { x: hw, y: hh }, { x: -hw, y: hh }].forEach(c => {
+          const rx = cx + c.x * cos - c.y * sin;
+          const ry = cy + c.x * sin + c.y * cos;
+          bbMinX = Math.min(bbMinX, rx); bbMaxX = Math.max(bbMaxX, rx);
+          bbMinY = Math.min(bbMinY, ry); bbMaxY = Math.max(bbMaxY, ry);
+        });
+      } else {
+        bbMinX = Math.min(bbMinX, element.x);             bbMaxX = Math.max(bbMaxX, element.x + displayW);
+        bbMinY = Math.min(bbMinY, element.y);             bbMaxY = Math.max(bbMaxY, element.y + displayH);
+      }
+    });
+    // Clamp bounding box to printable area
+    bbMinX = Math.max(bbMinX, printableArea.x);  bbMaxX = Math.min(bbMaxX, printableArea.x + printableArea.width);
+    bbMinY = Math.max(bbMinY, printableArea.y);  bbMaxY = Math.min(bbMaxY, printableArea.y + printableArea.height);
+    const bbW = bbMaxX - bbMinX; // consumed width  in canvas pixels
+    const bbH = bbMaxY - bbMinY; // consumed height in canvas pixels
+
+    // Convert bounding box to inches (same avgPPI formula as extractDesignImages)
+    const avgPPI       = ((printableArea.width / canvasConfig.realWorldWidth) + (printableArea.height / canvasConfig.realWorldHeight)) / 2;
+    const bbWidthInch  = (bbW / avgPPI).toFixed(2);
+    const bbHeightInch = (bbH / avgPPI).toFixed(2);
+    const sizeLabel    = `${bbWidthInch}" × ${bbHeightInch}"`;
+
     const stageAnnotated = new Konva.Stage({ container: document.createElement('div'), width: canvasConfig.width, height: canvasConfig.height, pixelRatio: 2 });
     const layerAnnotated = new Konva.Layer();
     stageAnnotated.add(layerAnnotated);
     buildLayer(layerAnnotated);
-    layerAnnotated.add(new Konva.Rect({ x: printableArea.x, y: printableArea.y, width: printableArea.width, height: printableArea.height, stroke: '#FF0000', strokeWidth: 2, dash: [6, 4], listening: false }));
 
-    const avgPPI = ((printableArea.width / canvasConfig.realWorldWidth) + (printableArea.height / canvasConfig.realWorldHeight)) / 2;
-    const paWidthInch  = (printableArea.width  / avgPPI).toFixed(2);
-    const paHeightInch = (printableArea.height / avgPPI).toFixed(2);
-    const sizeLabel    = `${paWidthInch}" × ${paHeightInch}"`;
+    // 1. Full printable area boundary — light grey dashed (context only, de-emphasised)
+    layerAnnotated.add(new Konva.Rect({
+      x: printableArea.x, y: printableArea.y,
+      width: printableArea.width, height: printableArea.height,
+      stroke: '#aaaaaa', strokeWidth: 1.5, dash: [5, 5], listening: false,
+    }));
 
-    layerAnnotated.add(new Konva.Rect({ x: printableArea.x, y: printableArea.y + 4, width: sizeLabel.length * 7 + 14, height: 22, fill: '#e65100', cornerRadius: 3, listening: false }));
-    layerAnnotated.add(new Konva.Text({ text: sizeLabel, x: printableArea.x + 7, y: printableArea.y + 11, fontSize: 12, fontFamily: 'Arial', fill: '#ffffff', listening: false }));
+    // 2. Consumed design area — orange dashed rectangle tightly around placed elements
+    layerAnnotated.add(new Konva.Rect({
+      x: bbMinX, y: bbMinY, width: bbW, height: bbH,
+      stroke: '#e65100', strokeWidth: 2.5, dash: [8, 5],
+      fill: 'rgba(230,81,0,0.04)', listening: false,
+    }));
+
+    // ── Dimension annotation constants ────────────────────────────────────────
+    const ARROW_OFFSET = 18; // px gap between bounding box edge and arrow line
+    const TICK         = 6;  // px half-length of end tick marks
+    const arrowY       = bbMinY - ARROW_OFFSET; // y-position of horizontal arrow
+    const arrowX       = bbMinX - ARROW_OFFSET; // x-position of vertical arrow
+
+    // 3. Horizontal width arrow (above bounding box)
+    // Main line
+    layerAnnotated.add(new Konva.Line({
+      points: [bbMinX, arrowY, bbMaxX, arrowY],
+      stroke: '#e65100', strokeWidth: 1.5, listening: false,
+    }));
+    // Left arrowhead
+    layerAnnotated.add(new Konva.Line({
+      points: [bbMinX + 8, arrowY - 4, bbMinX, arrowY, bbMinX + 8, arrowY + 4],
+      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
+    }));
+    // Right arrowhead
+    layerAnnotated.add(new Konva.Line({
+      points: [bbMaxX - 8, arrowY - 4, bbMaxX, arrowY, bbMaxX - 8, arrowY + 4],
+      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
+    }));
+    // Left tick
+    layerAnnotated.add(new Konva.Line({
+      points: [bbMinX, arrowY - TICK, bbMinX, arrowY + TICK],
+      stroke: '#e65100', strokeWidth: 1.5, listening: false,
+    }));
+    // Right tick
+    layerAnnotated.add(new Konva.Line({
+      points: [bbMaxX, arrowY - TICK, bbMaxX, arrowY + TICK],
+      stroke: '#e65100', strokeWidth: 1.5, listening: false,
+    }));
+
+    // 4. Vertical height arrow (left of bounding box)
+    // Main line
+    layerAnnotated.add(new Konva.Line({
+      points: [arrowX, bbMinY, arrowX, bbMaxY],
+      stroke: '#e65100', strokeWidth: 1.5, listening: false,
+    }));
+    // Top arrowhead
+    layerAnnotated.add(new Konva.Line({
+      points: [arrowX - 4, bbMinY + 8, arrowX, bbMinY, arrowX + 4, bbMinY + 8],
+      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
+    }));
+    // Bottom arrowhead
+    layerAnnotated.add(new Konva.Line({
+      points: [arrowX - 4, bbMaxY - 8, arrowX, bbMaxY, arrowX + 4, bbMaxY - 8],
+      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
+    }));
+    // Top tick
+    layerAnnotated.add(new Konva.Line({
+      points: [arrowX - TICK, bbMinY, arrowX + TICK, bbMinY],
+      stroke: '#e65100', strokeWidth: 1.5, listening: false,
+    }));
+    // Bottom tick
+    layerAnnotated.add(new Konva.Line({
+      points: [arrowX - TICK, bbMaxY, arrowX + TICK, bbMaxY],
+      stroke: '#e65100', strokeWidth: 1.5, listening: false,
+    }));
+
+    // 5. Combined size badge — centred above the horizontal arrow, single source of truth
+    const badgeH    = 22;
+    const badgePadX = 10;
+    const badgeW    = sizeLabel.length * 7.5 + badgePadX * 2;
+    const badgeX    = bbMinX + bbW / 2 - badgeW / 2;
+    const badgeY    = arrowY - badgeH - 6; // sits 6px above the arrow line
+    layerAnnotated.add(new Konva.Rect({
+      x: badgeX, y: badgeY, width: badgeW, height: badgeH,
+      fill: '#e65100', cornerRadius: 4, listening: false,
+    }));
+    layerAnnotated.add(new Konva.Text({
+      text: sizeLabel, x: badgeX + badgePadX, y: badgeY + 5,
+      fontSize: 12, fontFamily: 'Arial', fontStyle: 'bold', fill: '#ffffff', listening: false,
+    }));
 
     layerAnnotated.draw();
     await new Promise(r => setTimeout(r, 100));
     const annotatedDataURL = stageAnnotated.toDataURL({ mimeType: 'image/png', quality: 1.0, pixelRatio: 2 });
     stageAnnotated.destroy();
 
-    // Composite side-by-side
+    // ── Composite side-by-side ────────────────────────────────────────────────
     const panelW  = canvasConfig.width  * 2;
     const panelH  = canvasConfig.height * 2;
     const DIVIDER = 2;

@@ -230,7 +230,7 @@ export async function placeOrder(handle: string) {
     const orderId = result.order.id
     await removeCartId(handle)
     revalidateTag("creator-carts")
-    redirect(`/${handle}/order/${orderId}`)
+    redirect(`/order/${orderId}`)
   }
 
   throw new Error("Order placement failed")

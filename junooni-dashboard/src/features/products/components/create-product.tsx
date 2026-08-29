@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   IconCirclePlus, 
@@ -14,7 +15,8 @@ import {
   IconPhotoPlus,
   IconInfoCircle,
   IconTruck,
-  IconClock
+  IconClock,
+  IconPackage
 } from '@tabler/icons-react';
 
 import { Button } from '@/components/ui/button';
@@ -41,14 +43,23 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
 import { Checkbox } from '@/components/ui/checkbox';
 
 // Import components from our new modules
 import { StreamlinedImageManager } from '../context/product-modules/ImageManager';
 import { EnhancedOptionComponent } from '../context/product-modules/OptionComponents';
 import { ProductSchema } from '../data/schema';
-import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, updateVariantImages, fetchCurrentVendor, assignProductSalesChannels, } from '../context/fetchApi';
+import {
+  createProduct,
+  uploadProductImage,
+  fetchCategories,
+  batchUpdateInventoryLevels,
+  fetchProduct,
+  updateVariantImages,
+  fetchCurrentVendor,
+  assignProductSalesChannels,
+  removeProductFromSalesChannel,
+} from '../context/fetchApi';
 import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
 
 // Import rich text editor component
@@ -74,10 +85,9 @@ import {
   prepareVariantImageMetadata,
   getColorImagesMetadata
 } from '../context/product-modules/utils';
-//import { extractInventoryItemId } from '../context/fetchApi';
 
 // Default location ID for inventory management
-const defaultLocationId = "sloc_01JKWDDGKGCQFJANXV0CVJN2QW"; // Default location ID
+const defaultLocationId = "sloc_01JKWDDGKGCQFJANXV0CVJN2QW";
 const SALES_CHANNEL_MARKETPLACE = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
 const SALES_CHANNEL_OWN_STORE   = 'sc_01KMAP3HD1EVDF9FT7EHHHV8HP';
 
@@ -89,13 +99,22 @@ const SALES_CHANNEL_LABELS: Record<string, string> = {
 // Main Product Form Component
 const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = false }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeImageTab, setActiveImageTab] = useState<string>("upload");
   const [newImageUrl, setNewImageUrl] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
-  
+
+  // ── NEW: image & variant dirty-tracking ─────────────────────────────
+  const [hasImageChanges, setHasImageChanges] = useState<boolean>(false);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
+  const [hasUnsavedVariantChanges, setHasUnsavedVariantChanges] = useState<boolean>(false);
+  const [salesChannelsDirty, setSalesChannelsDirty] = useState<boolean>(false);
+  // ────────────────────────────────────────────────────────────────────
+
   // State for storing categories from API
   const [productCategories, setProductCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(false);
@@ -104,10 +123,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   // For managing the new option value being added for each option
   const [newOptionValues, setNewOptionValues] = useState<Record<number, string>>({});
   
-  // For images, we store objects with a file (if newly added) and URL and rank.
+  // For images
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  
-  // Store uploaded image data (id to url mapping)
   const [uploadedImages, setUploadedImages] = useState<Record<string, string>>({});
 
   // For bulk editing variants
@@ -115,18 +132,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   const [bulkPrice, setBulkPrice] = useState<string>("");
   const [bulkStock, setBulkStock] = useState<string>("");
   const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
+
+  // Sales channels
   const [vendorSalesChannels, setVendorSalesChannels] = useState<string[]>([]);
   const [selectedSalesChannels, setSelectedSalesChannels] = useState<string[]>([]);
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
   const [vendorHasMarketplace, setVendorHasMarketplace] = useState(false);
 
-  // Ref for the hidden file input for drag-and-drop.
+  // Ref for the hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State for variant toggle
-  const [hasVariants, setHasVariants] = useState<boolean>(initialData ? initialData.options.length > 0 : false);
+  const [hasVariants, setHasVariants] = useState<boolean>(
+    initialData ? initialData.options.length > 0 : false
+  );
   
-  // Initialize the form with default values based on the schema
+  // Initialize the form
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: initialData || {
@@ -138,15 +159,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
       thumbnail: '',
       discountable: true,
       category_id: '',
-      options: [
-        {
-          id: generateUUID(),
-          title: 'Size',
-          optionValues: [],
-          colorHexValues: {},
-          imageAssociation: false
-        }
-      ],
+      options: [{
+        id: generateUUID(),
+        title: 'Size',
+        optionValues: [],
+        colorHexValues: {},
+        imageAssociation: false
+      }],
       variants: [],
       defaultVariantPrice: 0,
       defaultVariantSku: generateUniqueSku('default'),
@@ -157,100 +176,70 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
       height: '',
       material: '',
       origin_country: '',
-      // Fields for metadata
       productDetails: [{ id: generateUUID(), text: '' }],
       storyBehindDesign: '',
       locationId: defaultLocationId,
-    
-      // Default shipping fields
       shippingDays: '7-10',
       handlingTime: '2-3',
     },
   });
 
-  // Field arrays for options and variants.
-  const {
-    fields: optionFields,
-    append: appendOption,
-    remove: removeOption,
-    update: updateOption,
-  } = useFieldArray({
-    control: form.control,
-    name: 'options',
-  });
+  // Field arrays
+  const { fields: optionFields, append: appendOption, remove: removeOption, update: updateOption } =
+    useFieldArray({ control: form.control, name: 'options' });
 
-  const {
-    fields: variantFields,
-    replace: replaceVariants,
-    remove: removeVariant,
-    update: updateVariant,
-  } = useFieldArray({
-    control: form.control,
-    name: 'variants',
-  });
-  
-  // Field array for product details (bullet points)
-  const {
-    fields: productDetailFields,
-    append: appendProductDetail,
-    remove: removeProductDetail,
-  } = useFieldArray({
-    control: form.control,
-    name: 'productDetails',
-  });
+  const { fields: variantFields, replace: replaceVariants, remove: removeVariant, update: updateVariant } =
+    useFieldArray({ control: form.control, name: 'variants' });
 
-  // Generate variants from options - using useCallback to memoize
+  const { fields: productDetailFields, append: appendProductDetail, remove: removeProductDetail } =
+    useFieldArray({ control: form.control, name: 'productDetails' });
+
+  // ── isFormDirty: gates the Save/Create button ────────────────────────
+  const isFormDirty =
+    form.formState.isDirty ||
+    hasUnsavedVariantChanges ||
+    hasImageChanges ||
+    deletedImageIds.length > 0 ||
+    salesChannelsDirty;
+  // ────────────────────────────────────────────────────────────────────
+
+  // ── Variant generation ───────────────────────────────────────────────
   const handleGenerateVariants = useCallback(() => {
     const currentOptions = form.getValues('options');
-    
-    // Filter out options without name or values
-    const validOptions = currentOptions.filter(opt => 
-      opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0
+    const validOptions = currentOptions.filter(
+      opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0
     );
-    
+
     if (validOptions.length > 0) {
-      const parsedOptions = validOptions.map((opt) => ({
+      const parsedOptions = validOptions.map(opt => ({
         optionId: opt.id || generateUUID(),
         optionName: opt.title,
         optionValues: opt.optionValues,
       }));
-      
+
       const currentVariants = form.getValues('variants');
-      
       const newVariants = generateVariantsFromOptions(parsedOptions);
-      
-      // Preserve existing variant data (prices, stock, etc.) where possible
+
       const variantsWithExistingData = newVariants.map(newVariant => {
-        // Try to find an existing variant with the same option values
         const existingVariant = currentVariants.find(existing => {
-          // Skip if lengths don't match or if optionValues is not an array
-          if (!existing.optionValues || 
-              !Array.isArray(existing.optionValues) || 
+          if (!existing.optionValues || !Array.isArray(existing.optionValues) ||
               existing.optionValues.length !== newVariant.optionValues.length) return false;
-          
-          // Check if all option values match
-          const allValuesMatch = newVariant.optionValues.every(newOptVal => 
-            existing.optionValues.some(existingOptVal => 
-              existingOptVal.optionName === newOptVal.optionName && 
+          return newVariant.optionValues.every(newOptVal =>
+            existing.optionValues.some(existingOptVal =>
+              existingOptVal.optionName === newOptVal.optionName &&
               existingOptVal.value === newOptVal.value
             )
           );
-          
-          return allValuesMatch;
         });
-        
+
         if (existingVariant) {
-          // Keep existing data but update title and optionValues
           return {
             ...existingVariant,
-            title: newVariant.title, // Use consistent title format
+            title: newVariant.title,
             optionValues: newVariant.optionValues.map(newOptVal => {
-              // Find matching existing option value to preserve optionId
               const matchingExistingOptVal = existingVariant.optionValues.find(
-                existingOptVal => existingOptVal.optionName === newOptVal.optionName && 
-                                  existingOptVal.value === newOptVal.value
+                ev => ev.optionName === newOptVal.optionName && ev.value === newOptVal.value
               );
-              
               return {
                 optionId: matchingExistingOptVal?.optionId || newOptVal.optionId,
                 optionName: newOptVal.optionName,
@@ -259,1025 +248,845 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
             }),
           };
         }
-        
-        // For new variants, use the generated unique SKU and other default values
         return newVariant;
       });
-      
-      // Replace variants in the form
+
       replaceVariants(variantsWithExistingData);
+      setHasUnsavedVariantChanges(true);
     } else {
-      // If there are no valid options, clear the variants
       replaceVariants([]);
     }
   }, [form, replaceVariants]);
 
-  // Add a new option value for a specific option
+  // ── Option value management ──────────────────────────────────────────
   const handleAddOptionValue = (optionIndex: number) => {
     const value = newOptionValues[optionIndex];
     if (!value || value.trim() === '') return;
-    
     const currentOptions = form.getValues('options');
     const currentOption = currentOptions[optionIndex];
-    
-    // Get current option values (ensure it's an array)
-    const currentValues = Array.isArray(currentOption.optionValues) 
-      ? currentOption.optionValues 
-      : [];
-    
-    // Add the new value to the option's values if it doesn't already exist
+    const currentValues = Array.isArray(currentOption.optionValues) ? currentOption.optionValues : [];
     if (!currentValues.includes(value)) {
-      const updatedValues = [...currentValues, value];
-      
-      // Update the option in the form
-      updateOption(optionIndex, {
-        ...currentOption,
-        optionValues: updatedValues
-      });
-      
-      // Clear the input for this option
-      const updatedNewValues = { ...newOptionValues };
-      updatedNewValues[optionIndex] = '';
-      setNewOptionValues(updatedNewValues);
-      
-      // Generate variants after adding a new option value
+      updateOption(optionIndex, { ...currentOption, optionValues: [...currentValues, value] });
+      setNewOptionValues(prev => ({ ...prev, [optionIndex]: '' }));
       handleGenerateVariants();
     }
   };
 
-  // Handle change in new option value input
   const handleNewOptionValueChange = (optionIndex: number, value: string) => {
-    setNewOptionValues(prev => ({
-      ...prev,
-      [optionIndex]: value
-    }));
+    setNewOptionValues(prev => ({ ...prev, [optionIndex]: value }));
   };
 
-  // Update a specific variant field
-  // const handleVariantFieldChange = (variantIndex: number, field: string, value: any) => {
-  //   const currentVariants = form.getValues('variants');
-  //   const currentVariant = currentVariants[variantIndex];
-    
-  //   // Create a deep copy to ensure nested objects are updated properly
-  //   const updatedVariant = JSON.parse(JSON.stringify(currentVariant));
-  //   updatedVariant[field] = value;
-    
-  //   updateVariant(variantIndex, updatedVariant);
-  // };
-  
+  // ── Variant field change ─────────────────────────────────────────────
   const handleVariantFieldChange = (variantIndex: number, field: string, value: any) => {
-  // Use form.setValue directly - more efficient and maintains focus
-  form.setValue(`variants.${variantIndex}.${field}`, value, {
-    shouldValidate: false,  // Don't validate on every keystroke
-    shouldDirty: true,      // Mark as modified
-    shouldTouch: false      // Don't mark as touched (prevents focus loss)
-  });
-};
+    form.setValue(`variants.${variantIndex}.${field}` as any, value, {
+      shouldValidate: false,
+      shouldDirty: true,
+      shouldTouch: false
+    });
+    setHasUnsavedVariantChanges(true);
+  };
 
-  // Handle bulk edit of variants
+  // ── Remove variant (NEW: with dirty tracking) ────────────────────────
+  const handleRemoveVariant = (index: number) => {
+    removeVariant(index);
+    setHasUnsavedVariantChanges(true);
+  };
+
+  // ── Bulk editing ─────────────────────────────────────────────────────
   const handleBulkEdit = (field: string, value: any) => {
     if (!selectedVariants.length) return;
-    
     const currentVariants = form.getValues('variants');
-    
-    // Update each selected variant
     selectedVariants.forEach(variantId => {
       const variantIndex = currentVariants.findIndex(v => v.id === variantId);
-      if (variantIndex !== -1) {
-        handleVariantFieldChange(variantIndex, field, value);
-      }
+      if (variantIndex !== -1) handleVariantFieldChange(variantIndex, field, value);
     });
-    
-    // Clear bulk edit values after applying
     if (field === 'price') setBulkPrice('');
     if (field === 'stock') setBulkStock('');
   };
 
-  // Handle selecting all variants
   const handleSelectAllVariants = (checked: boolean) => {
-    if (checked) {
-      // Select all variants
-      const allVariantIds = form.getValues('variants').map(v => v.id);
-      setSelectedVariants(allVariantIds);
-    } else {
-      // Deselect all
-      setSelectedVariants([]);
-    }
+    setSelectedVariants(checked ? form.getValues('variants').map(v => v.id) : []);
   };
 
-  // Toggle selection of a specific variant
   const handleToggleVariantSelection = (variantId: string) => {
-    setSelectedVariants(prev => {
-      if (prev.includes(variantId)) {
-        return prev.filter(id => id !== variantId);
-      } else {
-        return [...prev, variantId];
-      }
-    });
+    setSelectedVariants(prev =>
+      prev.includes(variantId) ? prev.filter(id => id !== variantId) : [...prev, variantId]
+    );
   };
 
-  // Duplicate a variant
   const handleDuplicateVariant = (variantIndex: number) => {
     const currentVariants = form.getValues('variants');
     const variantToDuplicate = currentVariants[variantIndex];
-    
-    // Create a new copy with a new ID and unique SKU
     const newVariant = {
       ...JSON.parse(JSON.stringify(variantToDuplicate)),
       id: generateUUID(),
       sku: generateUniqueSku(`${variantToDuplicate.title}-copy`),
       title: `${variantToDuplicate.title} (Copy)`
     };
-    
-    // Insert after the original
     const updatedVariants = [...currentVariants];
     updatedVariants.splice(variantIndex + 1, 0, newVariant);
-    
     replaceVariants(updatedVariants);
+    setHasUnsavedVariantChanges(true);
   };
 
-  // Handle file change for standard and variant-specific uploads
-  // REPLACE the handleFileChange function in create-product.tsx (around line 650-700)
-
-// REPLACE the handleFileChange function in create-product.tsx (around line 650-700)
-
-const handleFileChange = (
-  e: React.ChangeEvent<HTMLInputElement>, 
-  variantInfo: VariantInfo | null = null
-): void => {
-  try {
-    if (e.target.files && e.target.files.length > 0) {
-      // Create new media items with proper metadata
-      const newMedia = Array.from(e.target.files).map((file, index) => {
-        const mediaItem: MediaItem = {
-          file,
-          url: URL.createObjectURL(file),
-          rank: mediaItems.length + index,
-          isNew: true
-        };
-        
-        // Add simplified variantInfo to avoid complex objects
-        if (variantInfo) {
-          if (variantInfo.variantId) {
-            // For variant-specific uploads, just store ID
-            mediaItem.variantInfo = {
-              variantId: variantInfo.variantId
-            };
-          } else if (variantInfo.optionName && variantInfo.optionValues?.[0]) {
-            // For option-specific uploads, just store name and first value
-            mediaItem.variantInfo = {
-              optionName: variantInfo.optionName,
-              optionValues: [variantInfo.optionValues[0]]
-            };
-            
-            // CRITICAL FIX: Set colorValue for color options
-            if (isColorOption(variantInfo.optionName)) {
-              mediaItem.colorValue = variantInfo.optionValues[0];
-              //console.log(`Setting colorValue to: ${variantInfo.optionValues[0]} for option: ${variantInfo.optionName}`);
+  // ── Image management ─────────────────────────────────────────────────
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    variantInfo: VariantInfo | null = null
+  ): void => {
+    try {
+      if (e.target.files && e.target.files.length > 0) {
+        const newMedia = Array.from(e.target.files).map((file, index) => {
+          const mediaItem: MediaItem = {
+            file,
+            url: URL.createObjectURL(file),
+            rank: mediaItems.length + index,
+            isNew: true
+          };
+          if (variantInfo) {
+            if (variantInfo.variantId) {
+              mediaItem.variantInfo = { variantId: variantInfo.variantId };
+            } else if (variantInfo.optionName && variantInfo.optionValues?.[0]) {
+              mediaItem.variantInfo = {
+                optionName: variantInfo.optionName,
+                optionValues: [variantInfo.optionValues[0]]
+              };
+              if (isColorOption(variantInfo.optionName)) {
+                mediaItem.colorValue = variantInfo.optionValues[0];
+              }
             }
           }
-        }
-        
-        return mediaItem;
-      });
-      
-      setMediaItems((prev) => [...prev, ...newMedia]);
-      
-      // Clear the file input
-      if (e.target) {
-        e.target.value = '';
+          return mediaItem;
+        });
+        setMediaItems(prev => [...prev, ...newMedia]);
+        setHasImageChanges(true);
+        if (e.target) e.target.value = '';
       }
+    } catch (error) {
+      if (e.target) e.target.value = '';
+      alert("Error uploading files. Please try again.");
     }
-  } catch (error) {
-    // Clear the file input on error
-    if (e.target) {
-      e.target.value = '';
-    }
-    
-    alert("Error uploading files. Please try again.");
-  }
-};
+  };
+
+  // ── Remove image (NEW: tracks deleted server image IDs) ──────────────
+  const handleRemoveImage = (index: number) => {
+    setHasImageChanges(true);
+    setMediaItems(prev => {
+      const removed = prev[index];
+      if (removed?.id && removed.id.startsWith('img_') && !removed.isNew) {
+        setDeletedImageIds(prevDeleted =>
+          prevDeleted.includes(removed.id) ? prevDeleted : [...prevDeleted, removed.id]
+        );
+      }
+      if (removed?.file && removed.url.startsWith('blob:')) {
+        URL.revokeObjectURL(removed.url);
+      }
+      const filtered = prev.filter((_, i) => i !== index);
+      return filtered.map((item, i) => ({ ...item, rank: i }));
+    });
+  };
+
+  // ── Move image up/down (NEW) ─────────────────────────────────────────
+  const handleMoveImageUp = (index: number) => {
+    if (index === 0) return;
+    setHasImageChanges(true);
+    setMediaItems(prev => {
+      const newMedia = [...prev];
+      const temp = newMedia[index - 1];
+      newMedia[index - 1] = { ...newMedia[index], rank: index - 1 };
+      newMedia[index] = { ...temp, rank: index };
+      return newMedia;
+    });
+  };
+
+  const handleMoveImageDown = (index: number) => {
+    if (index === mediaItems.length - 1) return;
+    setHasImageChanges(true);
+    setMediaItems(prev => {
+      const newMedia = [...prev];
+      const temp = newMedia[index + 1];
+      newMedia[index + 1] = { ...newMedia[index], rank: index + 1 };
+      newMedia[index] = { ...temp, rank: index };
+      return newMedia;
+    });
+  };
+
   const getImageAssociatedOptions = () => {
     const currentOptions = form.getValues('options');
-    return currentOptions.filter(opt => 
-      opt.title && 
-      opt.optionValues && 
-      opt.optionValues.length > 0 && 
-      opt.imageAssociation === true
+    return currentOptions.filter(opt =>
+      opt.title && opt.optionValues && opt.optionValues.length > 0 && opt.imageAssociation === true
     );
   };
-  
-  // State for options that have image associations
+
   const [imageAssociatedOptions, setImageAssociatedOptions] = useState<Option[]>([]);
-  
-  // Update imageAssociatedOptions when options change
+
   useEffect(() => {
     const subscription = form.watch((formValues, { name, type }) => {
-      // Update imageAssociatedOptions when options change
       if (name && (name.includes('options') || name.includes('imageAssociation'))) {
         setImageAssociatedOptions(getImageAssociatedOptions());
       }
     });
-    
-    // Initial setting
     setImageAssociatedOptions(getImageAssociatedOptions());
-    
-    // Cleanup subscription on component unmount
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Trigger the hidden file input when clicking the dropzone.
   const handleDropzoneClick = (e: React.MouseEvent) => {
-    // Prevent form submission
     e.preventDefault();
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
-  // Get all images associated with a variant (both direct and via option values)
-  const getVariantAssociatedImages = (variant: Variant, mediaItems: MediaItem[]): {id: string, url: string}[] => {
-    if (!variant.optionValues || !Array.isArray(variant.optionValues)) {
-      return [];
-    }
-    
-    const associatedImages: {id: string, url: string}[] = [];
-    
-    // First, check for direct variant-specific images
-    const directVariantImages = mediaItems.filter(item => 
-      item.variantInfo?.variantId === variant.id
-    );
-    
-    directVariantImages.forEach(item => {
-      if (item.url && item.id) {
-        const exists = associatedImages.some(img => img.id === item.id);
-        if (!exists) {
-          associatedImages.push({ id: item.id, url: item.url });
-        }
+  const getVariantAssociatedImages = (variant: Variant, mediaItems: MediaItem[]) => {
+    if (!variant.optionValues || !Array.isArray(variant.optionValues)) return [];
+    const associatedImages: { id: string; url: string }[] = [];
+    mediaItems.filter(item => item.variantInfo?.variantId === variant.id).forEach(item => {
+      if (item.url && item.id && !associatedImages.some(img => img.id === item.id)) {
+        associatedImages.push({ id: item.id, url: item.url });
       }
     });
-    
-    // Next, check each option value for associated images
     variant.optionValues.forEach(optVal => {
-    const optionValueImages = mediaItems.filter(item => {
-      // Add case-insensitive comparison here
-      return item.variantInfo?.optionName && 
-        item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() && 
-        item.variantInfo?.optionValues?.includes(optVal.value);
-    });
-      
-      optionValueImages.forEach(item => {
-        if (item.url && item.id) {
-          const exists = associatedImages.some(img => img.id === item.id);
-          if (!exists) {
-            associatedImages.push({ id: item.id, url: item.url });
-          }
+      mediaItems.filter(item =>
+        item.variantInfo?.optionName &&
+        item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() &&
+        item.variantInfo?.optionValues?.includes(optVal.value)
+      ).forEach(item => {
+        if (item.url && item.id && !associatedImages.some(img => img.id === item.id)) {
+          associatedImages.push({ id: item.id, url: item.url });
         }
       });
     });
-    
     return associatedImages;
   };
 
-  
-  // Add new product detail bullet point
   const handleAddProductDetail = () => {
     appendProductDetail({ id: generateUUID(), text: '' });
   };
 
-  // Close success message and reset the form
   const handleSuccessClose = () => {
     setShowSuccess(false);
-    
-    // If editing, navigate back to products, otherwise reset form for a new product
     if (isEditing) {
       navigate({ to: '/products' });
     } else {
-      // Reset the form for a new product
       form.reset({
-        title: '',
-        subtitle: '',
-        handle: '',
-        description: '',
-        status: 'draft',
-        thumbnail: '',
-        discountable: true,
-        category_id: '',
-        options: [
-          {
-            id: generateUUID(),
-            title: 'Size',
-            optionValues: [],
-            colorHexValues: {},
-            imageAssociation: false
-          }
-        ],
-        variants: [],
-        defaultVariantPrice: 0,
-        defaultVariantSku: generateUniqueSku('default'),
-        defaultVariantStock: 0,
-        weight: '',
-        length: '',
-        width: '',
-        height: '',
-        material: '',
-        origin_country: '',
-        productDetails: [{ id: generateUUID(), text: '' }],
-        storyBehindDesign: '',
-        locationId: defaultLocationId,
-       
-        shippingDays: '7-10',
-        handlingTime: '2-3',
+        title: '', subtitle: '', handle: '', description: '', status: 'draft', thumbnail: '',
+        discountable: true, category_id: '',
+        options: [{ id: generateUUID(), title: 'Size', optionValues: [], colorHexValues: {}, imageAssociation: false }],
+        variants: [], defaultVariantPrice: 0, defaultVariantSku: generateUniqueSku('default'),
+        defaultVariantStock: 0, weight: '', length: '', width: '', height: '',
+        material: '', origin_country: '', productDetails: [{ id: generateUUID(), text: '' }],
+        storyBehindDesign: '', locationId: defaultLocationId, shippingDays: '7-10', handlingTime: '2-3',
       });
-      
-      // Clear media items
       setMediaItems([]);
-      
-      // Reset variant state
       setHasVariants(false);
+      setHasImageChanges(false);
+      setDeletedImageIds([]);
+      setHasUnsavedVariantChanges(false);
+      setSalesChannelsDirty(false);
     }
   };
 
+  // ── Vendor sales channel load ─────────────────────────────────────────
   useEffect(() => {
-  const loadVendorChannels = async () => {
-    setIsLoadingChannels(true);
-    try {
-      const vendor = await fetchCurrentVendor();
-      if (!vendor) {
+    const loadVendorChannels = async () => {
+      setIsLoadingChannels(true);
+      try {
+        const vendor = await fetchCurrentVendor();
+        if (!vendor) {
+          setVendorSalesChannels([]);
+          setSelectedSalesChannels([]);
+          form.setValue('status', 'draft');
+          return;
+        }
+        const gstVerified = vendor.gst_verification_status === 'verified';
+        const allowed: string[] = [];
+        if (gstVerified && vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+        if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+        setVendorHasMarketplace(Boolean(vendor.sell_on_marketplace));
+        setVendorSalesChannels(allowed);
+        setSelectedSalesChannels([...allowed]);
+        const hasMarketplace = allowed.includes(SALES_CHANNEL_MARKETPLACE);
+        const hasOwnStore = allowed.includes(SALES_CHANNEL_OWN_STORE);
+        if (hasMarketplace) form.setValue('status', 'proposed');
+        else if (hasOwnStore) form.setValue('status', 'published');
+        else form.setValue('status', 'draft');
+      } catch {
         setVendorSalesChannels([]);
         setSelectedSalesChannels([]);
         form.setValue('status', 'draft');
-        return;
+      } finally {
+        setIsLoadingChannels(false);
       }
+    };
+    loadVendorChannels();
+  }, []);
 
-      const gstVerified = vendor.gst_verification_status === 'verified';
-      const allowed: string[] = [];
-
-      // Only show Marketplace if GST is verified AND vendor has marketplace enabled
-      if (gstVerified && vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
-
-      // Only show Own Store if vendor has own store enabled
-      if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
-
-      // Store whether vendor has marketplace enabled (regardless of GST)
-      setVendorHasMarketplace(Boolean(vendor.sell_on_marketplace));
-
-      // No fallback — if nothing is allowed, show empty and set draft
-      setVendorSalesChannels(allowed);
-      setSelectedSalesChannels([...allowed]);
-
-      const hasMarketplace = allowed.includes(SALES_CHANNEL_MARKETPLACE);
-      const hasOwnStore = allowed.includes(SALES_CHANNEL_OWN_STORE);
-
-      if (hasMarketplace && hasOwnStore) {
-        // Both available — default to proposed (marketplace requires admin approval)
-        form.setValue('status', 'proposed');
-      } else if (hasMarketplace) {
-        form.setValue('status', 'proposed');
-      } else if (hasOwnStore) {
-        // Own store only — vendor controls directly, publish immediately
-        form.setValue('status', 'published');
-      } else {
-        // No channels available at all
-        form.setValue('status', 'draft');
-      }
-    } catch {
-      // On error, show nothing and set draft to be safe
-      setVendorSalesChannels([]);
-      setSelectedSalesChannels([]);
-      form.setValue('status', 'draft');
-    }finally {
-      setIsLoadingChannels(false);
-    }
-  };
-
-  loadVendorChannels();
-}, []);
-
-  // Monitor option changes to update variants and detect color options
+  // ── Option watcher ───────────────────────────────────────────────────
   useEffect(() => {
     const subscription = form.watch((formValues, { name, type }) => {
-      // Check if the changed field is an option field
-        if (name && name.includes('options')) {
+      if (name && name.includes('options')) {
         const currentOptions = form.getValues('options');
-        
-        // If the last option has values and we have fewer than 3 options
         if (currentOptions.length > 0) {
           const lastOption = currentOptions[currentOptions.length - 1];
-          const hasValues = lastOption?.optionValues && 
-                          Array.isArray(lastOption.optionValues) && 
-                          lastOption.optionValues.length > 0;
-          
+          const hasValues = lastOption?.optionValues && Array.isArray(lastOption.optionValues) &&
+            lastOption.optionValues.length > 0;
           if (hasValues && currentOptions.length < 3) {
-            // Check if we don't already have an empty option at the end
-            const hasEmptyOption = currentOptions.some(opt => 
-              opt.title === '' && (!opt.optionValues || 
-              (Array.isArray(opt.optionValues) && opt.optionValues.length === 0))
+            const hasEmptyOption = currentOptions.some(
+              opt => opt.title === '' && (!opt.optionValues ||
+                (Array.isArray(opt.optionValues) && opt.optionValues.length === 0))
             );
-            
             if (!hasEmptyOption) {
-              // Add a new empty option
-              appendOption({ 
-                id: generateUUID(),
-                title: '', 
-                optionValues: [],
-                imageAssociation: false
-              });
+              appendOption({ id: generateUUID(), title: '', optionValues: [], imageAssociation: false });
             }
           }
         }
-        
-        // If the change is significant, regenerate the variants
-        if (type === 'change') {
-          handleGenerateVariants();
-        }
+        if (type === 'change') handleGenerateVariants();
       }
     });
-    
-    // Cleanup subscription on component unmount
     return () => subscription.unsubscribe();
   }, [appendOption, form, handleGenerateVariants]);
 
-  // Initialize default option values state
   useEffect(() => {
     const initialOptionValues: Record<number, string> = {};
-    optionFields.forEach((_, index) => {
-      initialOptionValues[index] = '';
-    });
+    optionFields.forEach((_, index) => { initialOptionValues[index] = ''; });
     setNewOptionValues(initialOptionValues);
   }, [optionFields.length]);
 
-  // Cleanup any object URLs for newly added files when unmounting.
   useEffect(() => {
-    return () => {
-      mediaItems.forEach((item) => {
-        if (item.file) URL.revokeObjectURL(item.url);
-      });
-    };
+    return () => { mediaItems.forEach(item => { if (item.file) URL.revokeObjectURL(item.url); }); };
   }, []);
 
-  // Fetch categories when component mounts
+  // ── Category load ────────────────────────────────────────────────────
   useEffect(() => {
     const loadCategories = async () => {
       setIsLoadingCategories(true);
       setCategoryError(null);
       try {
-        // Get the response from your fetchCategories function
         const response = await fetchCategories();
-        
-        if (!response) {
-          throw new Error('Failed to fetch categories');
-        }
-        
-        // Parse the response JSON
+        if (!response) throw new Error('Failed to fetch categories');
         const jsonData = await response.json();
-        
-        if (jsonData && jsonData.product_categories) {
-          setProductCategories(jsonData.product_categories);
-        } else {
-          // Handle unexpected response format
-          setCategoryError('Received invalid category data from server');
-        }
+        if (jsonData?.product_categories) setProductCategories(jsonData.product_categories);
+        else setCategoryError('Received invalid category data from server');
       } catch (error) {
         setCategoryError('Failed to load categories. Please try again.');
       } finally {
         setIsLoadingCategories(false);
       }
     };
-    
     loadCategories();
   }, []);
 
-  // Handle adding a new image via URL
   const handleAddImageUrl = (e: React.MouseEvent) => {
-    // Prevent form submission
     e.preventDefault();
-    
     if (!newImageUrl.trim()) return;
-    
-    // Basic URL validation
     try {
-      new URL(newImageUrl); // Will throw if not a valid URL
-      
-      // Add to media items
-      setMediaItems((prev) => [
-        ...prev,
-        {
-          file: undefined,
-          url: newImageUrl,
-          rank: prev.length,
-          isNew: true
-        }
-      ]);
-      
-      // Clear the input
+      new URL(newImageUrl);
+      setMediaItems(prev => [...prev, { file: undefined, url: newImageUrl, rank: prev.length, isNew: true }]);
+      setHasImageChanges(true);
       setNewImageUrl('');
-      
     } catch (error) {
       setError('Please enter a valid URL');
       setTimeout(() => setError(null), 3000);
     }
   };
 
-  // Handle form submission with proper variant image handling
+  // ── Form submission ──────────────────────────────────────────────────
   const onSubmit = async (values: ProductFormValues) => {
-    // Validate required fields
-    if (!values.title.trim()) {
-      setError('Product title is required');
-      return;
-    }
-    
+    if (!values.title.trim()) { setError('Product title is required'); return; }
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
-      // STEP 1: Upload images first to get image IDs
-      const productImages: Array<{id: string, url: string, alt?: string}> = [];
+      // STEP 1: Upload new images
+      const productImages: Array<{ id: string; url: string; alt?: string }> = [];
       const imageIdToUrlMap: Record<string, string> = {};
-      
+
       if (mediaItems.length > 0) {
-        try {
-          // Sort media items by rank to maintain order
-          const sortedMediaItems = [...mediaItems].sort((a, b) => a.rank - b.rank);
-          
-          // Upload each file to get image IDs
-          // Upload each file to get image IDs
-for (const item of sortedMediaItems) {
-  if (item.file) {
-    const formData = new FormData();
-    formData.append('files', item.file);
-    
-    // Use the provided uploadProductImage function
-    const uploadResult = await uploadProductImage({
-      productId: '', // We don't have a product ID yet
-      formData: formData,
-      multiple: false
-    });
-    
-    // The response should contain id and url
-    if (uploadResult && 'id' in uploadResult && 'url' in uploadResult) {
-      // Store the image in our productImages array
-      productImages.push({
-        id: uploadResult.id,
-        url: uploadResult.url,
-        alt: item.colorValue || item.variantInfo?.optionValues?.[0]
-      });
-      
-      // Update the mediaItem with the new ID and URL
-      item.id = uploadResult.id;
-      item.url = uploadResult.url;
-      
-      // Store the ID to URL mapping
-      imageIdToUrlMap[uploadResult.id] = uploadResult.url;
-    }
-  }
-}
-          
-          // Update our uploadedImages state
-          setUploadedImages(imageIdToUrlMap);
-          
-        } catch (uploadError: any) {
-          setError(`Failed to upload images: ${uploadError.message || 'Unknown error'}`);
-          setIsSubmitting(false);
-          return;
+        const sortedMediaItems = [...mediaItems]
+          .sort((a, b) => a.rank - b.rank)
+          .filter(item => !deletedImageIds.includes(item.id || ''));
+
+        for (const item of sortedMediaItems) {
+          if (item.file) {
+            const formData = new FormData();
+            formData.append('files', item.file);
+            const uploadResult = await uploadProductImage({ productId: '', formData, multiple: false });
+            if (uploadResult && 'id' in uploadResult && 'url' in uploadResult) {
+              productImages.push({ id: uploadResult.id, url: uploadResult.url, alt: item.colorValue || item.variantInfo?.optionValues?.[0] });
+              item.id = uploadResult.id;
+              item.url = uploadResult.url;
+              imageIdToUrlMap[uploadResult.id] = uploadResult.url;
+            }
+          } else if (item.url && !item.url.startsWith('blob:')) {
+            // URL-based image — include as-is
+            if (item.id) productImages.push({ id: item.id, url: item.url });
+          }
         }
+        setUploadedImages(imageIdToUrlMap);
       }
-      
-      // Auto-generate handle from title and add timestamp for uniqueness
+
+      // STEP 2: Delete images that were removed
+      if (deletedImageIds.length > 0) {
+        await Promise.allSettled(
+          deletedImageIds.map(imageId =>
+            uploadProductImage({ productId: '', imageId, action: 'delete' })
+              .catch(err => console.error(`Failed to delete image ${imageId}:`, err))
+          )
+        );
+      }
+
+      // STEP 3: Build handle
       const timestamp = new Date().getTime();
-      const baseHandle = values.title
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '') // Remove any non-word chars (except spaces and dashes)
-        .replace(/\s+/g, '-') // Replace spaces with single dash
-        .replace(/-+/g, '-'); // Replace multiple dashes with single dash
-      
+      const baseHandle = values.title.toLowerCase()
+        .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
       values.handle = `${baseHandle}-${timestamp}`;
-      
-      let options: any[] = [];
-      let variants: any[] = [];
-  
-      // Prepare metadata with product details and story
+
+      // STEP 4: Build metadata
       const metadata: Record<string, any> = {};
-      
-      // Get the actual form values directly before saving
       const formValues = form.getValues();
-      
-      // Process fulfillment data with values directly from the form
-      const fulfillmentData = {
+
+      metadata.fulfillment_type = JSON.stringify({
         type: "Creator-fulfillment",
         handling_time: formValues.handlingTime || '2-3',
         shipping_time: formValues.shippingDays || '7-10'
-      };
-      
-      // Stringify the fulfillment object and assign to metadata
-      metadata.fulfillment_type = JSON.stringify(fulfillmentData);
-      
-      // Process product details - extract text values from the array
+      });
+
       if (formValues.productDetails && Array.isArray(formValues.productDetails)) {
         const validDetails = formValues.productDetails
-          .filter(detail => detail && detail.text && detail.text.trim() !== '')
-          .map(detail => detail.text.trim());
-        
-        if (validDetails.length > 0) {
-          metadata.product_details = JSON.stringify(validDetails);
-        }
+          .filter(d => d && d.text && d.text.trim() !== '')
+          .map(d => d.text.trim());
+        if (validDetails.length > 0) metadata.product_details = JSON.stringify(validDetails);
       }
-      
-      // Process story behind design - handle HTML content
-      if (formValues.storyBehindDesign && typeof formValues.storyBehindDesign === 'string') {
-        // Store HTML as is - the API should handle HTML content
+
+      if (formValues.storyBehindDesign?.trim()) {
         metadata.description_story = formValues.storyBehindDesign.trim();
       }
-      
-      // Process color hex values if present
-      const formColorOption = formValues.options?.find(opt => 
-        opt.title?.toLowerCase() === 'color' || opt.title?.toLowerCase() === 'colour'
+
+      const formColorOption = formValues.options?.find(
+        opt => opt.title?.toLowerCase() === 'color' || opt.title?.toLowerCase() === 'colour'
       );
-      
-      if (formColorOption && formColorOption.colorHexValues) {
-        // Convert the color hex values object to an array of {name, hex} pairs
+      if (formColorOption?.colorHexValues) {
         const colorHexArray = Object.entries(formColorOption.colorHexValues).map(
-          ([colorName, hexValue]) => ({
-            name: colorName,
-            hex: hexValue
-          })
+          ([colorName, hexValue]) => ({ name: colorName, hex: hexValue })
         );
-        
-        // Store as a single JSON string in metadata
         metadata.color_hex_values = JSON.stringify(colorHexArray);
       }
-      
-      // Process image associations metadata
-      const imageMetadata = prepareVariantImageMetadata(formValues.options, mediaItems);
-      Object.entries(imageMetadata).forEach(([key, value]) => {
-        metadata[key] = value;
-      });
-      
-      //console.log("=== IMAGE UPLOAD DEBUG ===");
-      // console.log("Media items with associations:", mediaItems.map(item => ({
-      //   id: item.id,
-      //   url: item.url,
-      //   variantInfo: item.variantInfo,
-      //   colorValue: item.colorValue
-      // })));
 
-      // IMPORTANT: Get the latest option values directly from the form
-      // This ensures we capture the correct imageAssociation values
+      const imageMetadata = prepareVariantImageMetadata(formValues.options, mediaItems);
+      Object.entries(imageMetadata).forEach(([key, value]) => { metadata[key] = value; });
+
       const latestOptions = formValues.options;
-      
-      // Image association settings - direct from form values
       const imageAssociationSettings = latestOptions
         .filter(opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0)
-        .map(opt => ({
-          option_id: opt.id,
-          option_name: opt.title,
-          enabled: Boolean(opt.imageAssociation) // This value should be correct now
-        }));
-
-      // Add to metadata
+        .map(opt => ({ option_id: opt.id, option_name: opt.title, enabled: Boolean(opt.imageAssociation) }));
       metadata.variant_specific_image_option = JSON.stringify(imageAssociationSettings);
-      
-      // Log to verify the values are correct
-      //console.log('Image association settings being saved:', imageAssociationSettings);
-      //console.log('Full metadata being saved:', metadata);
-      
+
+      // STEP 5: Build options and variants
+      let options: any[] = [];
+      let variants: any[] = [];
+
       if (hasVariants) {
-        // When using variants: filter and transform options to API format (remove empty ones)
-        const validOptions = formValues.options.filter(opt => 
-          opt.title && 
-          Array.isArray(opt.optionValues) && 
-          opt.optionValues.length > 0
+        const validOptions = formValues.options.filter(
+          opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0
         );
-        
-        // Check if we have at least one option with values when variants are enabled
         if (validOptions.length === 0) {
-          setError('You must add at least one option (like Size or Color) with values');
+          setError('You must add at least one option with values');
           setIsSubmitting(false);
           return;
         }
-        
-        // Format options to match Medusa JS API expectations
-        options = validOptions.map((opt) => {
-          return {
-            title: opt.title,
-            values: opt.optionValues
-          };
-        });
-        
-        // Validate variants - make sure each has at least a title and SKU
-        const invalidVariants = formValues.variants.filter(v => !v.title || !v.sku);
-        if (invalidVariants.length > 0) {
-          setError('All variants must have a title and SKU');
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // Check if we have variants
+        options = validOptions.map(opt => ({ title: opt.title, values: opt.optionValues }));
+
         if (formValues.variants.length === 0) {
-          setError('You must add at least one variant. Add option values first.');
+          setError('You must add at least one variant.');
           setIsSubmitting(false);
           return;
         }
-        
         variants = formValues.variants;
       } else {
-        // When not using variants: create a single default option and variant
-        // This is needed because Medusa API requires at least one option and value
-        const defaultTitle = "Title";
-        const defaultValue = "Default";
-        
-        // Use the user-provided values for the default variant or fallback to defaults
-        const defaultSku = formValues.defaultVariantSku || generateUniqueSku(formValues.title);
-        const defaultPrice = formValues.defaultVariantPrice || 0;
-        const defaultStock = formValues.defaultVariantStock || 0;
-        
-        // Create a default option with a default value and ID
-        options = [
-          {
-            title: defaultTitle,
-            values: [defaultValue]
-          }
-        ];
-
+        options = [{ title: "Title", values: ["Default"] }];
         variants = [{
-          id: generateUUID(),
-          title: 'Default',
-          price: defaultPrice,
-          compareAtPrice: 0,
-          stock: defaultStock,
-          sku: defaultSku,
-          allowBackorder: false,
-          manageInventory: true,
-          optionValues: [{
-            optionName: defaultTitle,
-            value: defaultValue
-          }]
+          id: generateUUID(), title: 'Default',
+          price: formValues.defaultVariantPrice || 0,
+          compareAtPrice: 0, stock: formValues.defaultVariantStock || 0,
+          sku: formValues.defaultVariantSku || generateUniqueSku(formValues.title),
+          allowBackorder: false, manageInventory: true,
+          optionValues: [{ optionName: "Title", value: "Default" }]
         }];
       }
-      
-      // Transform variants to match Medusa JS API expectations
+
+      // STEP 6: Format variants with proper option_id resolution (FIXED from edit-product)
       const formattedVariants = variants.map((variant) => {
-  // Format price as number to avoid string issues
-  const price = typeof variant.price === 'string' 
-    ? parseFloat(variant.price) 
-    : (variant.price || 0);
+        const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
+        const variantOptions: Record<string, string> = {};
 
-  // Format options according to Medusa JS API expectations
-  const variantOptions: Record<string, string> = {};
+        if (variant.optionValues && variant.optionValues.length > 0) {
+          variant.optionValues.forEach((optVal: any) => {
+            // Resolve to proper option title for Medusa
+            const matchingFormOpt = formValues.options.find(fo =>
+              fo.id === optVal.optionId || fo.title === optVal.optionName
+            );
+            const optionTitle = matchingFormOpt?.title || optVal.optionName;
+            variantOptions[optionTitle] = typeof optVal.value === 'object'
+              ? String((optVal.value as any)?.value ?? optVal.value)
+              : String(optVal.value ?? '');
+          });
+        }
 
-// Map each option value to the format Medusa expects
-if (variant.optionValues && variant.optionValues.length > 0) {
-  variant.optionValues.forEach(optVal => {
-    variantOptions[optVal.optionName] = optVal.value;
-  });
+        const variantMetadata: Record<string, any> = {};
+        const costPrice = typeof variant.cost_price === 'string'
+          ? parseFloat(variant.cost_price) || 0
+          : (variant.cost_price || variant.metadata?.cost_price || 0);
+        if (costPrice > 0) variantMetadata.cost_price = costPrice;
 
-}
+        return {
+          title: variant.title,
+          sku: variant.sku || '',
+          manage_inventory: Boolean(variant.manageInventory !== false ? variant.manageInventory : true),
+          allow_backorder: Boolean(variant.allowBackorder),
+          options: variantOptions,
+          metadata: variantMetadata,
+          prices: [{ amount: price, currency_code: 'inr' }]
+        };
+      });
 
-// Prepare variant-specific metadata
-const variantMetadata: Record<string, any> = {};
+      // STEP 7: Build product payload
+      const formattedImages = productImages.map(img => ({ id: img.id, url: img.url, ...(img.alt ? { alt: img.alt } : {}) }));
 
-// Variant images now handled natively via updateVariantImages() after product creation
-//const variantMetadata: Record<string, any> = {};
-
-// Return a minimal variant with only fields we know are accepted
-return {
-  title: variant.title,
-  sku: variant.sku || '',
-  manage_inventory: Boolean(variant.manageInventory),
-  allow_backorder: Boolean(variant.allowBackorder),
-  options: variantOptions,
-  metadata: variantMetadata,
-    
-    // The most basic prices array structure
-    prices: [{
-      amount: price,
-      currency_code: 'inr'
-    }]
-  };
-});
-      
-      // Extract image data for the API - include both id and url in each object
-      const formattedImages = productImages.map(img => ({ 
-        id: img.id, 
-        url: img.url,
-        ...(img.alt ? { alt: img.alt } : {})
-      }));
-      
-      // Construct the product object in Medusa JS API format
       const newProduct = {
         title: formValues.title.trim(),
-        subtitle: formValues.subtitle?.trim() || "", // Added short description
+        subtitle: formValues.subtitle?.trim() || "",
         handle: formValues.handle.trim(),
         description: formValues.description.trim() || "",
         status: formValues.status,
         discountable: Boolean(formValues.discountable),
-        
-        // Include image objects if we have any (not just IDs)
-        ...(formattedImages.length > 0 ? { 
-          images: formattedImages,
-          thumbnail: productImages[0]?.url || "" 
-        } : {}),
-        
-        // Include category if selected
-        // categories: formValues.category_id ? [{ id: formValues.category_id }] : [],
-        categories: formValues.category_id 
-          ? (Array.isArray(formValues.category_id) 
-              ? formValues.category_id.map(id => ({ id }))
-              : [{ id: formValues.category_id }])
+        ...(formattedImages.length > 0 ? { images: formattedImages, thumbnail: productImages[0]?.url || "" } : {}),
+        categories: formValues.category_id
+          ? (Array.isArray(formValues.category_id)
+            ? formValues.category_id.map((id: string) => ({ id }))
+            : [{ id: formValues.category_id }])
           : [],
-          
         weight: formValues.weight ? parseInt(formValues.weight) || 0 : 0,
         length: formValues.length ? parseInt(formValues.length) || 0 : 0,
         width: formValues.width ? parseInt(formValues.width) || 0 : 0,
         height: formValues.height ? parseInt(formValues.height) || 0 : 0,
-        // Only include these if they have values
         ...(formValues.material ? { material: formValues.material } : {}),
         ...(formValues.origin_country ? { origin_country: formValues.origin_country } : {}),
-        // Include metadata
-        metadata: metadata,
-        options: options, // Always include options even for no-variant products
+        metadata,
+        options,
         variants: formattedVariants,
       };
-    
-      //console.log("Full product creation payload:", JSON.stringify(newProduct, null, 2));
-      //console.log("Final product metadata being saved:", metadata);
-      // console.log("Variant metadata being saved:", formattedVariants.map(v => ({
-      //   title: v.title,
-      //   option_images: v.metadata.option_images,
-      //   color_images: v.metadata.color_images,
-      //   variant_images: v.metadata.variant_images
-      // })));
-      //   console.log("=== CREATE PRODUCT DEBUG ===");
-      // console.log("Formatted variants with metadata:", formattedVariants.map(v => ({
-      //   title: v.title,
-      //   metadata: v.metadata
-      // })));
-      try {
-        // Create the product
-        const result = await createProduct({ 
-          product: newProduct
-        });
-        
-        //console.log("Product created successfully:", result);
-        
-        // Store the created product ID
-     // After successful product creation
-    if (result && result.id) {
-      setCreatedProductId(result.id);
-      
-      //console.log("Product created successfully with ID:", result.id);
-      
-      // Add a slight delay to allow backend processing
-      setTimeout(async () => {
-      try {
-        const completeProduct = await fetchProduct({ id: result.id });
 
-        if (completeProduct && completeProduct.variants) {
-          // STEP A: Inventory creation
-          const inventoryCreations = [];
+      // STEP 8: Create product
+      const result = await createProduct({ product: newProduct });
 
-          for (const variant of completeProduct.variants) {
-            if (variant.inventory_items?.length > 0) {
-              const inventoryItemId = variant.inventory_items[0].inventory_item_id;
-              if (inventoryItemId) {
-                const formVariant = variants.find(v => v.title === variant.title) || variants[0];
-                const stockQuantity = parseInt(String(formVariant?.stock || '0'));
-                inventoryCreations.push({
-                  inventory_item_id: inventoryItemId,
-                  location_id: defaultLocationId,
-                  stocked_quantity: stockQuantity,
-                  incoming_quantity: 0
-                });
-              }
-            }
-          }
+      if (result && result.id) {
+        setCreatedProductId(result.id);
 
-          if (inventoryCreations.length > 0) {
-            try {
-              await batchUpdateInventoryLevels({ create: inventoryCreations });
-            } catch (inventoryError) {
-              console.error('Inventory creation failed:', inventoryError);
-            }
-          }
-
-          // STEP B: Associate variant images natively (Medusa v2.11.2+)
-          for (const completedVariant of completeProduct.variants) {
-            const colorOpt = completedVariant.options?.find((o: any) =>
-              o.option?.title?.toLowerCase() === 'color'
-            );
-            const sizeOpt = completedVariant.options?.find((o: any) =>
-              o.option?.title?.toLowerCase() === 'size'
-            );
-
-            const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
-            const variantSize = sizeOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
-
-            // Match using completeProduct.images which have real img_ IDs
-            const matchingImageIds = (completeProduct.images || [])
-              .filter((img: any) => {
-                const urlLower = img.url.toLowerCase();
-                const colorMatch = !variantColor || urlLower.includes(variantColor);
-                const sizeMatch = !variantSize || urlLower.includes(variantSize);
-                return colorMatch && sizeMatch;
-              })
-              .map((img: any) => img.id);
-
-            if (matchingImageIds.length > 0) {
-              const frontImage = (completeProduct.images || []).find((img: any) => {
-                const urlLower = img.url.toLowerCase();
-                return (!variantColor || urlLower.includes(variantColor)) && urlLower.includes('front');
-              });
-
-              const thumbnailUrl = frontImage?.url
-                || completeProduct.images?.find((img: any) => matchingImageIds.includes(img.id))?.url;
-
-              try {
-                await updateVariantImages({
-                  productId: result.id,
-                  variantId: completedVariant.id,
-                  imageIds: matchingImageIds,
-                  thumbnailUrl,
-                });
-                //console.log(`✅ Images associated for ${completedVariant.title}`);
-              } catch (err) {
-                console.error(`Failed variant image association for ${completedVariant.title}:`, err);
-              }
-            }
-          }
-
-           // STEP C: Assign sales channels based on vendor flags
-          // STEP C: Assign selected sales channels
+        setTimeout(async () => {
           try {
-            if (selectedSalesChannels.length > 0) {
-              await assignProductSalesChannels({
-                productId: result.id,
-                salesChannelIds: selectedSalesChannels,
-              });
-              //console.log(`✅ Assigned sales channels:`, selectedSalesChannels);
-            } else {
-              // Fallback if nothing selected
-              await assignProductSalesChannels({
-                productId: result.id,
-                salesChannelIds: [SALES_CHANNEL_MARKETPLACE],
-              });
-              console.warn('⚠️ No channels selected, defaulting to marketplace');
-            }
-          } catch (scError) {
-            console.error('❌ Sales channel assignment failed (non-fatal):', scError);
-          }
+            const completeProduct = await fetchProduct({ id: result.id });
 
-        }
-      } catch (fetchError) {
-        console.error('Post-creation error:', fetchError);
-      }
-    }, 2000);
-  
-  // Show success message for product creation
-  setShowSuccess(true);
-  setIsSubmitting(false);
-}
-        
-      } catch (apiError: any) {
-        if (apiError.response) {
-          setError(`API Error: ${apiError.response.data?.message || apiError.message || 'Unknown API error'}`);
-        } else if (apiError.request) {
-          setError('Network error: No response received from server. Please check your connection.');
-        } else {
-          setError(`Error: ${apiError.message || 'Unknown error occurred'}`);
-        }
+            if (completeProduct?.variants) {
+              // Inventory creation
+              const inventoryCreations = [];
+              for (const variant of completeProduct.variants) {
+                if (variant.inventory_items?.length > 0) {
+                  const inventoryItemId = variant.inventory_items[0].inventory_item_id;
+                  if (inventoryItemId) {
+                    const formVariant = variants.find(v => v.title === variant.title) || variants[0];
+                    inventoryCreations.push({
+                      inventory_item_id: inventoryItemId,
+                      location_id: defaultLocationId,
+                      stocked_quantity: parseInt(String(formVariant?.stock || '0')),
+                      incoming_quantity: 0
+                    });
+                  }
+                }
+              }
+              if (inventoryCreations.length > 0) {
+                await batchUpdateInventoryLevels({ create: inventoryCreations });
+              }
+
+                                         // Build a reliable map: server img_ ID → mediaItem
+              // using the IDs stored on mediaItems during the upload loop
+              // Do NOT use completeProduct.images[].id — those may be filenames
+              const serverImages = (completeProduct.images || []);
+              
+              // Match each completeProduct image back to our mediaItem by URL
+              const urlToImgId: Record<string, string> = {};
+              for (const serverImg of serverImages) {
+                // serverImg.id might be a filename — find the real img_ ID
+                // by matching the URL against what our upload returned
+                const matchingMediaItem = mediaItems.find(item =>
+                  item.url && serverImg.url &&
+                  (item.url === serverImg.url ||
+                   serverImg.url.includes(item.url.split('/').pop() || '') ||
+                   item.url.includes(serverImg.url.split('/').pop() || ''))
+                );
+                if (matchingMediaItem?.id?.startsWith('img_')) {
+                  // Use the real img_ ID from our upload response
+                  urlToImgId[serverImg.url] = matchingMediaItem.id;
+                } else if (serverImg.id?.startsWith('img_')) {
+                  // Server returned a real img_ ID — use it
+                  urlToImgId[serverImg.url] = serverImg.id;
+                }
+              }
+
+              console.log('urlToImgId map:', urlToImgId);
+
+              // Build option value → real img_ ID map from mediaItems
+              const optionValueToImageIds: Record<string, string[]> = {};
+              const colorValueToImageIds: Record<string, string[]> = {};
+
+              for (const item of mediaItems) {
+                // Only use items with real img_ IDs from upload
+                const realId = item.id?.startsWith('img_') ? item.id : null;
+                if (!realId) continue;
+
+                // Map by variantInfo
+                if (item.variantInfo?.optionName && item.variantInfo?.optionValues?.length) {
+                  for (const val of item.variantInfo.optionValues) {
+                    const key = val.toLowerCase().replace(/[\s_-]+/g, '');
+                    if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
+                    if (!optionValueToImageIds[key].includes(realId)) {
+                      optionValueToImageIds[key].push(realId);
+                    }
+                  }
+                }
+
+                // Map by colorValue
+                if (item.colorValue) {
+                  const key = item.colorValue.toLowerCase().replace(/[\s_-]+/g, '');
+                  if (!colorValueToImageIds[key]) colorValueToImageIds[key] = [];
+                  if (!colorValueToImageIds[key].includes(realId)) {
+                    colorValueToImageIds[key].push(realId);
+                  }
+                }
+              }
+
+              console.log('optionValueToImageIds:', optionValueToImageIds);
+              console.log('colorValueToImageIds:', colorValueToImageIds);
+
+              // Collect all real img_ IDs for fallback
+              const allRealImageIds = mediaItems
+                .map(item => item.id)
+                .filter(id => id?.startsWith('img_')) as string[];
+
+              console.log('allRealImageIds:', allRealImageIds);
+
+              // Check if any images have variant-specific associations
+              const hasVariantSpecificImages = mediaItems.some(
+                item => item.id?.startsWith('img_') &&
+                  (item.variantInfo?.optionName || item.colorValue)
+              );
+
+                            // ═══════════════════════════════════════════════
+              // VARIANT IMAGE ASSOCIATION - FULL DEBUG VERSION
+              // ═══════════════════════════════════════════════
+              console.log('═══ VARIANT IMAGE DEBUG START ═══');
+
+              // Step 1: Inspect completeProduct.images
+              console.log('completeProduct.images:', JSON.stringify(completeProduct.images || [], null, 2));
+
+              // Step 2: Inspect mediaItems at this point in time
+              console.log('mediaItems count:', mediaItems.length);
+              mediaItems.forEach((item, idx) => {
+                console.log(`mediaItem[${idx}]:`, {
+                  id: item.id,
+                  idStartsWithImg: item.id?.startsWith('img_'),
+                  url: item.url?.substring(0, 80),
+                  colorValue: item.colorValue,
+                  variantInfo: item.variantInfo,
+                  hasFile: !!item.file,
+                  isNew: item.isNew
+                });
+              });
+
+              // Step 3: Build img_ ID collections
+              // const allRealImageIds = mediaItems
+              //   .map(item => item.id)
+              //   .filter((id): id is string => typeof id === 'string' && id.startsWith('img_'));
+
+              console.log('allRealImageIds from mediaItems:', allRealImageIds);
+
+              // Step 4: Also check completeProduct.images for img_ IDs
+              // const productImageIds = (completeProduct.images || [])
+              //   .map((img: any) => img.id)
+              //   .filter((id: string) => typeof id === 'string' && id.startsWith('img_'));
+
+              console.log('productImageIds from completeProduct (img_ only):', productImageIds);
+
+                            // Step 6: Use urlToImgId map which is already correctly built
+              // urlToImgId: serverImageUrl → real img_ ID (from mediaItems upload response)
+              // This is the most reliable source since completeProduct.images[].id may be filenames
+              const allImgIdsFromUrlMap = Object.values(urlToImgId).filter(
+                id => typeof id === 'string' && id.startsWith('img_')
+              );
+              console.log('allImgIdsFromUrlMap:', allImgIdsFromUrlMap);
+
+              // Rebuild optionValue/colorValue maps using urlToImgId
+              // Match each mediaItem's URL to a real img_ ID via the urlToImgId map
+              if (allRealImageIds.length === 0 && allImgIdsFromUrlMap.length > 0) {
+                console.log('Rebuilding maps using urlToImgId...');
+                mediaItems.forEach((item, idx) => {
+                  // Find the real img_ ID for this mediaItem via URL match
+                  let resolvedId: string | null = null;
+
+                  // Direct URL match
+                  if (item.url && urlToImgId[item.url]) {
+                    resolvedId = urlToImgId[item.url];
+                  }
+
+                  // Partial URL match (filename comparison)
+                  if (!resolvedId && item.url) {
+                    const itemFilename = item.url.split('/').pop()?.split('?')[0] || '';
+                    for (const [serverUrl, imgId] of Object.entries(urlToImgId)) {
+                      const serverFilename = serverUrl.split('/').pop()?.split('?')[0] || '';
+                      if (itemFilename && serverFilename &&
+                          (itemFilename === serverFilename ||
+                           serverFilename.includes(itemFilename) ||
+                           itemFilename.includes(serverFilename))) {
+                        resolvedId = imgId;
+                        break;
+                      }
+                    }
+                  }
+
+                  console.log(`  mediaItem[${idx}]: colorValue=${item.colorValue}, variantInfo=${JSON.stringify(item.variantInfo)}, resolvedId=${resolvedId}`);
+
+                  if (!resolvedId) return;
+
+                  if (item.variantInfo?.optionName && item.variantInfo?.optionValues?.length) {
+                    for (const val of item.variantInfo.optionValues) {
+                      const key = val.toLowerCase().replace(/[\s_-]+/g, '');
+                      if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
+                      if (!optionValueToImageIds[key].includes(resolvedId)) {
+                        optionValueToImageIds[key].push(resolvedId);
+                        console.log(`    ✅ optionValue "${key}" → ${resolvedId}`);
+                      }
+                    }
+                  }
+
+                  if (item.colorValue) {
+                    const key = item.colorValue.toLowerCase().replace(/[\s_-]+/g, '');
+                    if (!colorValueToImageIds[key]) colorValueToImageIds[key] = [];
+                    if (!colorValueToImageIds[key].includes(resolvedId)) {
+                      colorValueToImageIds[key].push(resolvedId);
+                      console.log(`    ✅ colorValue "${key}" → ${resolvedId}`);
+                    }
+                  }
+                });
+              }
+
+              console.log('Final optionValueToImageIds:', optionValueToImageIds);
+              console.log('Final colorValueToImageIds:', colorValueToImageIds);
+
+              // const fallbackImageIds2 = allImgIdsFromUrlMap.length > 0
+              //   ? allImgIdsFromUrlMap
+              //   : allRealImageIds;
+              // console.log('fallbackImageIds:', fallbackImageIds2);
+
+              const hasVariantSpecificImages2 =
+                Object.keys(optionValueToImageIds).length > 0 ||
+                Object.keys(colorValueToImageIds).length > 0;
+              console.log('hasVariantSpecificImages:', hasVariantSpecificImages2);
+
+              // Step 7: Associate images to each variant
+              for (const completedVariant of completeProduct.variants) {
+                const colorOpt = completedVariant.options?.find((o: any) =>
+                  isColorOption(o.option?.title || '')
+                );
+                const sizeOpt = completedVariant.options?.find((o: any) =>
+                  o.option?.title?.toLowerCase() === 'size'
+                );
+
+                const variantColorKey = (colorOpt?.value || '').toLowerCase().replace(/[\s_-]+/g, '');
+                const variantSizeKey = (sizeOpt?.value || '').toLowerCase().replace(/[\s_-]+/g, '');
+
+                console.log(`\nVariant "${completedVariant.title}": colorKey="${variantColorKey}", sizeKey="${variantSizeKey}"`);
+
+                let matchingImageIds: string[] = [];
+
+                if (hasVariantSpecificImages2) {
+                  matchingImageIds =
+                    optionValueToImageIds[variantColorKey] ||
+                    colorValueToImageIds[variantColorKey] ||
+                    optionValueToImageIds[variantSizeKey] ||
+                    [];
+                  console.log(`  Using variant-specific match: ${matchingImageIds.length} images`);
+                } else {
+                  matchingImageIds = fallbackImageIds2;
+                  console.log(`  Using fallback (all images): ${matchingImageIds.length} images`);
+                }
+
+                console.log(`  matchingImageIds:`, matchingImageIds);
+
+                if (matchingImageIds.length > 0) {
+                  const thumbnailUrl = mediaItems.find(item => item.id === matchingImageIds[0])?.url
+                    || (completeProduct.images || []).find((img: any) => img.id === matchingImageIds[0])?.url;
+
+                  console.log(`  thumbnailUrl: ${thumbnailUrl?.substring(0, 60)}`);
+
+                  try {
+                    await updateVariantImages({
+                      productId: result.id,
+                      variantId: completedVariant.id,
+                      imageIds: matchingImageIds,
+                      thumbnailUrl,
+                    });
+                    console.log(`  ✅ SUCCESS: Associated ${matchingImageIds.length} images to: ${completedVariant.title}`);
+                  } catch (err: any) {
+                    console.error(`  ❌ FAILED for ${completedVariant.title}:`, err?.message || err);
+                  }
+                } else {
+                  console.log(`  ⚠️ No image IDs found for: ${completedVariant.title}`);
+                }
+              }
+
+              console.log('═══ VARIANT IMAGE DEBUG END ═══');
+
+              // Assign sales channels
+              try {
+                if (selectedSalesChannels.length > 0) {
+                  await assignProductSalesChannels({ productId: result.id, salesChannelIds: selectedSalesChannels });
+                } else {
+                  await assignProductSalesChannels({ productId: result.id, salesChannelIds: [SALES_CHANNEL_MARKETPLACE] });
+                }
+              } catch (scError) {
+                console.error('Sales channel assignment failed (non-fatal):', scError);
+              }
+            }
+          } catch (fetchError) {
+            console.error('Post-creation error:', fetchError);
+          }
+        }, 2000);
+
+        // Reset dirty state
+        setHasImageChanges(false);
+        setDeletedImageIds([]);
+        setHasUnsavedVariantChanges(false);
+        setSalesChannelsDirty(false);
+
+        toast({ title: "Product Created", description: "Your product has been successfully created.", variant: "default" });
+        setShowSuccess(true);
         setIsSubmitting(false);
       }
+
     } catch (error: any) {
-      setError(`Failed to create product: ${error?.message || 'Unknown error'}`);
+      if (error.response) {
+        setError(`API Error: ${error.response.data?.message || error.message || 'Unknown API error'}`);
+      } else if (error.request) {
+        setError('Network error: No response received from server.');
+      } else {
+        setError(`Error: ${error.message || 'Unknown error occurred'}`);
+      }
       setIsSubmitting(false);
     }
   };
 
-  // For debugging when create button doesn't work
   const handleManualSubmit = (e: React.FormEvent) => {
     if (e) e.preventDefault();
     form.handleSubmit(onSubmit)();
   };
-  
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <div className="text-center">
-          <h2 className="mb-4 text-2xl font-bold text-red-600">Error</h2>
-          <p className="mb-6">{error}</p>
-          <Button 
-            onClick={() => navigate({ to: '/products' })}
-            className="bg-[#e65100] hover:bg-[#d84315] text-white"
-          >
-            Back to Products
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
-  // Success message dialog
   if (showSuccess) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -1289,19 +1098,8 @@ return {
             <h2 className="mb-2 text-xl font-bold text-gray-800">Product Created Successfully!</h2>
             <p className="mb-6 text-gray-600">Your product has been created and is ready to go.</p>
             <div className="flex gap-4">
-              <Button
-                onClick={handleSuccessClose}
-                variant="outline"
-                className="flex-1"
-              >
-                Create Another
-              </Button>
-              <Button
-                onClick={() => navigate({ to: `/products/${createdProductId}` })}
-                className="flex-1 bg-[#e65100] hover:bg-[#d84315] text-white"
-              >
-                View Product
-              </Button>
+              <Button onClick={handleSuccessClose} variant="outline" className="flex-1">Create Another</Button>
+              <Button onClick={() => navigate({ to: `/products/${createdProductId}` })} className="flex-1 bg-[#e65100] hover:bg-[#d84315] text-white">View Product</Button>
             </div>
           </div>
         </div>
@@ -1311,229 +1109,129 @@ return {
 
   return (
     <div className="px-3 py-8 sm:px-6 bg-gray-50">
-      {/* Header Bar with Junooni branding */}
+      {/* Header */}
       <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-[#e65100]">
-            {isEditing ? "Edit Product" : "Create New Product"}
-          </h1>
+          <h1 className="text-2xl font-bold text-[#e65100]">{isEditing ? "Edit Product" : "Create New Product"}</h1>
           <p className="mt-1 text-gray-500">Fill in the details to {isEditing ? "update" : "create"} your product</p>
         </div>
         <div className="flex space-x-3">
-          <Button 
+          <Button type="button" variant="outline" onClick={() => navigate({ to: '/products' })} className="text-gray-700 border-gray-300 hover:bg-gray-50">Cancel</Button>
+          <Button
             type="button"
-            variant="outline" 
-            onClick={() => navigate({ to: '/products' })}
-            className="text-gray-700 border-gray-300 hover:bg-gray-50"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="button"
-            onClick={handleManualSubmit} 
-            disabled={isSubmitting || !form.watch('status')}
+            onClick={handleManualSubmit}
+            disabled={isSubmitting}
             className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
           >
-            {isSubmitting ? 
-              (isEditing ? 'Saving...' : 'Creating...') : 
-              (isEditing ? 'Save Product' : 'Create Product')}
+            {isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Product' : 'Create Product')}
           </Button>
         </div>
       </div>
 
+      {error && (
+        <div className="fixed max-w-md p-4 border border-red-200 rounded-lg shadow-lg bottom-4 right-4 bg-red-50 z-50">
+          <div className="flex items-start">
+            <div className="flex-1 text-sm text-red-700">{error}</div>
+            <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-500"><IconX className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+
       <Form {...form}>
-        <form 
-          onSubmit={(e) => {
-            // Prevent default form submission - we'll handle it manually
-            e.preventDefault();
-            handleManualSubmit(e);
-          }}
-          noValidate
-        >
+        <form onSubmit={(e) => { e.preventDefault(); handleManualSubmit(e); }} noValidate>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {/* Left Column */}
+            {/* ── Left Column ─────────────────────────────────────────── */}
             <div className="space-y-6 md:col-span-2">
-              {/* Title & Description Section */}
+
+              {/* Basic Information */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-                <div className="mb-6">
-                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Basic Information</h2>
-                  <Separator className="mb-6" />
-                  
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel className="font-medium text-gray-700">Product Title*</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="e.g. Handcrafted Leather Bag" 
-                            className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                          />
-                        </FormControl>
-                        <FormDescription className="text-sm text-gray-500">
-                          The URL slug will be auto-generated from the title
-                        </FormDescription>
-                        <FormMessage className="text-red-500" />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="subtitle"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel className="font-medium text-gray-700">Short Description</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Brief product description (displays in listings)" 
-                            className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-500" />
-                      </FormItem>
-                    )}
-                  />
-                
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-medium text-gray-700">Description</FormLabel>
-                        <FormControl>
-                          <Controller
-                            name="description"
-                            control={form.control}
-                            render={({ field }) => (
-                              <TipTapEditor
-                                value={field.value || ''}
-                                onChange={field.onChange}
-                                placeholder="Write product details..."
-                              />
-                            )}
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-500" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <h2 className="mb-4 text-xl font-semibold text-gray-800">Basic Information</h2>
+                <Separator className="mb-6" />
+                <FormField control={form.control} name="title" render={({ field }) => (
+                  <FormItem className="mb-4">
+                    <FormLabel className="font-medium text-gray-700">Product Title*</FormLabel>
+                    <FormControl><Input {...field} placeholder="e.g. Handcrafted Leather Bag" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl>
+                    <FormDescription className="text-sm text-gray-500">The URL slug will be auto-generated from the title</FormDescription>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="subtitle" render={({ field }) => (
+                  <FormItem className="mb-4">
+                    <FormLabel className="font-medium text-gray-700">Short Description</FormLabel>
+                    <FormControl><Input {...field} placeholder="Brief product description (displays in listings)" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="description" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-medium text-gray-700">Description</FormLabel>
+                    <FormControl>
+                      <Controller name="description" control={form.control} render={({ field }) => (
+                        <TipTapEditor value={field.value || ''} onChange={field.onChange} placeholder="Write product details..." />
+                      )} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )} />
               </section>
 
-              {/* Product Details Section (Bullet Points) */}
+              {/* Product Details */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Details</h2>
                 <Separator className="mb-6" />
-                
                 <p className="mb-4 text-sm text-gray-500">Add bullet points highlighting key features of your product</p>
-                
                 {productDetailFields.map((field, index) => (
                   <div key={field.id} className="flex items-start gap-2 mb-3">
                     <span className="mt-2.5 text-[#e65100]">•</span>
-                    <FormField
-                      control={form.control}
-                      name={`productDetails.${index}.text`}
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder={`Product detail #${index + 1}`}
-                              className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeProductDetail(index)}
-                      className="mt-1 text-gray-500 hover:text-red-500"
-                    >
-                      <IconX size={18} />
-                    </Button>
+                    <FormField control={form.control} name={`productDetails.${index}.text`} render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl><Input {...field} placeholder={`Product detail #${index + 1}`} className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeProductDetail(index)} className="mt-1 text-gray-500 hover:text-red-500"><IconX size={18} /></Button>
                   </div>
                 ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddProductDetail}
-                  className="mt-2 text-[#e65100] border-[#e65100] hover:bg-orange-50"
-                >
-                  <IconCirclePlus className="mr-1.5" size={18} /> 
-                  Add Product Detail
+                <Button type="button" variant="outline" onClick={handleAddProductDetail} className="mt-2 text-[#e65100] border-[#e65100] hover:bg-orange-50">
+                  <IconCirclePlus className="mr-1.5" size={18} /> Add Product Detail
                 </Button>
               </section>
 
-              {/* Story Behind Design Section */}
+              {/* Story Behind Design */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Story Behind the Design</h2>
                 <Separator className="mb-6" />
-                
                 <p className="mb-4 text-sm text-gray-500">Share the inspiration and story behind your product</p>
-                
-                <FormField
-                  control={form.control}
-                  name="storyBehindDesign"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Controller
-                          name="storyBehindDesign"
-                          control={form.control}
-                          render={({ field }) => (
-                            <TipTapEditor
-                              value={field.value || ''}
-                              onChange={field.onChange}
-                              placeholder="Share the story behind your design..."
-                            />
-                          )}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-500" />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="storyBehindDesign" render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Controller name="storyBehindDesign" control={form.control} render={({ field }) => (
+                        <TipTapEditor value={field.value || ''} onChange={field.onChange} placeholder="Share the story behind your design..." />
+                      )} />
+                    </FormControl>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )} />
               </section>
-           
-              {/* Media Section - IMPROVED VERSION with working variant-specific uploads */}
+
+              {/* Product Images */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Images</h2>
                 <Separator className="mb-6" />
-                
-                <p className="mb-4 text-sm text-gray-500">
-                  Add images for your product. The first image will be used as the thumbnail.
-                </p>
-                
+                <p className="mb-4 text-sm text-gray-500">Add images for your product. The first image will be used as the thumbnail.</p>
+
                 <div className="mb-6">
                   <Tabs defaultValue="upload" onValueChange={setActiveImageTab} value={activeImageTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 p-1 mb-4 bg-gray-100 rounded-md">
-                      <TabsTrigger 
-                        value="upload" 
-                        className="data-[state=active]:bg-white data-[state=active]:text-[#e65100] data-[state=active]:shadow-sm rounded-md"
-                      >
-                        <IconUpload size={16} className="mr-2" />
-                        Upload Images
+                      <TabsTrigger value="upload" className="data-[state=active]:bg-white data-[state=active]:text-[#e65100] data-[state=active]:shadow-sm rounded-md">
+                        <IconUpload size={16} className="mr-2" /> Upload Images
                       </TabsTrigger>
-                      <TabsTrigger 
-                        value="url" 
-                        className="data-[state=active]:bg-white data-[state=active]:text-[#e65100] data-[state=active]:shadow-sm rounded-md"
-                      >
-                        <IconLink size={16} className="mr-2" />
-                        Add from URL
+                      <TabsTrigger value="url" className="data-[state=active]:bg-white data-[state=active]:text-[#e65100] data-[state=active]:shadow-sm rounded-md">
+                        <IconLink size={16} className="mr-2" /> Add from URL
                       </TabsTrigger>
                     </TabsList>
-                    
+
                     <TabsContent value="upload">
                       {hasVariants && imageAssociatedOptions.length > 0 ? (
-                        // Show variant-specific upload interface when variants and options with imageAssociation are present
                         <StreamlinedImageManager
                           mediaItems={mediaItems}
                           setMediaItems={setMediaItems}
@@ -1543,124 +1241,47 @@ return {
                           handleFileChange={handleFileChange}
                         />
                       ) : (
-                        // Show standard upload interface
-                        <div
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (fileInputRef.current) {
-                              fileInputRef.current.click();
-                            }
-                          }}
-                          className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#e65100] hover:bg-orange-50 transition-all duration-200"
-                        >
+                        <div onClick={handleDropzoneClick} className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#e65100] hover:bg-orange-50 transition-all duration-200">
                           <div className="flex items-center justify-center w-16 h-16 mb-3 bg-orange-100 rounded-full">
                             <IconPhotoPlus size={28} className="text-[#e65100]" />
                           </div>
                           <p className="font-medium text-gray-700">Drag and drop images here</p>
-                          <p className="mt-1 text-sm text-gray-500">
-                            or click to browse your files
-                          </p>
-                          <p className="mt-4 text-xs text-gray-500">
-                            Supports: JPG, PNG, GIF (Max 5MB)
-                          </p>
+                          <p className="mt-1 text-sm text-gray-500">or click to browse your files</p>
+                          <p className="mt-4 text-xs text-gray-500">Supports: JPG, PNG, GIF (Max 5MB)</p>
                         </div>
                       )}
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        ref={fileInputRef}
-                        className="hidden"
-                      />
+                      <input type="file" multiple accept="image/*" onChange={handleFileChange} ref={fileInputRef} className="hidden" />
                     </TabsContent>
-                    
+
                     <TabsContent value="url">
                       <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                        <p className="mb-3 text-sm text-gray-600">
-                          Add images from external URLs to your product gallery
-                        </p>
+                        <p className="mb-3 text-sm text-gray-600">Add images from external URLs to your product gallery</p>
                         <div className="flex items-center space-x-2">
-                          <Input
-                            type="url"
-                            value={newImageUrl}
-                            onChange={(e) => setNewImageUrl(e.target.value)}
-                            placeholder="https://example.com/image.jpg"
+                          <Input type="url" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="https://example.com/image.jpg"
                             className="flex-1 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddImageUrl(e);
-                              }
-                            }}
-                          />
-                          <Button 
-                            onClick={(e) => handleAddImageUrl(e)} 
-                            type="button"
-                            className="bg-[#e65100] hover:bg-[#d84315] text-white"
-                          >
-                            Add Image
-                          </Button>
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl(e as any); } }} />
+                          <Button onClick={(e) => handleAddImageUrl(e)} type="button" className="bg-[#e65100] hover:bg-[#d84315] text-white">Add Image</Button>
                         </div>
                       </div>
                     </TabsContent>
                   </Tabs>
                 </div>
-                
-                {/* Show general images only when not in variant-specific mode */}
+
+                {/* General image grid (when not in variant-specific mode) */}
                 {(!hasVariants || imageAssociatedOptions.length === 0) && (
                   mediaItems.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {mediaItems.sort((a, b) => a.rank - b.rank).map((item, index) => (
-                        <div
-                          key={`${item.url}-${index}`}
-                          className="relative flex flex-col overflow-hidden transition-all duration-200 bg-white border rounded-md group hover:shadow-md"
-                        >
+                        <div key={`${item.url}-${index}`} className="relative flex flex-col overflow-hidden transition-all duration-200 bg-white border rounded-md group hover:shadow-md">
                           <div className="relative flex items-center justify-center h-48 overflow-hidden bg-gray-100">
-                            <img
-                              src={item.url}
-                              alt={`Product image ${index + 1}`}
-                              className="object-cover w-full h-full"
-                            />
+                            <img src={item.url} alt={`Product image ${index + 1}`} className="object-cover w-full h-full" />
                             <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 bg-black bg-opacity-0 opacity-0 group-hover:bg-opacity-20 group-hover:opacity-100">
                               <div className="flex space-x-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (index === 0) return;
-                                    setMediaItems((prev) => {
-                                      const newMedia = [...prev];
-                                      const temp = newMedia[index - 1];
-                                      newMedia[index - 1] = { ...newMedia[index], rank: index - 1 };
-                                      newMedia[index] = { ...temp, rank: index };
-                                      return newMedia;
-                                    });
-                                  }}
-                                  disabled={index === 0}
-                                  className="p-1 text-white bg-gray-800 rounded-full disabled:opacity-50 hover:bg-gray-700"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                                  </svg>
+                                <button type="button" onClick={() => handleMoveImageUp(index)} disabled={index === 0} className="p-1 text-white bg-gray-800 rounded-full disabled:opacity-50 hover:bg-gray-700">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" /></svg>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (index === mediaItems.length - 1) return;
-                                    setMediaItems((prev) => {
-                                      const newMedia = [...prev];
-                                      const temp = newMedia[index + 1];
-                                      newMedia[index + 1] = { ...newMedia[index], rank: index + 1 };
-                                      newMedia[index] = { ...temp, rank: index };
-                                      return newMedia;
-                                    });
-                                  }}
-                                  disabled={index === mediaItems.length - 1}
-                                  className="p-1 text-white bg-gray-800 rounded-full disabled:opacity-50 hover:bg-gray-700"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                  </svg>
+                                <button type="button" onClick={() => handleMoveImageDown(index)} disabled={index === mediaItems.length - 1} className="p-1 text-white bg-gray-800 rounded-full disabled:opacity-50 hover:bg-gray-700">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                                 </button>
                               </div>
                             </div>
@@ -1671,37 +1292,18 @@ return {
                               {item.variantInfo && (
                                 <div className="mt-1">
                                   <Badge className="bg-[#e65100] text-white text-xs">
-                                    {item.variantInfo.variantTitle || 
-                                    item.variantInfo.optionName && item.variantInfo.optionValues?.[0] ? 
-                                    `${item.variantInfo.optionName}: ${item.variantInfo.optionValues[0]}` : 
-                                    'Variant'}
+                                    {item.variantInfo.optionName && item.variantInfo.optionValues?.[0]
+                                      ? `${item.variantInfo.optionName}: ${item.variantInfo.optionValues[0]}`
+                                      : 'Variant'}
                                   </Badge>
                                 </div>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMediaItems((prev) => {
-                                  const removed = prev[index];
-                                  if (removed.file) {
-                                    URL.revokeObjectURL(removed.url);
-                                  }
-                                  // Return filtered array with reordered ranks
-                                  const filtered = prev.filter((_, i) => i !== index);
-                                  return filtered.map((item, i) => ({ ...item, rank: i }));
-                                });
-                              }}
-                              className="p-1.5 text-red-500 bg-red-50 rounded-full hover:bg-red-100"
-                            >
+                            <button type="button" onClick={() => handleRemoveImage(index)} className="p-1.5 text-red-500 bg-red-50 rounded-full hover:bg-red-100">
                               <IconTrash size={16} />
                             </button>
                           </div>
-                          {index === 0 && (
-                            <div className="absolute top-2 left-2 bg-[#e65100] text-white text-xs px-2 py-1 rounded-md">
-                              Main
-                            </div>
-                          )}
+                          {index === 0 && <div className="absolute top-2 left-2 bg-[#e65100] text-white text-xs px-2 py-1 rounded-md">Main</div>}
                         </div>
                       ))}
                     </div>
@@ -1713,175 +1315,93 @@ return {
                 )}
               </section>
 
-              {/* Options & Variants Section with Junooni styling */}
+              {/* Options & Variants */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Options & Variants</h2>
                 <Separator className="mb-6" />
-                
-                {/* Variant Toggle */}
+
                 <div className="mb-6">
                   <div className="flex items-center mb-4 space-x-2">
-                    <Switch 
-                      checked={hasVariants}
-                      onCheckedChange={setHasVariants}
-                      id="has-variants"
-                      className="data-[state=checked]:bg-[#e65100]"
-                    />
-                    <label 
-                      htmlFor="has-variants" 
-                      className="font-medium text-gray-800 cursor-pointer"
-                    >
-                      This product has multiple variants
-                    </label>
+                    <Switch checked={hasVariants} onCheckedChange={setHasVariants} id="has-variants" className="data-[state=checked]:bg-[#e65100]" />
+                    <label htmlFor="has-variants" className="font-medium text-gray-800 cursor-pointer">This product has multiple variants</label>
                   </div>
                   <div className="pl-10 mb-2 text-sm text-gray-600">
-                    {hasVariants ? 
-                      "Create variants like size or color that customers can choose from" : 
-                      "A single variant will be created automatically"
-                    }
+                    {hasVariants ? "Create variants like size or color that customers can choose from" : "A single variant will be created automatically"}
                   </div>
                 </div>
-                
-                {/* Default Variant Details - Only show when NOT using variants */}
+
+                {/* Default variant details (no-variant mode) */}
                 {!hasVariants && (
                   <div className="p-5 mb-8 bg-white border border-gray-200 rounded-lg shadow-sm">
                     <h3 className="mb-4 font-medium text-gray-700">Default Variant Details</h3>
-                    
                     <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-3">
-                      <FormField
-                        control={form.control}
-                        name="defaultVariantSku"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-medium text-gray-700">SKU</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="e.g. LTH-BAG-001" 
-                                className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                              />
-                            </FormControl>
-                            <FormMessage className="text-red-500" />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="defaultVariantPrice"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-medium text-gray-700">Price</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                <Input 
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={field.value}
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                  placeholder="0.00" 
-                                  className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage className="text-red-500" />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="defaultVariantStock"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-medium text-gray-700">Stock</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={field.value}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                placeholder="0" 
-                                className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                              />
-                            </FormControl>
-                            <FormMessage className="text-red-500" />
-                          </FormItem>
-                        )}
-                      />
+                      <FormField control={form.control} name="defaultVariantSku" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-medium text-gray-700">SKU</FormLabel>
+                          <FormControl><Input {...field} placeholder="e.g. LTH-BAG-001" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl>
+                          <FormMessage className="text-red-500" />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="defaultVariantPrice" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-medium text-gray-700">Price</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                              <Input type="number" min="0" step="0.01" value={field.value} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} placeholder="0.00" className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-red-500" />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="defaultVariantStock" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-medium text-gray-700">Stock</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="0" step="1" value={field.value} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} placeholder="0" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                          </FormControl>
+                          <FormMessage className="text-red-500" />
+                        </FormItem>
+                      )} />
                     </div>
                   </div>
                 )}
-                
-                {/* Options Section - Only show if variants are enabled */}
+
+                {/* Options (variant mode) */}
                 {hasVariants && (
                   <div className="mb-8">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-gray-700">Product Options</h3>
-                      <Badge variant="outline" className="text-[#e65100] border-[#e65100] bg-orange-50">
-                        Required
-                      </Badge>
+                      <Badge variant="outline" className="text-[#e65100] border-[#e65100] bg-orange-50">Required</Badge>
                     </div>
-                    
+
                     <div className="p-4 mb-5 border border-orange-200 rounded-md bg-orange-50">
                       <div className="flex items-start">
-                        <div className="flex-shrink-0 mr-3">
-                          <IconInfoCircle className="h-5 w-5 text-[#e65100]" />
-                        </div>
+                        <div className="flex-shrink-0 mr-3"><IconInfoCircle className="h-5 w-5 text-[#e65100]" /></div>
                         <div>
-                          <p className="text-sm text-gray-700">
-                            Add options like size or color to create variants of this product. Each combination will create a unique variant.
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-[#e65100]">
-                            At least one option with values is required when using variants.
-                          </p>
+                          <p className="text-sm text-gray-700">Add options like size or color to create variants. Each combination will create a unique variant.</p>
+                          <p className="mt-1 text-sm font-medium text-[#e65100]">At least one option with values is required when using variants.</p>
                         </div>
                       </div>
                     </div>
-                    
+
                     {optionFields.map((opt, optionIndex) => (
                       <div key={opt.id} className="p-5 mb-4 transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
                         <div className="flex items-center justify-between mb-4">
-                          <FormField
-                            control={form.control}
-                            name={`options.${optionIndex}.title`}
-                            render={({ field }) => (
-                              <FormItem className="w-full">
-                                <FormLabel className="font-medium text-gray-700">
-                                  Option {optionIndex + 1} name
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder={
-                                      optionIndex === 0 ? "e.g. Size" : 
-                                      optionIndex === 1 ? "e.g. Color" : "e.g. Material"
-                                    }
-                                    className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          
-                          {/* Don't allow removing the first option or if only one exists */}
+                          <FormField control={form.control} name={`options.${optionIndex}.title`} render={({ field }) => (
+                            <FormItem className="w-full">
+                              <FormLabel className="font-medium text-gray-700">Option {optionIndex + 1} name</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder={optionIndex === 0 ? "e.g. Size" : optionIndex === 1 ? "e.g. Color" : "e.g. Material"} className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                              </FormControl>
+                            </FormItem>
+                          )} />
                           {(optionIndex > 0 || optionFields.length > 1) && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="mt-6 ml-2 text-gray-500 hover:text-red-500 hover:bg-red-50"
-                              onClick={() => removeOption(optionIndex)}
-                            >
+                            <Button type="button" variant="ghost" size="sm" className="mt-6 ml-2 text-gray-500 hover:text-red-500 hover:bg-red-50" onClick={() => removeOption(optionIndex)}>
                               <IconX size={18} />
                             </Button>
                           )}
                         </div>
-                        
-                        {/* Use Enhanced Option Component for all option types */}
                         <EnhancedOptionComponent
                           optionIndex={optionIndex}
                           currentOption={form.getValues('options')[optionIndex]}
@@ -1891,89 +1411,53 @@ return {
                         />
                       </div>
                     ))}
-                    
-                    {/* Add another option button (only if fewer than 3 options) */}
+
                     {optionFields.length < 3 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          const newOptionIndex = optionFields.length;
-                          appendOption({ 
-                            id: generateUUID(),
-                            title: '', 
-                            optionValues: [],
-                            imageAssociation: false
-                          });
-                          setNewOptionValues(prev => ({
-                            ...prev,
-                            [newOptionIndex]: ''
-                          }));
-                        }}
-                        className="mt-2 text-[#e65100] border-[#e65100] hover:bg-orange-50"
-                      >
-                        <IconCirclePlus className="mr-1.5" size={18} /> 
-                        Add another option
+                      <Button type="button" variant="outline" onClick={() => { const idx = optionFields.length; appendOption({ id: generateUUID(), title: '', optionValues: [], imageAssociation: false }); setNewOptionValues(prev => ({ ...prev, [idx]: '' })); }} className="mt-2 text-[#e65100] border-[#e65100] hover:bg-orange-50">
+                        <IconCirclePlus className="mr-1.5" size={18} /> Add another option
                       </Button>
                     )}
                   </div>
                 )}
-                
-                {/* Variants Section with Bulk Editing */}
+
+                {/* Variants table */}
                 {variantFields.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-5">
                       <h3 className="font-medium text-gray-700">Product Variants ({variantFields.length})</h3>
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        onClick={handleGenerateVariants}
-                        size="sm"
-                        className="text-[#e65100] border-[#e65100] hover:bg-orange-50"
-                      >
+                      <Button type="button" variant="outline" onClick={handleGenerateVariants} size="sm" className="text-[#e65100] border-[#e65100] hover:bg-orange-50">
                         Regenerate variants
                       </Button>
                     </div>
-                    
-                    {/* Bulk Edit Controls */}
+
+                    {/* Unsaved changes warning */}
+                    {hasUnsavedVariantChanges && (
+                      <Alert className="mb-4 bg-amber-50 border-amber-200">
+                        <IconInfoCircle className="w-4 h-4 text-amber-500" />
+                        <AlertDescription className="text-amber-700">
+                          You have unsaved variant changes. Save the product to confirm them.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Bulk Edit Card */}
                     <Card className="mb-6 border-gray-200 shadow-sm">
                       <CardHeader className="pb-3 border-b bg-gray-50">
-                        <CardTitle className="flex items-center text-base text-gray-700">
-                          <IconEdit size={18} className="mr-2 text-[#e65100]" />
-                          Bulk Edit
-                        </CardTitle>
-                        <CardDescription>
-                          Apply changes to multiple variants at once
-                        </CardDescription>
+                        <CardTitle className="flex items-center text-base text-gray-700"><IconEdit size={18} className="mr-2 text-[#e65100]" />Bulk Edit</CardTitle>
+                        <CardDescription>Apply changes to multiple variants at once</CardDescription>
                       </CardHeader>
                       <CardContent className="pt-4">
                         <div className="flex flex-col gap-4">
                           <div className="flex items-center">
-                            <Switch 
-                              checked={bulkEditMode} 
-                              onCheckedChange={setBulkEditMode} 
-                              id="bulk-edit-mode"
-                              className="data-[state=checked]:bg-[#e65100]"
-                            />
-                            <label htmlFor="bulk-edit-mode" className="ml-2 text-sm text-gray-700">
-                              {bulkEditMode ? 'Exit bulk edit mode' : 'Enable bulk edit mode'}
-                            </label>
+                            <Switch checked={bulkEditMode} onCheckedChange={setBulkEditMode} id="bulk-edit-mode" className="data-[state=checked]:bg-[#e65100]" />
+                            <label htmlFor="bulk-edit-mode" className="ml-2 text-sm text-gray-700">{bulkEditMode ? 'Exit bulk edit mode' : 'Enable bulk edit mode'}</label>
                           </div>
-                          
                           {bulkEditMode && (
                             <>
                               <div className="flex items-center mb-2">
-                                <Switch 
-                                  checked={selectedVariants.length === variantFields.length}
-                                  onCheckedChange={handleSelectAllVariants}
-                                  id="select-all-variants" 
-                                  className="data-[state=checked]:bg-[#e65100]"
-                                />
-                                <label htmlFor="select-all-variants" className="ml-2 text-sm text-gray-700">
-                                  Select all variants ({selectedVariants.length}/{variantFields.length})
-                                </label>
+                                <Switch checked={selectedVariants.length === variantFields.length} onCheckedChange={handleSelectAllVariants} id="select-all-variants" className="data-[state=checked]:bg-[#e65100]" />
+                                <label htmlFor="select-all-variants" className="ml-2 text-sm text-gray-700">Select all variants ({selectedVariants.length}/{variantFields.length})</label>
                               </div>
-                              
                               {selectedVariants.length > 0 && (
                                 <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2">
                                   <div>
@@ -1981,48 +1465,16 @@ return {
                                     <div className="flex gap-2">
                                       <div className="relative flex-1">
                                         <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          step="0.01"
-                                          value={bulkPrice}
-                                          onChange={(e) => setBulkPrice(e.target.value)}
-                                          placeholder="0.00"
-                                          className="pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                        />
+                                        <Input type="number" min="0" step="0.01" value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} placeholder="0.00" className="pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
                                       </div>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => handleBulkEdit('price', parseFloat(bulkPrice) || 0)}
-                                        disabled={!bulkPrice}
-                                        className="bg-[#e65100] hover:bg-[#d84315] text-white disabled:bg-gray-300"
-                                      >
-                                        Apply
-                                      </Button>
+                                      <Button type="button" size="sm" onClick={() => handleBulkEdit('price', parseFloat(bulkPrice) || 0)} disabled={!bulkPrice} className="bg-[#e65100] hover:bg-[#d84315] text-white disabled:bg-gray-300">Apply</Button>
                                     </div>
                                   </div>
                                   <div>
                                     <label className="block mb-1.5 text-sm text-gray-700">Set stock for all selected</label>
                                     <div className="flex gap-2">
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        value={bulkStock}
-                                        onChange={(e) => setBulkStock(e.target.value)}
-                                        placeholder="0"
-                                        className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => handleBulkEdit('stock', parseInt(bulkStock) || 0)}
-                                        disabled={!bulkStock}
-                                        className="bg-[#e65100] hover:bg-[#d84315] text-white disabled:bg-gray-300"
-                                      >
-                                        Apply
-                                      </Button>
+                                      <Input type="number" min="0" step="1" value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} placeholder="0" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                                      <Button type="button" size="sm" onClick={() => handleBulkEdit('stock', parseInt(bulkStock) || 0)} disabled={!bulkStock} className="bg-[#e65100] hover:bg-[#d84315] text-white disabled:bg-gray-300">Apply</Button>
                                     </div>
                                   </div>
                                 </div>
@@ -2032,123 +1484,85 @@ return {
                         </div>
                       </CardContent>
                     </Card>
-                    
-                    {/* Variants Table */}
+
+                    {/* Variants Table — now includes Cost Price & Profit columns */}
                     <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="border-b border-gray-200 bg-gray-50">
-                            {bulkEditMode && (
-                              <th className="p-3 text-left border-r border-gray-200">
-                                <span className="sr-only">Select</span>
-                              </th>
-                            )}
+                            {bulkEditMode && <th className="p-3 text-left border-r border-gray-200"><span className="sr-only">Select</span></th>}
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Variant</th>
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">SKU</th>
+                            <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Cost Price</th>
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Price</th>
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Stock</th>
+                            <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Profit</th>
                             <th className="p-3 font-medium text-center text-gray-700">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {variantFields.map((vf, index) => (
-                            <tr 
-                              key={vf.id} 
-                              className={`
-                                ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                                ${bulkEditMode && selectedVariants.includes(vf.id) ? "bg-orange-50" : ""}
-                                hover:bg-orange-50 transition-colors duration-150
-                              `}
-                            >
-                              {bulkEditMode && (
-                                <td className="p-3 text-center border-r border-gray-200">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={selectedVariants.includes(vf.id)} 
-                                    onChange={() => handleToggleVariantSelection(vf.id)}
-                                    className="w-4 h-4 rounded border-gray-300 text-[#e65100] focus:ring-[#e65100]"
-                                  />
-                                </td>
-                              )}
-                              <td className="p-3 border-r border-gray-200">
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-gray-800">{form.watch(`variants.${index}.title`)}</span>
-                                  <div className="flex flex-wrap gap-1 mt-1.5">
-                                    {form.watch(`variants.${index}.optionValues`, []).map((optVal: OptionValue, optIndex: number) => (
-                                      <Badge 
-                                        key={optIndex} 
-                                        variant="outline" 
-                                        className="text-xs text-[#e65100] border-orange-200 bg-orange-50"
-                                      >
-                                        {optVal.optionName}: {optVal.value}
-                                      </Badge>
-                                    ))}
+                          {variantFields.map((vf, index) => {
+                            const watchedPrice = form.watch(`variants.${index}.price`) || 0;
+                            const watchedCostPrice = form.watch(`variants.${index}.cost_price`) || 0;
+                            const profit = (typeof watchedPrice === 'string' ? parseFloat(watchedPrice) : watchedPrice) -
+                              (typeof watchedCostPrice === 'string' ? parseFloat(watchedCostPrice) : watchedCostPrice);
+
+                            return (
+                              <tr key={vf.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${bulkEditMode && selectedVariants.includes(vf.id) ? 'bg-orange-50' : ''} hover:bg-orange-50 transition-colors duration-150`}>
+                                {bulkEditMode && (
+                                  <td className="p-3 text-center border-r border-gray-200">
+                                    <input type="checkbox" checked={selectedVariants.includes(vf.id)} onChange={() => handleToggleVariantSelection(vf.id)} className="w-4 h-4 rounded border-gray-300 text-[#e65100] focus:ring-[#e65100]" />
+                                  </td>
+                                )}
+                                <td className="p-3 border-r border-gray-200">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-gray-800">{form.watch(`variants.${index}.title`)}</span>
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      {form.watch(`variants.${index}.optionValues`, []).map((optVal: OptionValue, optIndex: number) => (
+                                        <Badge key={optIndex} variant="outline" className="text-xs text-[#e65100] border-orange-200 bg-orange-50">
+                                          {optVal.optionName}: {optVal.value}
+                                        </Badge>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="p-3 border-r border-gray-200">
-                                <Input
-                                  {...form.register(`variants.${index}.sku`)}
-                                  onChange={(e) => handleVariantFieldChange(index, 'sku', e.target.value)}
-                                  className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                />
-                              </td>
-                              <td className="p-3 border-r border-gray-200">
-                                <div className="relative">
-                                  <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={form.watch(`variants.${index}.price`) || ''}
-                                    onChange={(e) => {
-                                      const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                                      handleVariantFieldChange(index, 'price', value === '' ? 0 : value);
-                                    }}
-                                    className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                  />
-                                </div>
-                              </td>
-                              <td className="p-3 border-r border-gray-200">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  value={form.watch(`variants.${index}.stock`) || ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value === '' ? '' : parseInt(e.target.value);
-                                    handleVariantFieldChange(index, 'stock', value === '' ? 0 : value);
-                                  }}
-                                  className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                />
-                              </td>
-                              <td className="p-3 text-center">
-                                <div className="flex justify-center space-x-2">
-                                  <Button 
-                                    type="button"
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => handleDuplicateVariant(index)}
-                                    className="text-gray-600 hover:bg-gray-100"
-                                    title="Duplicate variant"
-                                  >
-                                    <IconCopy size={16} />
-                                  </Button>
-                                  
-                                  <Button 
-                                    type="button"
-                                    variant="ghost" 
-                                    size="sm" 
-                                    onClick={() => removeVariant(index)}
-                                    className="text-red-500 hover:bg-red-50"
-                                    title="Remove variant"
-                                  >
-                                    <IconX size={16} />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                                </td>
+                                <td className="p-3 border-r border-gray-200">
+                                  <Input {...form.register(`variants.${index}.sku`)} onChange={(e) => handleVariantFieldChange(index, 'sku', e.target.value)} className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                                </td>
+                                {/* Cost Price — readonly, from metadata */}
+                                <td className="p-3 border-r border-gray-200">
+                                  <div className="text-center">
+                                    <span className="font-medium text-orange-600">
+                                      {watchedCostPrice > 0 ? `₹${Number(watchedCostPrice).toFixed(2)}` : '--'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="p-3 border-r border-gray-200">
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                                    <Input type="number" min="0" step="0.01" value={form.watch(`variants.${index}.price`) || ''} onChange={(e) => { const value = e.target.value === '' ? 0 : parseFloat(e.target.value); handleVariantFieldChange(index, 'price', value); }} className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                                  </div>
+                                </td>
+                                <td className="p-3 border-r border-gray-200">
+                                  <Input type="number" min="0" step="1" value={form.watch(`variants.${index}.stock`) || ''} onChange={(e) => { const value = e.target.value === '' ? 0 : parseInt(e.target.value); handleVariantFieldChange(index, 'stock', value); }} className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" />
+                                </td>
+                                {/* Profit column */}
+                                <td className="p-3 border-r border-gray-200">
+                                  <div className="text-center">
+                                    <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      ₹{profit.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex justify-center space-x-2">
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleDuplicateVariant(index)} className="text-gray-600 hover:bg-gray-100" title="Duplicate variant"><IconCopy size={16} /></Button>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveVariant(index)} className="text-red-500 hover:bg-red-50" title="Remove variant"><IconX size={16} /></Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -2157,169 +1571,77 @@ return {
               </section>
             </div>
 
-            {/* Right Column */}
+            {/* ── Right Column ─────────────────────────────────────────── */}
             <div className="space-y-6">
-              {/* Status Card */}
+
+              {/* Status & Visibility */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Status & Visibility</h2>
                 <Separator className="mb-6" />
-                
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem className="mb-5">
-                      <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl>
-                          <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                            <SelectValue placeholder="Select status">
-                              {field.value === 'draft' && (
-                                <div className="flex items-center">
-                                  <span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>
-                                  Draft
-                                </div>
-                              )}
-                              {field.value === 'proposed' && (
-                                <div className="flex items-center">
-                                  <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
-                                  Proposed
-                                </div>
-                              )}
-                              {field.value === 'published' && (
-                                <div className="flex items-center">
-                                  <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
-                                  Published
-                                </div>
-                              )}
-                              {!field.value && (
-                                <span className="text-gray-400">Select status</span>
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="draft">
-                            <div className="flex items-center">
-                              <span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>
-                              Draft
-                            </div>
-                          </SelectItem>
-                          {/* Proposed only when Marketplace is selected */}
-                          {selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
-                            <SelectItem value="proposed">
-                              <div className="flex items-center">
-                                <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
-                                Proposed
-                              </div>
-                            </SelectItem>
-                          )}
-                          {/* Published only when Own Store only (no Marketplace) */}
-                          {selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE) &&
-                           !selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
-                            <SelectItem value="published">
-                              <div className="flex items-center">
-                                <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
-                                Published
-                              </div>
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="text-sm text-gray-500">
-                        Draft products are not visible to customers
-                      </FormDescription>
-                      <FormMessage className="text-red-500" />
-                    </FormItem>
-                  )}
-                />
 
-                {/* Category Selection */}
+                <FormField control={form.control} name="status" render={({ field }) => (
+                  <FormItem className="mb-5">
+                    <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                          <SelectValue placeholder="Select status">
+                            {field.value === 'draft' && <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>Draft</div>}
+                            {field.value === 'proposed' && <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>Proposed</div>}
+                            {field.value === 'published' && <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>Published</div>}
+                            {!field.value && <span className="text-gray-400">Select status</span>}
+                          </SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="draft"><div className="flex items-center"><span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>Draft</div></SelectItem>
+                        {selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                          <SelectItem value="proposed"><div className="flex items-center"><span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>Proposed</div></SelectItem>
+                        )}
+                        {selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE) && !selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                          <SelectItem value="published"><div className="flex items-center"><span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>Published</div></SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-sm text-gray-500">Draft products are not visible to customers</FormDescription>
+                    <FormMessage className="text-red-500" />
+                  </FormItem>
+                )} />
+
+                {/* Category */}
                 {isLoadingCategories ? (
-                  <FormField
-                    control={form.control}
-                    name="category_id"
-                    render={({ field }) => (
-                      <FormItem className="mb-5">
-                        <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
-                        <Select disabled={true}>
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Loading categories..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <div className="p-2 text-gray-500">Loading...</div>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm text-gray-500">
-                          Categorize your product to help customers find it
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="category_id" render={() => (
+                    <FormItem className="mb-5">
+                      <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
+                      <Select disabled><FormControl><SelectTrigger className="border-gray-300"><SelectValue placeholder="Loading categories..." /></SelectTrigger></FormControl><SelectContent><div className="p-2 text-gray-500">Loading...</div></SelectContent></Select>
+                    </FormItem>
+                  )} />
                 ) : categoryError ? (
-                  <FormField
-                    control={form.control}
-                    name="category_id"
-                    render={({ field }) => (
-                      <FormItem className="mb-5">
-                        <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
-                        <Select disabled={true}>
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Error loading categories" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <div className="p-2 text-sm text-red-500">{categoryError}</div>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm text-gray-500">
-                          Categorize your product to help customers find it
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="category_id" render={() => (
+                    <FormItem className="mb-5">
+                      <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
+                      <Select disabled><FormControl><SelectTrigger className="border-gray-300"><SelectValue placeholder="Error loading categories" /></SelectTrigger></FormControl><SelectContent><div className="p-2 text-sm text-red-500">{categoryError}</div></SelectContent></Select>
+                    </FormItem>
+                  )} />
                 ) : (
-                  <HierarchicalCategorySelector 
-                    form={form} 
-                    categories={productCategories} 
-                    name="category_id" 
-                    isMultiSelect={true}
-                  />
+                  <HierarchicalCategorySelector form={form} categories={productCategories} name="category_id" isMultiSelect={true} />
                 )}
 
-                <FormField
-                  control={form.control}
-                  name="discountable"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start p-4 space-x-3 space-y-0 border rounded-md">
-                      <FormControl>
-                        <Switch 
-                          checked={field.value} 
-                          onCheckedChange={field.onChange} 
-                          className="data-[state=checked]:bg-[#e65100]"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-gray-700">Discountable</FormLabel>
-                        <FormDescription className="text-sm text-gray-500">
-                          Allow this product to be used in discounts
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="discountable" render={({ field }) => (
+                  <FormItem className="flex flex-row items-start p-4 space-x-3 space-y-0 border rounded-md">
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:bg-[#e65100]" /></FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-gray-700">Discountable</FormLabel>
+                      <FormDescription className="text-sm text-gray-500">Allow this product to be used in discounts</FormDescription>
+                    </div>
+                  </FormItem>
+                )} />
 
-                {/* Sales Channel Selection */}
-                {/* Sales Channel Selection */}
+                {/* Sales Channels */}
                 <div className="mt-5">
                   <Separator className="mb-4" />
                   <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
-                  <p className="mb-3 text-sm text-gray-500">
-                    Choose where this product will be available for sale
-                  </p>
+                  <p className="mb-3 text-sm text-gray-500">Choose where this product will be available for sale</p>
 
                   {isLoadingChannels ? (
                     <p className="text-sm text-gray-400">Loading channels...</p>
@@ -2332,80 +1654,42 @@ return {
                             const isOnlyChannel = vendorSalesChannels.length === 1;
                             const isLastSelected = isChecked && selectedSalesChannels.length === 1;
                             const isDisabled = isOnlyChannel || isLastSelected;
-
                             return (
-                              <div
-                                key={channelId}
-                                className={`flex items-center gap-3 p-3 border rounded-md ${
-                                  isDisabled
-                                    ? 'border-gray-100 bg-gray-50 opacity-70'
-                                    : 'border-gray-200'
-                                }`}
-                              >
-                                <Checkbox
-                                  id={`sc-create-${channelId}`}
-                                  checked={isChecked}
-                                  disabled={isDisabled}
+                              <div key={channelId} className={`flex items-center gap-3 p-3 border rounded-md ${isDisabled ? 'border-gray-100 bg-gray-50 opacity-70' : 'border-gray-200'}`}>
+                                <Checkbox id={`sc-create-${channelId}`} checked={isChecked} disabled={isDisabled}
                                   onCheckedChange={(checked) => {
                                     if (isDisabled) return;
                                     const next = checked
                                       ? [...selectedSalesChannels, channelId]
                                       : selectedSalesChannels.filter(id => id !== channelId);
                                     setSelectedSalesChannels(next);
-
-                                    const marketplaceInNext = next.includes(SALES_CHANNEL_MARKETPLACE);
-                                    const ownStoreInNext = next.includes(SALES_CHANNEL_OWN_STORE);
-
-                                    if (marketplaceInNext) {
-                                      form.setValue('status', 'proposed');
-                                    } else if (ownStoreInNext && !marketplaceInNext) {
-                                      form.setValue('status', 'published');
-                                    }
+                                    setSalesChannelsDirty(true);
+                                    const mktIn = next.includes(SALES_CHANNEL_MARKETPLACE);
+                                    const ownIn = next.includes(SALES_CHANNEL_OWN_STORE);
+                                    if (mktIn) form.setValue('status', 'proposed');
+                                    else if (ownIn && !mktIn) form.setValue('status', 'published');
                                   }}
-                                  className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
-                                />
+                                  className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]" />
                                 <div className="flex-1">
-                                  <label
-                                    htmlFor={`sc-create-${channelId}`}
-                                    className={`text-sm font-medium ${
-                                      isDisabled
-                                        ? 'text-gray-400 cursor-not-allowed'
-                                        : 'text-gray-700 cursor-pointer'
-                                    }`}
-                                  >
+                                  <label htmlFor={`sc-create-${channelId}`} className={`text-sm font-medium ${isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 cursor-pointer'}`}>
                                     {SALES_CHANNEL_LABELS[channelId] || channelId}
                                   </label>
-                                  {isOnlyChannel && (
-                                    <p className="mt-0.5 text-xs text-gray-400">
-                                      Only available channel
-                                    </p>
-                                  )}
-                                  {isLastSelected && !isOnlyChannel && (
-                                    <p className="mt-0.5 text-xs text-gray-400">
-                                      At least one channel must be selected
-                                    </p>
-                                  )}
+                                  {isOnlyChannel && <p className="mt-0.5 text-xs text-gray-400">Only available channel</p>}
+                                  {isLastSelected && !isOnlyChannel && <p className="mt-0.5 text-xs text-gray-400">At least one channel must be selected</p>}
                                 </div>
+                                {isChecked && <span className="text-xs text-[#e65100] font-medium">Active</span>}
                               </div>
                             );
                           })}
                         </div>
                       )}
-
-                      {/* GST notice — shown when Marketplace is not available */}
                       {vendorHasMarketplace && !vendorSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
                         <div className="flex items-start gap-2 p-3 mt-3 text-sm border rounded-md border-amber-200 bg-amber-50">
                           <IconInfoCircle size={16} className="mt-0.5 text-amber-500 shrink-0" />
                           <p className="text-amber-700">
                             <span className="font-medium">Junooni Marketplace unavailable.</span>{' '}
                             Complete GST verification in{' '}
-                            <button
-                              type="button"
-                              className="font-medium underline hover:text-amber-900"
-                              onClick={() => window.location.href = '/profile'}
-                            >
-                              business settings
-                            </button>{' '}
+                            <button type="button" className="font-medium underline hover:text-amber-900" onClick={() => window.location.href = '/profile'}>business settings</button>{' '}
                             to list on the marketplace.
                           </p>
                         </div>
@@ -2414,270 +1698,125 @@ return {
                   )}
                 </div>
               </section>
-              
-              {/* Shipping & Fulfillment Info Card */}
+
+              {/* Shipping & Fulfillment */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                 <Separator className="mb-4" />
-                
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-orange-100 rounded-full text-[#e65100]">
-                    <IconTruck size={24} />
-                  </div>
+                  <div className="p-2 bg-orange-100 rounded-full text-[#e65100]"><IconTruck size={24} /></div>
                   <div>
                     <h3 className="font-medium text-gray-800">Creator Fulfillment</h3>
                     <p className="text-sm text-gray-600">You'll handle all order shipping</p>
                   </div>
                 </div>
-                
-                {/* Shipping information */}
                 <div className="mt-6 space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="shippingDays"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center font-medium text-gray-700">
-                          <IconTruck size={18} className="mr-1.5 text-[#e65100]" />
-                          Shipping Time
-                        </FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Select shipping time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="3-5">3-5 business</SelectItem>
-                            <SelectItem value="5-7">5-7 business</SelectItem>
-                            <SelectItem value="7-10">7-10 business</SelectItem>
-                            <SelectItem value="10-14">10-14 business</SelectItem>
-                            <SelectItem value="14-21">2-3 weeks</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Estimated time for delivery after shipping
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="handlingTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center font-medium text-gray-700">
-                          <IconClock size={18} className="mr-1.5 text-[#e65100]" />
-                          Handling Time
-                        </FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Select handling time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="1">1 business day</SelectItem>
-                            <SelectItem value="1-2">1-2 business</SelectItem>
-                            <SelectItem value="2-3">2-3 business</SelectItem>
-                            <SelectItem value="3-5">3-5 business</SelectItem>
-                            <SelectItem value="5-7">5-7 business</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Time needed to prepare and package the order
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="shippingDays" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center font-medium text-gray-700"><IconTruck size={18} className="mr-1.5 text-[#e65100]" />Shipping Time</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl><SelectTrigger className="border-gray-300 focus:ring-[#e65100]"><SelectValue placeholder="Select shipping time" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="3-5">3-5 business days</SelectItem>
+                          <SelectItem value="5-7">5-7 business days</SelectItem>
+                          <SelectItem value="7-10">7-10 business days</SelectItem>
+                          <SelectItem value="10-14">10-14 business days</SelectItem>
+                          <SelectItem value="14-21">2-3 weeks</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Estimated time for delivery after shipping</FormDescription>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="handlingTime" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center font-medium text-gray-700"><IconClock size={18} className="mr-1.5 text-[#e65100]" />Handling Time</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl><SelectTrigger className="border-gray-300 focus:ring-[#e65100]"><SelectValue placeholder="Select handling time" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">1 business day</SelectItem>
+                          <SelectItem value="1-2">1-2 business days</SelectItem>
+                          <SelectItem value="2-3">2-3 business days</SelectItem>
+                          <SelectItem value="3-5">3-5 business days</SelectItem>
+                          <SelectItem value="5-7">5-7 business days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Time needed to prepare and package the order</FormDescription>
+                    </FormItem>
+                  )} />
                 </div>
-                
-                {/* Stock Management Info */}
-                {/* <div className="mt-6">
-                  <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
-                  <p className="text-sm text-gray-600">
-                    Stock levels you set for each variant will be tracked with each order.
-                    Be sure to maintain sufficient inventory to fulfill orders promptly.
-                  </p>
-                  
-                  <Alert className="mt-4">
-                    <IconInfoCircle className="w-4 h-4" />
-                    <AlertDescription>
-                      Inventory will be managed automatically based on the stock levels you set for each variant.
-                    </AlertDescription>
-                  </Alert>
-                </div> */}
               </section>
-              
-              {/* Physical Details Card */}
+
+              {/* Physical Details */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Physical Details</h2>
                 <Separator className="mb-6" />
-                
                 <div className="space-y-5">
-                  <FormField
-                    control={form.control}
-                    name="weight"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-medium text-gray-700">Weight (g)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            min="0" 
-                            placeholder="e.g. 400" 
-                            className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
+                  <FormField control={form.control} name="weight" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium text-gray-700">Weight (g)</FormLabel>
+                      <FormControl><Input {...field} type="number" min="0" placeholder="e.g. 400" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl>
+                    </FormItem>
+                  )} />
                   <div className="grid grid-cols-3 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="length"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="font-medium text-gray-700">Length(cm)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              min="0" 
-                              placeholder="e.g. 30" 
-                              className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="width"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="font-medium text-gray-700">Width(cm)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              min="0" 
-                              placeholder="e.g. 20" 
-                              className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="height"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="font-medium text-gray-700">Height(cm)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              min="0" 
-                              placeholder="e.g. 5" 
-                              className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    <FormField control={form.control} name="length" render={({ field }) => (
+                      <FormItem><FormLabel className="font-medium text-gray-700">Length(cm)</FormLabel><FormControl><Input {...field} type="number" min="0" placeholder="30" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="width" render={({ field }) => (
+                      <FormItem><FormLabel className="font-medium text-gray-700">Width(cm)</FormLabel><FormControl><Input {...field} type="number" min="0" placeholder="20" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="height" render={({ field }) => (
+                      <FormItem><FormLabel className="font-medium text-gray-700">Height(cm)</FormLabel><FormControl><Input {...field} type="number" min="0" placeholder="5" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl></FormItem>
+                    )} />
                   </div>
                 </div>
               </section>
-              
-              {/* Additional Info Card */}
+
+              {/* Additional Info */}
               <section className="p-6 pb-16 bg-white border border-gray-200 rounded-lg shadow-sm md:pb-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                 <Separator className="mb-6" />
-                
                 <div className="space-y-5">
-                  <FormField
-                    control={form.control}
-                    name="material"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-medium text-gray-700">Material</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="e.g. Cotton, Polyester" 
-                            className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="origin_country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-medium text-gray-700">Country of Origin</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value || ''}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="IN">India</SelectItem>
-                            <SelectItem value="US">United States</SelectItem>
-                            <SelectItem value="CN">China</SelectItem>
-                            <SelectItem value="JP">Japan</SelectItem>
-                            <SelectItem value="KR">South Korea</SelectItem>
-                            <SelectItem value="GB">United Kingdom</SelectItem>
-                            <SelectItem value="DE">Germany</SelectItem>
-                            <SelectItem value="IT">Italy</SelectItem>
-                            <SelectItem value="FR">France</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="material" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium text-gray-700">Material</FormLabel>
+                      <FormControl><Input {...field} placeholder="e.g. Cotton, Polyester" className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="origin_country" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium text-gray-700">Country of Origin</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl><SelectTrigger className="border-gray-300 focus:ring-[#e65100]"><SelectValue placeholder="Select country" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="IN">India</SelectItem>
+                          <SelectItem value="US">United States</SelectItem>
+                          <SelectItem value="CN">China</SelectItem>
+                          <SelectItem value="JP">Japan</SelectItem>
+                          <SelectItem value="KR">South Korea</SelectItem>
+                          <SelectItem value="GB">United Kingdom</SelectItem>
+                          <SelectItem value="DE">Germany</SelectItem>
+                          <SelectItem value="IT">Italy</SelectItem>
+                          <SelectItem value="FR">France</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
                 </div>
               </section>
             </div>
           </div>
-          
-          {/* Bottom Action Bar - Fixed to bottom on mobile */}
+
+          {/* Bottom Action Bar */}
           <div className="fixed bottom-0 left-0 right-0 z-10 p-4 bg-white border-t border-gray-200 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
             <div className="flex justify-end mx-auto space-x-3 max-w-7xl">
-              <Button 
+              <Button type="button" variant="outline" onClick={() => navigate({ to: '/products' })} className="text-gray-700 border-gray-300 hover:bg-gray-50">Cancel</Button>
+              <Button
                 type="button"
-                variant="outline" 
-                onClick={() => navigate({ to: '/products' })}
-                className="text-gray-700 border-gray-300 hover:bg-gray-50"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="button"
-                onClick={handleManualSubmit} 
-                disabled={isSubmitting || !form.watch('status')}
+                onClick={handleManualSubmit}
+                disabled={isSubmitting}
                 className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
               >
-                {isSubmitting ? 
-                  (isEditing ? 'Saving...' : 'Creating...') : 
-                  (isEditing ? 'Save Product' : 'Create Product')}
+                {isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Product' : 'Create Product')}
               </Button>
             </div>
           </div>

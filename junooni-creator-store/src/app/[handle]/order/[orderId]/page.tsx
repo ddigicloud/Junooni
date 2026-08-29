@@ -135,7 +135,7 @@ export default async function OrderPage({ params }: Props) {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between max-w-3xl px-4 mx-auto h-14">
-          <Link href={`/${handle}`} className="text-sm text-gray-500 transition-colors hover:text-gray-900">
+          <Link href={`/`} className="text-sm text-gray-500 transition-colors hover:text-gray-900">
             ← Back to store
           </Link>
           <span className="text-sm font-medium text-gray-700">Order Details</span>
@@ -370,7 +370,7 @@ export default async function OrderPage({ params }: Props) {
 
         {/* ── CTA ── */}
         <Link
-          href={`/${handle}`}
+          href={`/`}
           className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-semibold text-sm w-full"
           style={{ background: "linear-gradient(135deg, #e65100 0%, #ac1900 100%)" }}
         >
