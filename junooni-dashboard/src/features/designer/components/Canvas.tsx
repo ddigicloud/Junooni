@@ -911,6 +911,30 @@ useEffect(() => {
                 </div>
               )}
 
+              {/* Mobile size pills (above, shown when size_Images true) */}
+              {isMobile && productData?.size_Images && (
+                <div className="w-[300px]">
+                  <div className="flex flex-wrap justify-center gap-2 py-2">
+                    {selectedSizes.map(size => {
+                      const isActive = activeSize === size;
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => setActiveSize(size)}
+                          className={`px-3 py-1.5 text-sm font-semibold rounded-lg border-2 transition-all touch-manipulation ${
+                            isActive
+                              ? 'bg-orange-500 text-white border-orange-500 ring-2 ring-orange-200'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Main preview image */}
               <div className="relative">
                 <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-white rounded-lg overflow-hidden">
@@ -948,6 +972,30 @@ useEffect(() => {
                         <button key={color.value} onClick={() => handlePreviewColorClick(color.value)} title={color.name} className="flex flex-col items-center group">
                           <div className="w-10 h-10 rounded-full transition-all transform hover:scale-110 shadow-md"
                             style={{ backgroundColor: color.value, border: isActive ? `3px solid #e65100` : isLight ? '2px solid #9ca3af' : '2px solid #d1d5db', boxShadow: isActive ? '0 0 0 4px rgba(230,81,0,0.3)' : undefined, transform: isActive ? 'scale(1.1)' : undefined }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Desktop size pills (below, shown when size_Images true) */}
+              {!isMobile && productData?.size_Images && (
+                <div className="w-[400px]">
+                  <div className="flex flex-wrap justify-center gap-2 py-2">
+                    {selectedSizes.map(size => {
+                      const isActive = activeSize === size;
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => setActiveSize(size)}
+                          className={`px-4 py-1.5 text-sm font-semibold rounded-lg border-2 transition-all touch-manipulation ${
+                            isActive
+                              ? 'bg-orange-500 text-white border-orange-500 ring-2 ring-orange-200 scale-105'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400 hover:scale-105'
+                          }`}
+                        >
+                          {size}
                         </button>
                       );
                     })}

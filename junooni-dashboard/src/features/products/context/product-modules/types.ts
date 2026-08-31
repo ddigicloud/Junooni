@@ -68,6 +68,7 @@ export interface VariantInfo {
   optionValues?: string[];
   variantId?: string;
   variantTitle?: string;
+  allOptionValues?: Array<{ optionName: string; value: string; optionId?: string }>;
 }
 
 export interface MediaItem {

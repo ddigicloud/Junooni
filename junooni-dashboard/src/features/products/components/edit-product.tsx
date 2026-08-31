@@ -942,52 +942,97 @@ const isNewVariant = (variant) => {
 
       // ── Lazy: variant images (non-blocking) ───────────────────────────
       const hasColorOption = completeTransformedOptions.some(opt => isColorOption(opt.title));
-      if (hasColorOption) {
+      const hasAnyImageAssocOption = completeTransformedOptions.some(opt => opt.imageAssociation === true);
+      if (hasColorOption || hasAnyImageAssocOption) {
         const imgT0 = performance.now();
         console.log('🖼 Starting lazy variant image fetch...');
         fetchVariantImages({ id })
-          .then(variantsWithImages => {
-            // Get the color option name from already-loaded form options
+          .then(async (rawVariantsWithImages: any[]) => {
             const formOptions = form.getValues('options');
-            const colorOptionName = formOptions.find(o => isColorOption(o.title))?.title || 'Color';
+            const optionIdToTitle: Record<string, string> = {};
+            formOptions.forEach(fo => { if (fo.id && fo.title) optionIdToTitle[fo.id] = fo.title; });
+
+            const imageAssocOptions = formOptions.filter(o => o.imageAssociation === true);
+            const associatedOptionTitles = imageAssocOptions.length > 0
+              ? imageAssocOptions.map(o => o.title.toLowerCase())
+              : formOptions.filter(o => isColorOption(o.title)).map(o => o.title.toLowerCase());
+
+            console.log('🖼 formOptions imageAssociation:', formOptions.map(o => `${o.title}:${o.imageAssociation}`));
+            console.log('🖼 associatedOptionTitles:', associatedOptionTitles);
+            console.log('🖼 RAW fetchVariantImages:', JSON.stringify(
+              rawVariantsWithImages.map((v: any) => ({
+                title: v.title, imageCount: v.images?.length || 0,
+                opts: v.options?.map((o: any) => `${o.option?.title || o.option_id}=${o.value}`)
+              }))
+            ));
+
+            const allEmpty = rawVariantsWithImages.every((v: any) => !v.images?.length);
+            let variantsWithImages = rawVariantsWithImages;
+
+            if (allEmpty) {
+              const hasMultipleAssocOptions = imageAssocOptions.length > 1;
+              if (!hasMultipleAssocOptions) {
+                try {
+                  const fullProduct = await fetchProduct({ id });
+                  if (fullProduct?.images?.length && fullProduct?.variants?.length) {
+                    variantsWithImages = fullProduct.variants.map((v: any) => ({
+                      ...v, images: fullProduct.images
+                    }));
+                    console.log('🖼 Fallback: assigned product images to all variants');
+                  }
+                } catch (err) { console.warn('🖼 Fallback failed:', err); }
+              }
+            }
 
             setMediaItems(prev => {
               const updated = [...prev];
-
               variantsWithImages.forEach((variant: any) => {
                 if (!variant.images?.length) return;
+                const allOptionValues = (variant.options || []).map((o: any) => ({
+                  optionName: o.option?.title || optionIdToTitle[o.option_id] || '',
+                  value: o.value || '',
+                  optionId: o.option_id || ''
+                })).filter((o: any) => o.optionName && o.value);
 
-                // Find the color option value using option_id match
-                const colorOptVal = variant.options?.find((o: any) =>
-                  isColorOption(
-                    // Resolve name from formOptions using option_id
-                    formOptions.find(fo => fo.id === o.option_id)?.title || ''
-                  )
-                );
-                const colorName = colorOptVal?.value;
-                if (!colorName) return;
+                if (!allOptionValues.length) return;
+
+                const primaryOptVal = allOptionValues.find((o: any) =>
+                  associatedOptionTitles.includes(o.optionName.toLowerCase())
+                ) || allOptionValues.find((o: any) => isColorOption(o.optionName)) || allOptionValues[0];
+
+                if (!primaryOptVal) return;
+
+                const variantInfo = {
+                  variantId: variant.id,
+                  variantTitle: variant.title,
+                  optionName: primaryOptVal.optionName,
+                  optionValues: [primaryOptVal.value],
+                  allOptionValues
+                } as any;
 
                 variant.images.forEach((img: any) => {
                   const existingIndex = updated.findIndex(m => m.id === img.id || m.url === img.url);
+                  const existingVI = existingIndex >= 0 ? updated[existingIndex].variantInfo as any : null;
+                  const hasRealVariantInfo = existingVI &&
+                    ((existingVI.optionValues?.length > 0) || (existingVI.allOptionValues?.length > 0));
+
                   if (existingIndex >= 0) {
-                    if (!updated[existingIndex].variantInfo) {
-                      updated[existingIndex].variantInfo = {
-                        optionName: colorOptionName,
-                        optionValues: [colorName]
-                      };
-                      updated[existingIndex].colorValue = colorName;
+                    if (!hasRealVariantInfo) {
+                      updated[existingIndex].variantInfo = variantInfo;
+                      if (isColorOption(primaryOptVal.optionName)) {
+                        updated[existingIndex].colorValue = primaryOptVal.value;
+                      }
                     }
                   } else {
                     updated.push({
                       file: null, id: img.id, url: img.url,
                       rank: updated.length, isNew: false,
-                      colorValue: colorName,
-                      variantInfo: { optionName: colorOptionName, optionValues: [colorName] }
+                      colorValue: isColorOption(primaryOptVal.optionName) ? primaryOptVal.value : undefined,
+                      variantInfo
                     });
                   }
                 });
               });
-
               console.log(`🖼 mediaItems updated: ${prev.length} → ${updated.length}`);
               return updated;
             });
@@ -1808,9 +1853,18 @@ const isNewVariant = (variant) => {
 
   const handleDirectVariantUpload = (files: FileList, variantId: string) => {
     if (!files || files.length === 0) return;
-    
+
+    // Include allOptionValues so save flow uses precise variantId matching
+    const formVariants = form.getValues('variants');
+    const matchingVariant = formVariants.find((v: any) => v.id === variantId);
+    const allOptionValues = (matchingVariant?.optionValues || []).map((ov: any) => ({
+      optionName: ov.optionName || '',
+      value: ov.value || '',
+      optionId: ov.optionId || ''
+    }));
+
     const fileInput = { files, value: '' } as HTMLInputElement;
-    handleFileChange(fileInput, { variantId });
+    handleFileChange(fileInput, { variantId, allOptionValues } as any);
   };
 
   // To handle option-specific uploads directly from the ImageManager
@@ -2896,71 +2950,110 @@ const onSubmit = async (values: ProductFormValues) => {
                         const refreshedProduct = await fetchProduct({ id });
                         if (refreshedProduct?.variants && refreshedProduct?.images) {
 
-                          // Build option value → image IDs map from updatedMedia variantInfo
-                          const optionValueToImageIds: Record<string, string[]> = {};
+                          // Build option_id → title map from refreshed product options
+                          const optIdToTitle: Record<string, string> = {};
+                          for (const opt of (refreshedProduct.options || [])) {
+                            if (opt.id && opt.title) optIdToTitle[opt.id] = opt.title.toLowerCase().replace(/[\s_-]+/g, '');
+                          }
+
+                          // Build TWO maps from updatedMedia:
+                          // 1. variantId → imageIds (combination/allOptionValues mode — most precise)
+                          // 2. optionName → value → imageIds (single-option mode)
+                          const variantIdToImageIds: Record<string, string[]> = {};
+                          const optionNameToValueIds: Record<string, Record<string, string[]>> = {};
+
                           for (const item of updatedMedia) {
                             if (!item.id || !item.variantInfo) continue;
+                            const vi = item.variantInfo as any;
+
+                            // Combination mode: allOptionValues present with variantId
+                            if (vi.allOptionValues?.length > 0 && vi.variantId) {
+                              if (!variantIdToImageIds[vi.variantId]) variantIdToImageIds[vi.variantId] = [];
+                              if (!variantIdToImageIds[vi.variantId].includes(item.id)) {
+                                variantIdToImageIds[vi.variantId].push(item.id);
+                              }
+                            }
+
+                            // Single option mode: optionName + optionValues
                             const { optionName, optionValues } = item.variantInfo;
-                            if (!optionName || !optionValues?.length) continue;
-                            for (const val of optionValues) {
-                              const key = val.toLowerCase().replace(/\s+/g, '_');
-                              if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
-                              if (!optionValueToImageIds[key].includes(item.id)) {
-                                optionValueToImageIds[key].push(item.id);
+                            if (optionName && optionValues?.length) {
+                              const optKey = optionName.toLowerCase().replace(/[\s_-]+/g, '');
+                              if (!optionNameToValueIds[optKey]) optionNameToValueIds[optKey] = {};
+                              for (const val of optionValues) {
+                                const valKey = val.toLowerCase().replace(/[\s_-]+/g, '');
+                                if (!optionNameToValueIds[optKey][valKey]) optionNameToValueIds[optKey][valKey] = [];
+                                if (!optionNameToValueIds[optKey][valKey].includes(item.id)) {
+                                  optionNameToValueIds[optKey][valKey].push(item.id);
+                                }
+                              }
+                            }
+
+                            // colorValue shortcut
+                            if (item.colorValue) {
+                              const valKey = item.colorValue.toLowerCase().replace(/[\s_-]+/g, '');
+                              if (!optionNameToValueIds['color']) optionNameToValueIds['color'] = {};
+                              if (!optionNameToValueIds['color'][valKey]) optionNameToValueIds['color'][valKey] = [];
+                              if (!optionNameToValueIds['color'][valKey].includes(item.id)) {
+                                optionNameToValueIds['color'][valKey].push(item.id);
                               }
                             }
                           }
 
-                          // ALSO build from colorValue directly (handles renamed option values)
-                          // This catches images that were uploaded for "grey" but variant is now "blue"
-                          // by checking the CURRENT form variant option values
-                          const currentFormVariants = form.getValues('variants');
+                          console.log('variantIdToImageIds:', variantIdToImageIds);
+                          console.log('optionNameToValueIds:', optionNameToValueIds);
+
+                          const hasVariantSpecific = Object.keys(variantIdToImageIds).length > 0;
+                          const hasOptionSpecific = Object.keys(optionNameToValueIds).length > 0;
 
                           for (const completedVariant of refreshedProduct.variants) {
-                            // Find color option value for this variant
-                            const colorOpt = completedVariant.options?.find((o: any) =>
-                              o.option?.title?.toLowerCase() === 'color' ||
-                              isColorOption(o.option?.title || '')
-                            );
-                            const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+                            let matchingImageIds: string[] = [];
 
-                            // Primary: metadata-based map
-                            let matchingImageIds: string[] = optionValueToImageIds[variantColor] || [];
+                            // Strategy 1: exact variantId match (most precise — combination/custom mode)
+                            if (hasVariantSpecific && variantIdToImageIds[completedVariant.id]) {
+                              matchingImageIds = variantIdToImageIds[completedVariant.id];
+                              console.log(`✅ variantId match for "${completedVariant.title}": ${matchingImageIds.length} images`);
+                            }
 
-                            // Fallback 1: find images by colorValue in mediaItems
-                            // This handles the case where images exist but colorValue doesn't match new name
-                            if (matchingImageIds.length === 0) {
-                              // Get ALL images that have any variantInfo (color-associated images)
-                              const colorImages = updatedMedia.filter(item =>
-                                item.id && item.variantInfo?.optionName &&
-                                isColorOption(item.variantInfo.optionName)
-                              );
-
-                              // If there's only one color in the product now, assign all color images to it
-                              const uniqueColors = new Set(
-                                currentFormVariants
-                                  .flatMap(v => v.optionValues || [])
-                                  .filter(ov => isColorOption(ov.optionName))
-                                  .map(ov => ov.value?.toLowerCase())
-                              );
-
-                              if (uniqueColors.size === 1 && colorImages.length > 0) {
-                                matchingImageIds = colorImages.map(item => item.id).filter(Boolean);
-                                console.log(`🎨 Single color product — assigning all ${matchingImageIds.length} color images to ${variantColor}`);
+                            // Strategy 2: option value intersection
+                            if (matchingImageIds.length === 0 && hasOptionSpecific) {
+                              const candidateSets: string[][] = [];
+                              for (const varOpt of (completedVariant.options || [])) {
+                                const optTitle = optIdToTitle[varOpt.option_id]
+                                  || varOpt.option?.title?.toLowerCase().replace(/[\s_-]+/g, '')
+                                  || '';
+                                const optVal = (varOpt.value || '').toLowerCase().replace(/[\s_-]+/g, '');
+                                if (optionNameToValueIds[optTitle]?.[optVal]?.length) {
+                                  candidateSets.push(optionNameToValueIds[optTitle][optVal]);
+                                }
+                              }
+                              if (candidateSets.length === 1) {
+                                matchingImageIds = candidateSets[0];
+                              } else if (candidateSets.length > 1) {
+                                matchingImageIds = candidateSets.reduce((acc, set) =>
+                                  acc.filter(id => set.includes(id))
+                                );
+                                if (matchingImageIds.length === 0) matchingImageIds = candidateSets[0];
+                              }
+                              if (matchingImageIds.length > 0) {
+                                console.log(`✅ option match for "${completedVariant.title}": ${matchingImageIds.length} images`);
                               }
                             }
 
-                            // Fallback 2: URL-based matching
+                            // Strategy 3: URL-based color matching (fallback for color products)
+                            const colorOpt = completedVariant.options?.find((o: any) =>
+                              isColorOption(optIdToTitle[o.option_id] || o.option?.title || '')
+                            );
+                            const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+
                             if (matchingImageIds.length === 0 && variantColor) {
                               matchingImageIds = (refreshedProduct.images || [])
                                 .filter((img: any) => img.url.toLowerCase().includes(variantColor))
                                 .map((img: any) => img.id);
                             }
 
-                            // Fallback 3: assign ALL product images if only 1 variant exists
+                            // Strategy 4: single variant — all images
                             if (matchingImageIds.length === 0 && refreshedProduct.variants.length === 1) {
                               matchingImageIds = (refreshedProduct.images || []).map((img: any) => img.id);
-                              console.log(`📎 Single variant — assigning all ${matchingImageIds.length} images`);
                             }
 
                             if (matchingImageIds.length > 0) {
@@ -2983,7 +3076,7 @@ const onSubmit = async (values: ProductFormValues) => {
                                 console.error(`Failed variant image association for ${completedVariant.title}:`, err);
                               }
                             } else {
-                              console.log(`⚠️ No images found for variant: ${completedVariant.title} (color: ${variantColor})`);
+                              console.log(`⚠️ No images found for variant: ${completedVariant.title}`);
                             }
                           }
                         }

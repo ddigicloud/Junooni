@@ -16,7 +16,10 @@ export const StreamlinedImageManager: React.FC<{
   variants: Variant[];
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>, variantInfo?: VariantInfo | null) => void;
-  onImageChange?: () => void; // ← ADD THIS
+  onImageChange?: () => void;
+  handleRemoveImage?: (index: number) => void;
+  handleMoveImageUp?: (index: number) => void;
+  handleMoveImageDown?: (index: number) => void;
 }> = ({
   mediaItems,
   setMediaItems,
@@ -24,7 +27,10 @@ export const StreamlinedImageManager: React.FC<{
   variants,
   fileInputRef,
   handleFileChange,
-  onImageChange 
+  onImageChange,
+  handleRemoveImage: handleRemoveImageProp,
+  handleMoveImageUp: handleMoveImageUpProp,
+  handleMoveImageDown: handleMoveImageDownProp,
 }) => {
   // State for selected variant or option values
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -138,16 +144,52 @@ export const StreamlinedImageManager: React.FC<{
     });
 
   } else if (associationMode === 'combination' && selectedVariantId) {
-    return mediaItems.filter(item => {
-      // PRIORITY 1: Native variant association
-      if ((item as any).variants && Array.isArray((item as any).variants)) {
-        return (item as any).variants.some((v: any) => v.id === selectedVariantId);
+  const variant = variants.find(v => v.id === selectedVariantId);
+
+  return mediaItems.filter(item => {
+    // PRIORITY 1: Native variant association
+    if ((item as any).variants && Array.isArray((item as any).variants)) {
+      return (item as any).variants.some((v: any) => v.id === selectedVariantId);
+    }
+
+    // PRIORITY 2: Legacy variantId match
+    if (item.variantInfo?.variantId === selectedVariantId) return true;
+
+    // PRIORITY 3: Match by all option values from metadata
+    if (!variant?.optionValues || variant.optionValues.length === 0) return false;
+
+    const normalize = (s: string) =>
+      s.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '').replace(/[-_]/g, '');
+
+    return variant.optionValues.every(ov => {
+      const optName = ov.optionName.toLowerCase();
+      const optVal = normalize(ov.value);
+
+      if (
+        item.variantInfo?.optionName?.toLowerCase() === optName &&
+        item.variantInfo?.optionValues?.some(v => normalize(v) === optVal)
+      ) return true;
+
+      if (
+        item.variantInfo?.secondaryOptionName?.toLowerCase() === optName &&
+        item.variantInfo?.secondaryOptionValues?.some(v => normalize(v) === optVal)
+      ) return true;
+
+      if (optName === 'color' && item.metadata?.extractedColorName) {
+        if (normalize(item.metadata.extractedColorName) === optVal) return true;
+      }
+      if (optName === 'size' && item.metadata?.extractedSizeName) {
+        if (normalize(item.metadata.extractedSizeName) === optVal) return true;
       }
 
-      // PRIORITY 2: Legacy metadata-based variantInfo fallback
-      return item.variantInfo?.variantId === selectedVariantId;
+      if (isColorOption(ov.optionName) && item.colorValue) {
+        if (normalize(item.colorValue) === optVal) return true;
+      }
+
+      return false;
     });
-  }
+  });
+}
 
   return [];
 }, [associationMode, imageAssociatedOptions, mediaItems, selectedOptionValues, selectedVariantId, variants]);
@@ -277,10 +319,15 @@ export const StreamlinedImageManager: React.FC<{
         return;
       }
       
-      // Simplified structure for variant-specific uploads
+      // Include all option values so create-product can do precise matching
       const variantInfo: VariantInfo = {
         variantId: variant.id,
-        variantTitle: variant.title
+        variantTitle: variant.title,
+        allOptionValues: (variant.optionValues || []).map((ov: any) => ({
+          optionName: ov.optionName || '',
+          value: ov.value || '',
+          optionId: ov.optionId || ''
+        }))
       };
 
       // Use a temporary fileInput to avoid conflicts
@@ -308,7 +355,7 @@ export const StreamlinedImageManager: React.FC<{
   };
 
   // Remove an image
-  const handleRemoveImage = (index: number) => {
+  const handleRemoveImage = handleRemoveImageProp || ((index: number) => {
      onImageChange?.(); 
     setMediaItems((prev) => {
       const removed = prev[index];
@@ -319,12 +366,13 @@ export const StreamlinedImageManager: React.FC<{
       const filtered = prev.filter((_, i) => i !== index);
       return filtered.map((item, i) => ({ ...item, rank: i }));
     });
-  };
+  });
 
   // Move image up in order
-  const handleMoveImageUp = (index: number) => {
+   const handleMoveImageUp = (index: number) => {
+    if (handleMoveImageUpProp) { handleMoveImageUpProp(index); return; }
     if (index === 0) return; // Already at the top
-    onImageChange?.(); // ← ADD THIS
+    onImageChange?.();
 
     setMediaItems((prev) => {
       const newMedia = [...prev];
@@ -337,6 +385,7 @@ export const StreamlinedImageManager: React.FC<{
 
   // Move image down in order
   const handleMoveImageDown = (index: number) => {
+    if (handleMoveImageDownProp) { handleMoveImageDownProp(index); return; }
     if (index === mediaItems.length - 1) return; // Already at the bottom
      onImageChange?.(); 
     
@@ -352,7 +401,7 @@ export const StreamlinedImageManager: React.FC<{
   // Get count of images
  const countImagesForOptionValue = (optionName: string, value: string): number => {
   return mediaItems.filter(item => {
-    // Native association check
+    // PRIORITY 1: Native variant association
     if ((item as any).variants && Array.isArray((item as any).variants)) {
       const associatedVariantIds = (item as any).variants.map((v: any) => v.id);
       const matchingVariant = variants.find(v =>
@@ -365,20 +414,42 @@ export const StreamlinedImageManager: React.FC<{
       if (matchingVariant) return true;
     }
 
-    // URL-based fallback
+    // PRIORITY 2: URL-based matching for color
     if (isColorOption(optionName)) {
       const urlLower = item.url.toLowerCase();
-      const valueLower = value.toLowerCase().replace(/\s+/g, '_');
+      const valueLower = value.toLowerCase().replace(/\s+/g, '-');
       if (urlLower.includes(valueLower)) return true;
     }
 
-   // Legacy metadata fallback
+    // PRIORITY 3: variantInfo primary option match
+    const normalize = (s: string) =>
+      s.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '').replace(/[-_]/g, '');
+
     if (
-      item.variantInfo?.optionName?.toLowerCase() === optionName?.toLowerCase() &&
-      item.variantInfo?.optionValues?.some(v => v.toLowerCase() === value.toLowerCase())
+      item.variantInfo?.optionName?.toLowerCase() === optionName.toLowerCase() &&
+      item.variantInfo?.optionValues?.some(v => normalize(v) === normalize(value))
     ) return true;
 
+    // PRIORITY 4: variantInfo secondary option match
+    if (
+      item.variantInfo?.secondaryOptionName?.toLowerCase() === optionName.toLowerCase() &&
+      item.variantInfo?.secondaryOptionValues?.some(v => normalize(v) === normalize(value))
+    ) return true;
+
+    // PRIORITY 5: colorValue shorthand
     if (isColorOption(optionName) && item.colorValue?.toLowerCase() === value.toLowerCase()) return true;
+
+    // PRIORITY 6: metadata fields
+    if (
+      optionName.toLowerCase() === 'color' &&
+      item.metadata?.extractedColorName?.toLowerCase() === value.toLowerCase()
+    ) return true;
+
+    if (
+      optionName.toLowerCase() === 'size' &&
+      item.metadata?.extractedSizeName &&
+      normalize(item.metadata.extractedSizeName) === normalize(value)
+    ) return true;
 
     return false;
   }).length;
@@ -386,13 +457,57 @@ export const StreamlinedImageManager: React.FC<{
 
   // Count images for a specific variant
 const countImagesForVariant = (variantId: string): number => {
+  // Find the variant to get its option values
+  const variant = variants.find(v => v.id === variantId);
+  if (!variant) return 0;
+
   return mediaItems.filter(item => {
-    // Native association check
+    // PRIORITY 1: Native variant association
     if ((item as any).variants && Array.isArray((item as any).variants)) {
       return (item as any).variants.some((v: any) => v.id === variantId);
     }
-    // Legacy metadata fallback
-    return item.variantInfo?.variantId === variantId;
+
+    // PRIORITY 2: Legacy variantId match
+    if (item.variantInfo?.variantId === variantId) return true;
+
+    // PRIORITY 3: Match by ALL option values from variantInfo metadata
+    if (!variant.optionValues || variant.optionValues.length === 0) return false;
+
+    const normalize = (s: string) =>
+      s.toLowerCase().replace(/×/g, 'x').replace(/\s+/g, '').replace(/[-_]/g, '');
+
+    // Every option value of the variant must be present in the image's metadata
+    return variant.optionValues.every(ov => {
+      const optName = ov.optionName.toLowerCase();
+      const optVal = normalize(ov.value);
+
+      // Check primary variantInfo
+      if (
+        item.variantInfo?.optionName?.toLowerCase() === optName &&
+        item.variantInfo?.optionValues?.some(v => normalize(v) === optVal)
+      ) return true;
+
+      // Check secondary variantInfo
+      if (
+        item.variantInfo?.secondaryOptionName?.toLowerCase() === optName &&
+        item.variantInfo?.secondaryOptionValues?.some(v => normalize(v) === optVal)
+      ) return true;
+
+      // Check metadata fields
+      if (optName === 'color' && item.metadata?.extractedColorName) {
+        if (normalize(item.metadata.extractedColorName) === optVal) return true;
+      }
+      if (optName === 'size' && item.metadata?.extractedSizeName) {
+        if (normalize(item.metadata.extractedSizeName) === optVal) return true;
+      }
+
+      // Check colorValue shorthand
+      if (isColorOption(ov.optionName) && item.colorValue) {
+        if (normalize(item.colorValue) === optVal) return true;
+      }
+
+      return false;
+    });
   }).length;
 };
 

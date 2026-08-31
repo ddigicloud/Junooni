@@ -209,7 +209,7 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor, accordionTe
             Because the products are made to order, we do not accept general returns or sizing-related returns.
           </p>
           <a
-            href={`/p/returns-refunds`}
+            href={`/pages/returns-refunds`}
             className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2"
             style={{ color: accordionTextColor ?? brandPrimary }}
           >

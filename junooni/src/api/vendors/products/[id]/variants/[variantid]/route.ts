@@ -16,7 +16,13 @@ export const GET = async (
           id: variantid,
           $and: [{ product_id: { $eq: productId } }],
         },
-        fields: (req.query?.fields as string[]) ?? [],
+        fields: (() => {
+          const f = req.query?.fields;
+          if (!f) return ['id', 'title', 'images.id', 'images.url', 'options.value', 'options.option_id'];
+          if (Array.isArray(f)) return f as string[];
+          if (typeof f === 'string') return f.split(',').map(s => s.trim());
+          return [];
+        })(),
       },
       { throwIfKeyNotFound: false }
     )

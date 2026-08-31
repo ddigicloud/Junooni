@@ -345,7 +345,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
           };
           if (variantInfo) {
             if (variantInfo.variantId) {
-              mediaItem.variantInfo = { variantId: variantInfo.variantId };
+              mediaItem.variantInfo = {
+                variantId: variantInfo.variantId,
+                variantTitle: variantInfo.variantTitle,
+                allOptionValues: variantInfo.allOptionValues
+              };
             } else if (variantInfo.optionName && variantInfo.optionValues?.[0]) {
               mediaItem.variantInfo = {
                 optionName: variantInfo.optionName,
@@ -485,17 +489,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   };
 
   // ── Vendor sales channel load ─────────────────────────────────────────
-  useEffect(() => {
-    const loadVendorChannels = async () => {
-      setIsLoadingChannels(true);
-      try {
-        const vendor = await fetchCurrentVendor();
-        if (!vendor) {
-          setVendorSalesChannels([]);
-          setSelectedSalesChannels([]);
-          form.setValue('status', 'draft');
-          return;
-        }
+    useEffect(() => {
+      form.setValue('status', 'draft');          // ← pre-select Draft immediately
+      const loadVendorChannels = async () => {
+        setIsLoadingChannels(true);
+        try {
+          const vendor = await fetchCurrentVendor();
+          if (!vendor) {
+            setVendorSalesChannels([]);
+            setSelectedSalesChannels([]);
+            return;
+          }
         const gstVerified = vendor.gst_verification_status === 'verified';
         const allowed: string[] = [];
         if (gstVerified && vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
@@ -599,6 +603,15 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
       const productImages: Array<{ id: string; url: string; alt?: string }> = [];
       const imageIdToUrlMap: Record<string, string> = {};
 
+      // Capture uploaded image metadata for setTimeout closure
+      // (mediaItems state will be stale inside setTimeout)
+      const uploadedMediaSnapshot: Array<{
+        imgId: string;
+        serverUrl: string;
+        colorValue?: string;
+        variantInfo?: any;
+      }> = [];
+
       if (mediaItems.length > 0) {
         const sortedMediaItems = [...mediaItems]
           .sort((a, b) => a.rank - b.rank)
@@ -614,6 +627,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
               item.id = uploadResult.id;
               item.url = uploadResult.url;
               imageIdToUrlMap[uploadResult.id] = uploadResult.url;
+
+              // Snapshot for setTimeout closure — captures real img_ ID with variant metadata
+              uploadedMediaSnapshot.push({
+                imgId: uploadResult.id,
+                serverUrl: uploadResult.url,
+                colorValue: item.colorValue,
+                variantInfo: item.variantInfo,
+              });
             }
           } else if (item.url && !item.url.startsWith('blob:')) {
             // URL-based image — include as-is
@@ -747,17 +768,17 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
         };
       });
 
-      // STEP 7: Build product payload
-      const formattedImages = productImages.map(img => ({ id: img.id, url: img.url, ...(img.alt ? { alt: img.alt } : {}) }));
+              // STEP 7: Build product payload
+        // Note: images are attached AFTER product creation using the real product ID
+        // Passing images at creation time causes linking issues in Medusa v2
 
-      const newProduct = {
-        title: formValues.title.trim(),
-        subtitle: formValues.subtitle?.trim() || "",
-        handle: formValues.handle.trim(),
-        description: formValues.description.trim() || "",
-        status: formValues.status,
-        discountable: Boolean(formValues.discountable),
-        ...(formattedImages.length > 0 ? { images: formattedImages, thumbnail: productImages[0]?.url || "" } : {}),
+        const newProduct = {
+          title: formValues.title.trim(),
+          subtitle: formValues.subtitle?.trim() || "",
+          handle: formValues.handle.trim(),
+          description: formValues.description.trim() || "",
+          status: formValues.status,
+          discountable: Boolean(formValues.discountable),
         categories: formValues.category_id
           ? (Array.isArray(formValues.category_id)
             ? formValues.category_id.map((id: string) => ({ id }))
@@ -774,15 +795,62 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
         variants: formattedVariants,
       };
 
-      // STEP 8: Create product
+      console.log('🔍 CHECKPOINT 1 — uploadedMediaSnapshot after upload loop:', 
+        JSON.stringify(uploadedMediaSnapshot, null, 2));
+      console.log('🔍 CHECKPOINT 1 — productImages:', JSON.stringify(productImages, null, 2));
+
+            // STEP 8: Create product
       const result = await createProduct({ product: newProduct });
 
       if (result && result.id) {
         setCreatedProductId(result.id);
 
+        console.log('🔍 CHECKPOINT 2 — result.id:', result.id);
+        console.log('🔍 CHECKPOINT 2 — uploadedMediaSnapshot at this point:', 
+          JSON.stringify(uploadedMediaSnapshot, null, 2));
+
+        // STEP 8.5: Now attach images to the product using the real product ID
+        // This is more reliable than passing images at creation time in Medusa v2
+        if (uploadedMediaSnapshot.length > 0) {
+                    try {
+            const imageAttachPayload = uploadedMediaSnapshot.map(snap => ({
+              id: snap.imgId,
+              url: snap.serverUrl,
+            }));
+
+            console.log('🔍 CHECKPOINT 3 — imageAttachPayload:', JSON.stringify(imageAttachPayload));
+
+            const attachResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${result.id}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('vendorToken')}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                images: imageAttachPayload,
+                thumbnail: uploadedMediaSnapshot[0]?.serverUrl || '',
+              }),
+            });
+
+            const attachResponseData = await attachResponse.json().catch(() => ({}));
+            console.log('🔍 CHECKPOINT 3 — attach response status:', attachResponse.status);
+            console.log('🔍 CHECKPOINT 3 — attach response data images:', 
+              JSON.stringify(attachResponseData?.product?.images || attachResponseData?.images || attachResponseData));
+          } catch (attachErr) {
+            console.error('❌ CHECKPOINT 3 — Failed to attach images:', attachErr);
+          }
+        }
+
         setTimeout(async () => {
           try {
             const completeProduct = await fetchProduct({ id: result.id });
+
+            console.log('🔍 CHECKPOINT 4 — completeProduct.images:', 
+              JSON.stringify(completeProduct?.images || []));
+            console.log('🔍 CHECKPOINT 4 — completeProduct.variants count:', 
+              completeProduct?.variants?.length);
+            console.log('🔍 CHECKPOINT 4 — uploadedMediaSnapshot in setTimeout:', 
+              JSON.stringify(uploadedMediaSnapshot));
 
             if (completeProduct?.variants) {
               // Inventory creation
@@ -805,225 +873,131 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
                 await batchUpdateInventoryLevels({ create: inventoryCreations });
               }
 
-                                         // Build a reliable map: server img_ ID → mediaItem
-              // using the IDs stored on mediaItems during the upload loop
-              // Do NOT use completeProduct.images[].id — those may be filenames
-              const serverImages = (completeProduct.images || []);
-              
-              // Match each completeProduct image back to our mediaItem by URL
-              const urlToImgId: Record<string, string> = {};
-              for (const serverImg of serverImages) {
-                // serverImg.id might be a filename — find the real img_ ID
-                // by matching the URL against what our upload returned
-                const matchingMediaItem = mediaItems.find(item =>
-                  item.url && serverImg.url &&
-                  (item.url === serverImg.url ||
-                   serverImg.url.includes(item.url.split('/').pop() || '') ||
-                   item.url.includes(serverImg.url.split('/').pop() || ''))
-                );
-                if (matchingMediaItem?.id?.startsWith('img_')) {
-                  // Use the real img_ ID from our upload response
-                  urlToImgId[serverImg.url] = matchingMediaItem.id;
-                } else if (serverImg.id?.startsWith('img_')) {
-                  // Server returned a real img_ ID — use it
-                  urlToImgId[serverImg.url] = serverImg.id;
-                }
-              }
+              // ── VARIANT IMAGE ASSOCIATION ──────────────────────────────────
+              // uploadedMediaSnapshot is captured in onSubmit scope (not stale state)
+              // imgId is a filename string (not img_ prefixed) from local file provider
+              // colorValue and variantInfo are set by StreamlinedImageManager
 
-              console.log('urlToImgId map:', urlToImgId);
+              // Build option value → imgId maps from uploadedMediaSnapshot
+              // Keyed by optionName so we can match color, size, or both
+              // Structure: { 'color': { 'white': [id1], 'blue': [id2] }, 'size': { 'x': [id1], 'l': [id2] } }
+              const optionNameToValueImgIds: Record<string, Record<string, string[]>> = {};
 
-              // Build option value → real img_ ID map from mediaItems
-              const optionValueToImageIds: Record<string, string[]> = {};
-              const colorValueToImageIds: Record<string, string[]> = {};
+                for (const snap of uploadedMediaSnapshot) {
+                if (!snap.imgId) continue;
 
-              for (const item of mediaItems) {
-                // Only use items with real img_ IDs from upload
-                const realId = item.id?.startsWith('img_') ? item.id : null;
-                if (!realId) continue;
-
-                // Map by variantInfo
-                if (item.variantInfo?.optionName && item.variantInfo?.optionValues?.length) {
-                  for (const val of item.variantInfo.optionValues) {
-                    const key = val.toLowerCase().replace(/[\s_-]+/g, '');
-                    if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
-                    if (!optionValueToImageIds[key].includes(realId)) {
-                      optionValueToImageIds[key].push(realId);
+                // Combination mode: allOptionValues has ALL option name+value pairs for this variant
+                const allOptVals = (snap.variantInfo as any)?.allOptionValues as Array<{optionName: string; value: string}> || [];
+                if (allOptVals.length > 0) {
+                  for (const ov of allOptVals) {
+                    const optName = (ov.optionName || '').toLowerCase().replace(/[\s_-]+/g, '');
+                    const optVal = (ov.value || '').toLowerCase().replace(/[\s_-]+/g, '');
+                    if (!optName || !optVal) continue;
+                    if (!optionNameToValueImgIds[optName]) optionNameToValueImgIds[optName] = {};
+                    if (!optionNameToValueImgIds[optName][optVal]) optionNameToValueImgIds[optName][optVal] = [];
+                    if (!optionNameToValueImgIds[optName][optVal].includes(snap.imgId)) {
+                      optionNameToValueImgIds[optName][optVal].push(snap.imgId);
                     }
+                  }
+                  continue; // allOptionValues covers all — skip single-option cases
+                }
+
+                const optionName = snap.variantInfo?.optionName?.toLowerCase().replace(/[\s_-]+/g, '') || '';
+                const optionValues = snap.variantInfo?.optionValues || [];
+
+                // Also treat colorValue as a color option entry
+                if (snap.colorValue) {
+                  const colorKey = 'color';
+                  const valKey = snap.colorValue.toLowerCase().replace(/[\s_-]+/g, '');
+                  if (!optionNameToValueImgIds[colorKey]) optionNameToValueImgIds[colorKey] = {};
+                  if (!optionNameToValueImgIds[colorKey][valKey]) optionNameToValueImgIds[colorKey][valKey] = [];
+                  if (!optionNameToValueImgIds[colorKey][valKey].includes(snap.imgId)) {
+                    optionNameToValueImgIds[colorKey][valKey].push(snap.imgId);
                   }
                 }
 
-                // Map by colorValue
-                if (item.colorValue) {
-                  const key = item.colorValue.toLowerCase().replace(/[\s_-]+/g, '');
-                  if (!colorValueToImageIds[key]) colorValueToImageIds[key] = [];
-                  if (!colorValueToImageIds[key].includes(realId)) {
-                    colorValueToImageIds[key].push(realId);
+                if (optionName && optionValues.length) {
+                  if (!optionNameToValueImgIds[optionName]) optionNameToValueImgIds[optionName] = {};
+                  for (const val of optionValues) {
+                    const valKey = val.toLowerCase().replace(/[\s_-]+/g, '');
+                    if (!optionNameToValueImgIds[optionName][valKey]) optionNameToValueImgIds[optionName][valKey] = [];
+                    if (!optionNameToValueImgIds[optionName][valKey].includes(snap.imgId)) {
+                      optionNameToValueImgIds[optionName][valKey].push(snap.imgId);
+                    }
                   }
                 }
               }
 
-              console.log('optionValueToImageIds:', optionValueToImageIds);
-              console.log('colorValueToImageIds:', colorValueToImageIds);
+              console.log('optionNameToValueImgIds:', optionNameToValueImgIds);
 
-              // Collect all real img_ IDs for fallback
-              const allRealImageIds = mediaItems
-                .map(item => item.id)
-                .filter(id => id?.startsWith('img_')) as string[];
+              // All imgIds for fallback
+              const allSnapshotImgIds = uploadedMediaSnapshot
+                .map(s => s.imgId)
+                .filter((id): id is string => !!id && id.length > 0);
 
-              console.log('allRealImageIds:', allRealImageIds);
+              // Check which option types have specific images
+              const hasAnySpecificImages = Object.keys(optionNameToValueImgIds).length > 0;
+              console.log('hasAnySpecificImages:', hasAnySpecificImages, 'allSnapshotImgIds:', allSnapshotImgIds);
 
-              // Check if any images have variant-specific associations
-              const hasVariantSpecificImages = mediaItems.some(
-                item => item.id?.startsWith('img_') &&
-                  (item.variantInfo?.optionName || item.colorValue)
-              );
-
-                            // ═══════════════════════════════════════════════
-              // VARIANT IMAGE ASSOCIATION - FULL DEBUG VERSION
-              // ═══════════════════════════════════════════════
-              console.log('═══ VARIANT IMAGE DEBUG START ═══');
-
-              // Step 1: Inspect completeProduct.images
-              console.log('completeProduct.images:', JSON.stringify(completeProduct.images || [], null, 2));
-
-              // Step 2: Inspect mediaItems at this point in time
-              console.log('mediaItems count:', mediaItems.length);
-              mediaItems.forEach((item, idx) => {
-                console.log(`mediaItem[${idx}]:`, {
-                  id: item.id,
-                  idStartsWithImg: item.id?.startsWith('img_'),
-                  url: item.url?.substring(0, 80),
-                  colorValue: item.colorValue,
-                  variantInfo: item.variantInfo,
-                  hasFile: !!item.file,
-                  isNew: item.isNew
-                });
-              });
-
-              // Step 3: Build img_ ID collections
-              // const allRealImageIds = mediaItems
-              //   .map(item => item.id)
-              //   .filter((id): id is string => typeof id === 'string' && id.startsWith('img_'));
-
-              console.log('allRealImageIds from mediaItems:', allRealImageIds);
-
-              // Step 4: Also check completeProduct.images for img_ IDs
-              // const productImageIds = (completeProduct.images || [])
-              //   .map((img: any) => img.id)
-              //   .filter((id: string) => typeof id === 'string' && id.startsWith('img_'));
-
-              console.log('productImageIds from completeProduct (img_ only):', productImageIds);
-
-                            // Step 6: Use urlToImgId map which is already correctly built
-              // urlToImgId: serverImageUrl → real img_ ID (from mediaItems upload response)
-              // This is the most reliable source since completeProduct.images[].id may be filenames
-              const allImgIdsFromUrlMap = Object.values(urlToImgId).filter(
-                id => typeof id === 'string' && id.startsWith('img_')
-              );
-              console.log('allImgIdsFromUrlMap:', allImgIdsFromUrlMap);
-
-              // Rebuild optionValue/colorValue maps using urlToImgId
-              // Match each mediaItem's URL to a real img_ ID via the urlToImgId map
-              if (allRealImageIds.length === 0 && allImgIdsFromUrlMap.length > 0) {
-                console.log('Rebuilding maps using urlToImgId...');
-                mediaItems.forEach((item, idx) => {
-                  // Find the real img_ ID for this mediaItem via URL match
-                  let resolvedId: string | null = null;
-
-                  // Direct URL match
-                  if (item.url && urlToImgId[item.url]) {
-                    resolvedId = urlToImgId[item.url];
-                  }
-
-                  // Partial URL match (filename comparison)
-                  if (!resolvedId && item.url) {
-                    const itemFilename = item.url.split('/').pop()?.split('?')[0] || '';
-                    for (const [serverUrl, imgId] of Object.entries(urlToImgId)) {
-                      const serverFilename = serverUrl.split('/').pop()?.split('?')[0] || '';
-                      if (itemFilename && serverFilename &&
-                          (itemFilename === serverFilename ||
-                           serverFilename.includes(itemFilename) ||
-                           itemFilename.includes(serverFilename))) {
-                        resolvedId = imgId;
-                        break;
-                      }
-                    }
-                  }
-
-                  console.log(`  mediaItem[${idx}]: colorValue=${item.colorValue}, variantInfo=${JSON.stringify(item.variantInfo)}, resolvedId=${resolvedId}`);
-
-                  if (!resolvedId) return;
-
-                  if (item.variantInfo?.optionName && item.variantInfo?.optionValues?.length) {
-                    for (const val of item.variantInfo.optionValues) {
-                      const key = val.toLowerCase().replace(/[\s_-]+/g, '');
-                      if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
-                      if (!optionValueToImageIds[key].includes(resolvedId)) {
-                        optionValueToImageIds[key].push(resolvedId);
-                        console.log(`    ✅ optionValue "${key}" → ${resolvedId}`);
-                      }
-                    }
-                  }
-
-                  if (item.colorValue) {
-                    const key = item.colorValue.toLowerCase().replace(/[\s_-]+/g, '');
-                    if (!colorValueToImageIds[key]) colorValueToImageIds[key] = [];
-                    if (!colorValueToImageIds[key].includes(resolvedId)) {
-                      colorValueToImageIds[key].push(resolvedId);
-                      console.log(`    ✅ colorValue "${key}" → ${resolvedId}`);
-                    }
-                  }
-                });
-              }
-
-              console.log('Final optionValueToImageIds:', optionValueToImageIds);
-              console.log('Final colorValueToImageIds:', colorValueToImageIds);
-
-              // const fallbackImageIds2 = allImgIdsFromUrlMap.length > 0
-              //   ? allImgIdsFromUrlMap
-              //   : allRealImageIds;
-              // console.log('fallbackImageIds:', fallbackImageIds2);
-
-              const hasVariantSpecificImages2 =
-                Object.keys(optionValueToImageIds).length > 0 ||
-                Object.keys(colorValueToImageIds).length > 0;
-              console.log('hasVariantSpecificImages:', hasVariantSpecificImages2);
-
-              // Step 7: Associate images to each variant
               for (const completedVariant of completeProduct.variants) {
-                const colorOpt = completedVariant.options?.find((o: any) =>
-                  isColorOption(o.option?.title || '')
-                );
-                const sizeOpt = completedVariant.options?.find((o: any) =>
-                  o.option?.title?.toLowerCase() === 'size'
-                );
-
-                const variantColorKey = (colorOpt?.value || '').toLowerCase().replace(/[\s_-]+/g, '');
-                const variantSizeKey = (sizeOpt?.value || '').toLowerCase().replace(/[\s_-]+/g, '');
-
-                console.log(`\nVariant "${completedVariant.title}": colorKey="${variantColorKey}", sizeKey="${variantSizeKey}"`);
+                console.log(`Variant "${completedVariant.title}" options:`,
+                  completedVariant.options?.map((o: any) => `${o.option?.title}=${o.value}`));
 
                 let matchingImageIds: string[] = [];
 
-                if (hasVariantSpecificImages2) {
-                  matchingImageIds =
-                    optionValueToImageIds[variantColorKey] ||
-                    colorValueToImageIds[variantColorKey] ||
-                    optionValueToImageIds[variantSizeKey] ||
-                    [];
-                  console.log(`  Using variant-specific match: ${matchingImageIds.length} images`);
-                } else {
-                  matchingImageIds = fallbackImageIds2;
-                  console.log(`  Using fallback (all images): ${matchingImageIds.length} images`);
+                if (hasAnySpecificImages) {
+                  // Try to find images that match ALL of this variant's options
+                  // that have specific images uploaded
+                  // Strategy: intersect image sets across all matching options
+
+                  let candidateSets: string[][] = [];
+
+                  for (const variantOpt of (completedVariant.options || [])) {
+                    const optTitle = variantOpt.option?.title?.toLowerCase().replace(/[\s_-]+/g, '') || '';
+                    const optValue = (variantOpt.value || '').toLowerCase().replace(/[\s_-]+/g, '');
+
+                    // Check if we have images for this option type
+                    if (optionNameToValueImgIds[optTitle]) {
+                      const idsForThisValue = optionNameToValueImgIds[optTitle][optValue] || [];
+                      if (idsForThisValue.length > 0) {
+                        candidateSets.push(idsForThisValue);
+                        console.log(`  Option ${optTitle}=${optValue}: ${idsForThisValue.length} candidate images`);
+                      }
+                    }
+                  }
+
+                  if (candidateSets.length > 0) {
+                    if (candidateSets.length === 1) {
+                      // Only one option has specific images — use those directly
+                      matchingImageIds = candidateSets[0];
+                    } else {
+                      // Multiple options have specific images — intersect the sets
+                      // (only images that satisfy ALL option constraints)
+                      matchingImageIds = candidateSets.reduce((acc, set) =>
+                        acc.filter(id => set.includes(id))
+                      );
+                      // If intersection is empty (no image covers both constraints),
+                      // fall back to the first set (most specific)
+                      if (matchingImageIds.length === 0) {
+                        matchingImageIds = candidateSets[0];
+                        console.log(`  Intersection empty — using first candidate set`);
+                      }
+                    }
+                  }
+
+                  console.log(`  Matched ${matchingImageIds.length} images for "${completedVariant.title}"`);
                 }
 
-                console.log(`  matchingImageIds:`, matchingImageIds);
+                // Fallback: assign all images when no specific match found
+                if (matchingImageIds.length === 0) {
+                  matchingImageIds = allSnapshotImgIds;
+                  console.log(`  Fallback — assigning all ${matchingImageIds.length} images`);
+                }
 
                 if (matchingImageIds.length > 0) {
-                  const thumbnailUrl = mediaItems.find(item => item.id === matchingImageIds[0])?.url
-                    || (completeProduct.images || []).find((img: any) => img.id === matchingImageIds[0])?.url;
-
-                  console.log(`  thumbnailUrl: ${thumbnailUrl?.substring(0, 60)}`);
+                  const thumbnailUrl = uploadedMediaSnapshot.find(
+                    s => s.imgId === matchingImageIds[0]
+                  )?.serverUrl;
 
                   try {
                     await updateVariantImages({
@@ -1032,16 +1006,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
                       imageIds: matchingImageIds,
                       thumbnailUrl,
                     });
-                    console.log(`  ✅ SUCCESS: Associated ${matchingImageIds.length} images to: ${completedVariant.title}`);
+                    console.log(`✅ Assigned ${matchingImageIds.length} images to: ${completedVariant.title}`);
                   } catch (err: any) {
-                    console.error(`  ❌ FAILED for ${completedVariant.title}:`, err?.message || err);
+                    console.error(`❌ Failed for ${completedVariant.title}:`, err?.message || err);
                   }
                 } else {
-                  console.log(`  ⚠️ No image IDs found for: ${completedVariant.title}`);
+                  console.log(`⚠️ No images for: ${completedVariant.title}`);
                 }
               }
-
-              console.log('═══ VARIANT IMAGE DEBUG END ═══');
 
               // Assign sales channels
               try {
@@ -1129,7 +1101,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
       </div>
 
       {error && (
-        <div className="fixed max-w-md p-4 border border-red-200 rounded-lg shadow-lg bottom-4 right-4 bg-red-50 z-50">
+        <div className="fixed z-50 max-w-md p-4 border border-red-200 rounded-lg shadow-lg bottom-4 right-4 bg-red-50">
           <div className="flex items-start">
             <div className="flex-1 text-sm text-red-700">{error}</div>
             <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-500"><IconX className="w-4 h-4" /></button>
@@ -1239,6 +1211,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
                           variants={form.getValues('variants')}
                           fileInputRef={fileInputRef}
                           handleFileChange={handleFileChange}
+                          onImageChange={() => setHasImageChanges(true)}
+                          handleRemoveImage={handleRemoveImage}
+                          handleMoveImageUp={handleMoveImageUp}
+                          handleMoveImageDown={handleMoveImageDown}
                         />
                       ) : (
                         <div onClick={handleDropzoneClick} className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#e65100] hover:bg-orange-50 transition-all duration-200">
@@ -1582,7 +1558,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem className="mb-5">
                     <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <Select onValueChange={field.onChange} value={field.value || 'draft'}>
                       <FormControl>
                         <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
                           <SelectValue placeholder="Select status">
@@ -1785,7 +1761,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
                   <FormField control={form.control} name="origin_country" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-medium text-gray-700">Country of Origin</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <Select onValueChange={field.onChange} value={field.value || 'India'}>
                         <FormControl><SelectTrigger className="border-gray-300 focus:ring-[#e65100]"><SelectValue placeholder="Select country" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="IN">India</SelectItem>

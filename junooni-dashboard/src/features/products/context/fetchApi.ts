@@ -107,13 +107,48 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
 // fetchApi.ts — add this new function
 export async function fetchVariantImages({ id }: { id: string }): Promise<any[]> {
   const token = localStorage.getItem("vendorToken");
-  const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
+
+  // Step 1: Get all variant IDs and their options from product
+  const productResponse = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
     params: {
-      fields: 'variants.id,variants.images.id,variants.images.url,variants.options.value,variants.options.option_id',
+      fields: 'variants.id,variants.title,variants.options.value,variants.options.option_id',
     }
   });
-  return response.data.product?.variants || [];
+  const variants = productResponse.data.product?.variants || [];
+  if (!variants.length) return [];
+
+  // Step 2: Fetch each variant individually to get its images
+  const variantsWithImages = await Promise.all(
+    variants.map(async (variant: any) => {
+      try {
+        // No fields param — backend returns everything including options.option.title
+        // which is needed to resolve custom option names (Material, Style, etc.)
+        const variantResponse = await axios.get(
+          `${API_BASE_URL}/vendors/products/${id}/variants/${variant.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const variantData = variantResponse.data.variant || {};
+        return {
+          ...variant,
+          images: variantData.images || [],
+          // Use options from individual fetch — includes option.title for custom options
+          options: variantData.options || variant.options || []
+        };
+      } catch (err) {
+        console.warn(`Failed to fetch images for variant ${variant.id}:`, err);
+        return { ...variant, images: [] };
+      }
+    })
+  );
+
+  console.log('🖼 fetchVariantImages:', variantsWithImages.map((v: any) => ({
+    title: v.title, imageCount: v.images?.length || 0
+  })));
+
+  return variantsWithImages;
 }
 
 /**

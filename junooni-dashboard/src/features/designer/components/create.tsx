@@ -2131,6 +2131,13 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
   description: string;
 }>>([]);
 
+const importedCanvasImagesRef = useRef<Array<{
+  area_id: string;
+  image_data: string | Promise<string>;
+  metadata: any;
+  description: string;
+}>>([]);
+
   // ===== NEW: PRE-GENERATED IMAGE MANAGEMENT STATE =====
   const [preGeneratedMockupImages, setPreGeneratedMockupImages] = useState<Record<string, string>>({});
   const [skipMockupGeneration, setSkipMockupGeneration] = useState<boolean>(false);
@@ -2497,6 +2504,7 @@ useEffect(() => {
        if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
         //console.log('📸 Found', locationState.canvasImages.length, 'canvas images');
         setImportedCanvasImages(locationState.canvasImages);
+        importedCanvasImagesRef.current = locationState.canvasImages; // ✅ FIX: keep ref in sync
       }
       // Option B: Process design elements (legacy format) - ONLY if new format not found
       else if (locationState.designData?.designElements && !designImagesProcessed) {
@@ -3296,22 +3304,51 @@ console.log('📸 First upload quality image format:',
         }
 
       } else if (imageSettings.color_Images && imageSettings.size_Images) {
-        for (const mockup of mockups) {
-          
-          // const mockupIndex = mockups.indexOf(mockup);
-          // const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
-          //   || uploadQualityForColor[mockupIndex]  // handle both object and string formats
-          //   || mockup.imageData;
-          // const imageDataToUse = uploadQualityData;
+      // When BOTH are true: extract per-size images exactly like the size_Images-only branch,
+      // but also tag them with color so color-keyed lookup works too.
+      for (const mockup of mockups) {
 
-          const uploadQualityMockup = uploadQualityForColor.find(
-            (m: any) => m?.storageKey === mockup.storageKey || m?.mockupId === mockup.mockupId
+        // --- Step 1: Extract the specific size for this mockup ---
+        let extractedSize: string | null = null;
+
+        // Best source: sizeName set directly on the mockup object
+        if (mockup.sizeName) {
+          const directMatch = allSizes.find(
+            s => s.toLowerCase() === mockup.sizeName.toLowerCase()
           );
-          const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
+          if (directMatch) extractedSize = directMatch;
+        }
 
-          const ext = getExt(imageDataToUse);
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}-all-sizes.${ext}`;
+        // Fallback: title parentheses e.g. "Front Mockup (11x14)"
+        if (!extractedSize) {
+          const titleMatch = mockup.mockupTitle?.match(/\(([^)]+)\)/);
+          if (titleMatch?.[1]) {
+            const titleSize = allSizes.find(
+              s => s.toLowerCase() === titleMatch[1].toLowerCase()
+            );
+            if (titleSize) extractedSize = titleSize;
+          }
+        }
 
+        // Last resort: scan storageKey with hyphen-aware matching
+        if (!extractedSize && mockup.storageKey) {
+          const keyNorm = mockup.storageKey.toLowerCase();
+          extractedSize = allSizes.find(size => {
+            const sizeNorm = size.toLowerCase().replace(/[\s_]+/g, '-');
+            return keyNorm.includes(sizeNorm);
+          }) || null;
+        }
+
+        // --- Step 2: Build per-size image if we found a size; fall back to shared ---
+        const uploadQualityMockup = uploadQualityForColor.find(
+          (m: any) => m?.storageKey === mockup.storageKey || m?.mockupId === mockup.mockupId
+        );
+        const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
+        const ext = getExt(imageDataToUse);
+
+        if (extractedSize) {
+          // Per-size image — tagged with BOTH color AND size so both lookup keys work
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}-${extractedSize.toLowerCase().replace(/[\s_]+/g, '-')}.${ext}`;
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
           if (processedImage) {
@@ -3324,8 +3361,38 @@ console.log('📸 First upload quality image format:',
                 optionName: 'Color',
                 optionValues: [colorName],
                 secondaryOptionName: 'Size',
-                secondaryOptionValues: allSizes,
-                coversSizes: allSizes
+                secondaryOptionValues: [extractedSize],   // ← specific size, not allSizes
+              },
+              colorValue: colorName,
+              metadata: {
+                mockupId: mockup.mockupId,
+                viewAngle: mockup.viewAngle,
+                hasDesign: mockup.hasDesign,
+                extractedColorName: colorName,
+                extractedSizeName: extractedSize,          // ← singular, correct key for map lookup
+                originalMockupTitle: mockup.mockupTitle,
+                originalStorageKey: mockup.storageKey,
+                payloadSettings: { ...imageSettings },
+                usedOriginalQuality: !!uploadQualityMockup,
+              },
+            });
+          }
+        } else {
+          // No size found — fall back to color-shared image covering all sizes
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}-shared.${ext}`;
+          const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
+
+          if (processedImage) {
+            processedImages.push({
+              file: processedImage.file,
+              url: processedImage.url,
+              rank: currentRank++,
+              isNew: true,
+              variantInfo: {
+                optionName: 'Color',
+                optionValues: [colorName],
+                isSharedAcrossSizes: true,
+                coversSizes: allSizes,
               },
               colorValue: colorName,
               metadata: {
@@ -3335,11 +3402,12 @@ console.log('📸 First upload quality image format:',
                 extractedSizeNames: allSizes,
                 coversAllSizes: true,
                 payloadSettings: { ...imageSettings },
-                usedOriginalQuality: !!uploadQualityMockup
-              }
+                usedOriginalQuality: !!uploadQualityMockup,
+              },
             });
           }
         }
+      }
 
       } else {
         for (const mockup of mockups) {
@@ -5204,6 +5272,7 @@ useEffect(() => {
       if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
         //console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
         setImportedCanvasImages(locationState.canvasImages);
+        importedCanvasImagesRef.current = locationState.canvasImages; // ✅ FIX: keep ref in sync
       }
 
       // STEP 3: Process design images ONLY if they exist
@@ -5476,76 +5545,83 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
   areaId: string;
   description: string;
 }>> => {
-  //console.log('🖼️ processCanvasImagesForArtwork called with:', canvasImages.length, 'images');
-  
+  console.log('🖼️ processCanvasImagesForArtwork called with:', canvasImages.length, 'images');
+
+  // ✅ FIX 1: Resolve ALL promises upfront before any processing
+  const resolvedImages = await Promise.all(
+    canvasImages.map(async (img) => ({
+      ...img,
+      image_data: img.image_data instanceof Promise
+        ? await img.image_data
+        : img.image_data
+    }))
+  );
+
+  // ✅ FIX 2: Filter out invalid/empty after resolution
+  const validImages = resolvedImages.filter(img => {
+    if (!img.image_data || typeof img.image_data !== 'string') {
+      console.warn(`⚠️ Canvas image for area ${img.area_id} has no data after resolution`);
+      return false;
+    }
+    if (!img.image_data.startsWith('data:image/')) {
+      console.warn(`⚠️ Canvas image for area ${img.area_id} has invalid format:`,
+        img.image_data.substring(0, 60));
+      return false;
+    }
+    if (img.image_data.length < 1000) {
+      console.warn(`⚠️ Canvas image for area ${img.area_id} suspiciously small:`,
+        img.image_data.length, 'chars');
+      return false;
+    }
+    return true;
+  });
+
+  console.log(`✅ ${validImages.length}/${resolvedImages.length} canvas images valid after resolution`);
+
   const processedCanvasImages = [];
-  
-  for (let i = 0; i < canvasImages.length; i++) {
-    const canvasImage = canvasImages[i];
-    
+
+  for (let i = 0; i < validImages.length; i++) {
+    const canvasImage = validImages[i];
+    const imageData = canvasImage.image_data as string;
+
     try {
-      // 🔥 Resolve Promise if needed
-      let resolvedImageData: string;
-      
-      if (canvasImage.image_data instanceof Promise) {
-        //console.log(`⏳ Awaiting Promise for area: ${canvasImage.area_id}`);
-        resolvedImageData = await canvasImage.image_data;
-      } else if (typeof canvasImage.image_data === 'string') {
-        resolvedImageData = canvasImage.image_data;
-      } else {
-        //console.error(`❌ Invalid image_data type: ${typeof canvasImage.image_data} for area: ${canvasImage.area_id}`);
-        continue;
-      }
-      
-      // 🔥 Validate
-      if (!resolvedImageData) {
-        //console.error(`❌ Empty image data for area: ${canvasImage.area_id}`);
-        continue;
-      }
-      
-      if (!resolvedImageData.startsWith('data:image/')) {
-        //console.error(`❌ Invalid image data format for area: ${canvasImage.area_id}, starts with: ${resolvedImageData.substring(0, 50)}`);
-        continue;
-      }
-      
-      //console.log(`✅ Valid image data for area: ${canvasImage.area_id}, length: ${resolvedImageData.length}`);
-      
-      // Convert to file
+      console.log(`⬆️ Processing canvas image for area: ${canvasImage.area_id}, data length: ${imageData.length}`);
+
       const processedImage = await processBase64ToFile(
-        resolvedImageData,
+        imageData,
         `canvas-${canvasImage.area_id}-complete-layout.png`,
         undefined
       );
-      
+
       if (!processedImage?.file) {
         console.error(`❌ processBase64ToFile failed for area: ${canvasImage.area_id}`);
         continue;
       }
-      
-      //console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}, size: ${processedImage.file.size} bytes`);
-      
+
+      console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}, file size: ${processedImage.file.size} bytes`);
+
       const uploadResult = await uploadArtworkFile(processedImage.file);
-      
+
       if (!uploadResult) {
-        //console.error(`❌ Upload failed for area: ${canvasImage.area_id}`);
+        console.error(`❌ uploadArtworkFile returned null for area: ${canvasImage.area_id}`);
         continue;
       }
-      
+
       processedCanvasImages.push({
         uploadResult,
         originalMetadata: canvasImage.metadata,
         areaId: canvasImage.area_id,
         description: canvasImage.description
       });
-      
-      //console.log(`✅ Canvas image uploaded for area: ${canvasImage.area_id}`, uploadResult);
-      
+
+      console.log(`✅ Canvas image uploaded successfully for area: ${canvasImage.area_id}`);
+
     } catch (error) {
       console.error(`❌ Error processing canvas image for area ${canvasImage.area_id}:`, error);
     }
   }
-  
-  //console.log(`📦 processCanvasImagesForArtwork complete: ${processedCanvasImages.length}/${canvasImages.length} uploaded`);
+
+  console.log(`📦 processCanvasImagesForArtwork complete: ${processedCanvasImages.length}/${validImages.length} uploaded`);
   return processedCanvasImages;
 };
 
@@ -5587,13 +5663,38 @@ const getVariantCostPrice = useCallback((variantIndex: number): number => {
 
 
 const onSubmit = async (values: ProductFormValues) => {
-  
+
   // GUARD: Prevent multiple form submissions
   if (isSubmittingForm) {
     //console.log('🚫 Form already submitting, ignoring duplicate submission');
     return;
   }
+
+   const canvasImagesToProcess = (
+    mergedLocationStateRef.current?.canvasImages?.length
+      ? mergedLocationStateRef.current.canvasImages
+      : importedCanvasImagesRef.current.length
+        ? importedCanvasImagesRef.current
+        : importedCanvasImages
+  );
+
+  // ✅ FIX: Diagnose canvas image availability and apply fallbacks
+  console.log('🚀 onSubmit: canvas images check at submission time', {
+    stateCount: importedCanvasImages.length,
+    refCount: importedCanvasImagesRef.current.length,
+    mergedRefCanvasCount: mergedLocationStateRef.current?.canvasImages?.length ?? 0,
+  });
+
+  // Last-resort fallback: pull from mergedLocationStateRef if both state and ref are empty
+  if (importedCanvasImagesRef.current.length === 0) {
+    const fallback = mergedLocationStateRef.current?.canvasImages;
+    if (fallback && fallback.length > 0) {
+      console.log('⚠️ Applying fallback canvas images from mergedLocationStateRef:', fallback.length);
+      importedCanvasImagesRef.current = fallback;
+    }
+  }
   
+
   if (!values.title.trim()) {
     setError('Product title is required');
     return;
@@ -5670,9 +5771,9 @@ const onSubmit = async (values: ProductFormValues) => {
     // STEP 1: Process design images with SINGLE ARTWORK PER AREA
    // STEP 1: Process design images AND canvas images with COMBINED ARTWORK
 if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
-  //console.log('🚀 Starting artwork creation with:');
-  //console.log('- Design images:', validDesignImages.length);
-  //console.log('- Canvas images:', importedCanvasImages.length);
+  console.log('🚀 Starting artwork creation with:');
+  console.log('- Design images:', validDesignImages.length);
+  console.log('- Canvas images:', importedCanvasImages.length);
   
   try {
     const allUploadedFiles = [];
@@ -5707,7 +5808,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
       }
     }
 
-    // console.log('🖼️ Canvas images to process:', canvasImagesToUse.length);
+    //console.log('🖼️ Canvas images to process:', canvasImagesToUse.length);
     // canvasImagesToUse.forEach((img, i) => {
     //   console.log(`  Canvas ${i + 1}:`, {
     //     area_id: img.area_id,
@@ -5720,8 +5821,8 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
     // });
     
     // 🔥 NEW: PROCESS CANVAS IMAGES
-    if (importedCanvasImages.length > 0) {
-      const processedCanvasImages = await processCanvasImagesForArtwork(importedCanvasImages);
+    if (canvasImagesToProcess.length > 0) {
+      const processedCanvasImages = await processCanvasImagesForArtwork(canvasImagesToProcess);
       
       processedCanvasImages.forEach((canvasImage, index) => {
         allUploadedFiles.push({
@@ -6265,12 +6366,12 @@ const combinedArtworkPayload = {
     }
 
     // 🔥 ADD THIS CANVAS IMAGE METADATA CODE HERE
-    if (importedCanvasImages.length > 0) {
+    if (canvasImagesToProcess.length > 0) {
       productMetadata.canvas_layouts = JSON.stringify({
-        total_canvas_images: importedCanvasImages.length,
-        areas_covered: importedCanvasImages.map(img => img.area_id),
+        total_canvas_images: canvasImagesToProcess.length,
+        areas_covered: canvasImagesToProcess.map(img => img.area_id),
         manufacturing_ready: true,
-        canvas_metadata: importedCanvasImages.map(img => ({
+        canvas_metadata: canvasImagesToProcess.map(img => ({
           area: img.area_id,
           elements_count: img.metadata?.design_elements?.length || 0,
           canvas_dimensions: img.metadata?.canvas_dimensions
@@ -7047,11 +7148,6 @@ if (!printTechId || !printTechName) {
                         variants={form.getValues('variants')}
                         fileInputRef={fileInputRef}
                         handleFileChange={handleFileChange}
-                        payloadImageSettings={payloadImageSettings}
-                        getImagesForOptionValue={getImagesForOptionValue}
-                        getImagesForColorSizeCombination={getImagesForColorSizeCombination}
-                        isColorOption={isColorOption}
-                        isSizeOption={(title: string) => isSizeOption(title.toLowerCase())}
                       />
                     ) : (
                       // Show standard upload interface when no variant-specific images needed
@@ -7578,7 +7674,7 @@ if (!printTechId || !printTechName) {
                       <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value || ''}
+                          value={field.value || 'draft'}
                           defaultValue=""
                         >
                         <FormControl>

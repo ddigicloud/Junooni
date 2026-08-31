@@ -64,63 +64,71 @@ export const useStoreImport = ({
 
   // ── Navigate to Create page ───────────────────────────────────────────────
   const navigateToCreatePage = useCallback(async (transformedData: any) => {
-    setShowStoreImportModal(false);
-    // uploadQualityImages = full-resolution data straight from generation (for Medusa upload)
-    // transferQualityImages = same data passed through sessionStorage for display (may be compressed later)
-    // Both reference the same colorSpecificImages here since we generate at 600px WebP already;
-    // create.tsx will use uploadQualityColorSpecificImages for actual file upload.
-    const uploadQualityImages: Record<string, any[]> = { ...transformedData.colorSpecificImages };
-    const transferQualityImages: Record<string, any[]> = { ...transformedData.colorSpecificImages };
+  setShowStoreImportModal(false);
+  const uploadQualityImages: Record<string, any[]> = { ...transformedData.colorSpecificImages };
+  const transferQualityImages: Record<string, any[]> = { ...transformedData.colorSpecificImages };
 
-    try {
-      const keysToDelete: string[] = [];
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key?.startsWith('store_import_')) keysToDelete.push(key);
-      }
-      keysToDelete.forEach(k => sessionStorage.removeItem(k));
-    } catch {}
+  try {
+    const keysToDelete: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith('store_import_')) keysToDelete.push(key);
+    }
+    keysToDelete.forEach(k => sessionStorage.removeItem(k));
+  } catch {}
 
-    const sessionKey = `store_import_${Date.now()}`;
-    const saved1 = saveToSessionStorage(`${sessionKey}_colorSpecificImages`, transferQualityImages);
-    const saved2 = saveToSessionStorage(`${sessionKey}_colorSpecificMockups`, transformedData.designData?.mockupData?.colorSpecificMockups || []);
-    const saved3 = saveToSessionStorage(`${sessionKey}_canvasImages`, transformedData.canvasImages || []);
+  const sessionKey = `store_import_${Date.now()}`;
+  const saved1 = saveToSessionStorage(`${sessionKey}_colorSpecificImages`, transferQualityImages);
+  const saved2 = saveToSessionStorage(`${sessionKey}_colorSpecificMockups`, transformedData.designData?.mockupData?.colorSpecificMockups || []);
 
-    navigate({
-      to: '/designer/create',
-      state: {
-        sessionKey,
-        designData: {
-          ...transformedData.designData,
-          mockupData: { ...transformedData.designData?.mockupData, colorSpecificMockups: [], mockupPreview: null },
-        },
-        mockupImages: {},
-        // Display quality (may come from sessionStorage on create page)
-        colorSpecificImages: saved1 ? {} : transferQualityImages,
-        // Upload quality — always in navigation state (not sessionStorage) so it survives at full fidelity
-        uploadQualityColorSpecificImages: uploadQualityImages,
-        designImages: transformedData.designImages || [],
-        enhancedProductData: transformedData.enhancedProductData,
-        // filteredProductData carries the SELECTED print technology from Canvas
-        filteredProductData: transformedData.filteredProductData,
-        uploadedFiles: [],
-        pricingData: transformedData.pricingData,
-        availableMockups: transformedData.availableMockups,
-        imageAreaAnalysis: transformedData.imageAreaAnalysis,
-        detailedAreaAnalysis: transformedData.detailedAreaAnalysis,
-        enhancedImageAreaAnalysis: transformedData.enhancedImageAreaAnalysis,
-        designMetrics: transformedData.designMetrics,
-        storeMetadata: transformedData.storeMetadata,
-        navigationContext: {
-          sourceComponent: 'EnhancedCanvas',
-          importTimestamp: new Date().toISOString(),
-          sessionStorageKey: sessionKey,
-          hasUploadQualityImages: Object.keys(uploadQualityImages).length > 0,
-          totalUploadImages: Object.values(uploadQualityImages).flat().length,
-        },
+  // ✅ FIX: Save canvas images to sessionStorage AND keep a reference
+  const canvasToSave = transformedData.canvasImages || [];
+  const saved3 = saveToSessionStorage(`${sessionKey}_canvasImages`, canvasToSave);
+
+  console.log('🔍 navigateToCreatePage canvas images:', {
+    count: canvasToSave.length,
+    savedToSession: saved3,
+    firstItemValid: canvasToSave[0]?.image_data?.startsWith?.('data:image/') ?? false,
+  });
+
+  navigate({
+    to: '/designer/create',
+    state: {
+      sessionKey,
+      designData: {
+        ...transformedData.designData,
+        mockupData: { ...transformedData.designData?.mockupData, colorSpecificMockups: [], mockupPreview: null },
       },
-    });
-  }, [navigate]);
+      mockupImages: {},
+      colorSpecificImages: saved1 ? {} : transferQualityImages,
+      uploadQualityColorSpecificImages: uploadQualityImages,
+      designImages: transformedData.designImages || [],
+      enhancedProductData: transformedData.enhancedProductData,
+      filteredProductData: transformedData.filteredProductData,
+      uploadedFiles: [],
+      pricingData: transformedData.pricingData,
+      availableMockups: transformedData.availableMockups,
+      imageAreaAnalysis: transformedData.imageAreaAnalysis,
+      detailedAreaAnalysis: transformedData.detailedAreaAnalysis,
+      enhancedImageAreaAnalysis: transformedData.enhancedImageAreaAnalysis,
+      designMetrics: transformedData.designMetrics,
+      storeMetadata: transformedData.storeMetadata,
+      // ✅ FIX: Pass canvas images directly in state as fallback
+      // if sessionStorage failed (data too large) they still arrive here
+      canvasImages: saved3 ? [] : canvasToSave,
+      navigationContext: {
+        sourceComponent: 'EnhancedCanvas',
+        importTimestamp: new Date().toISOString(),
+        sessionStorageKey: sessionKey,
+        hasUploadQualityImages: Object.keys(uploadQualityImages).length > 0,
+        totalUploadImages: Object.values(uploadQualityImages).flat().length,
+        canvasImagesCount: canvasToSave.length,
+        canvasSavedToSession: saved3,
+      },
+    },
+  });
+}, [navigate]);
+
 
   // ── Transform store data for Create page ─────────────────────────────────
   const transformStoreDataForCreate = useCallback((storeData: any, filteredProductData: any) => {
@@ -272,7 +280,27 @@ export const useStoreImport = ({
         if (filteredProductData.printT.length === 0) throw new Error(`No matching technology: ${activeTechnology}`);
 
         const designImages = extractDesignImages();
-        const canvasImagesData = await exportAllCanvasImages();
+        const rawCanvasImages1 = await exportAllCanvasImages();
+
+        // ✅ FIX: Resolve any Promise values in image_data before serialization
+        const canvasImagesData = await Promise.all(
+          (rawCanvasImages1 || []).map(async (img: any) => ({
+            ...img,
+            image_data: img.image_data instanceof Promise
+              ? await img.image_data
+              : img.image_data,
+          }))
+        );
+        const validCanvasImages1 = canvasImagesData.filter((img: any) => {
+          const valid = img.image_data &&
+            typeof img.image_data === 'string' &&
+            img.image_data.startsWith('data:image/') &&
+            img.image_data.length > 1000;
+          if (!valid) console.warn('⚠️ Canvas image failed for area:', img.area_id);
+          return valid;
+        });
+        console.log(`✅ Skip-mockup branch canvas images: ${validCanvasImages1.length}/${(rawCanvasImages1||[]).length}`);
+
         const finalPricingBreakdown = calculateTotalPricing();
         const pricingDataResult = calculateTotalPricing();
         const detailedAreaAnalysis = generateDetailedAreaAnalysis(pricingDataResult);
@@ -283,7 +311,7 @@ export const useStoreImport = ({
           product_type: productData.productType || 'custom',
           design_elements: getVisibleDesignElements(designElements),
           design_configuration: { canvas_configs: getAllCanvasConfigs, printable_areas: getAllPrintableAreas, design_metadata: { total_elements: Object.values(designElements).flat().length, creation_timestamp: new Date().toISOString() } },
-          canvas_images: canvasImagesData, design_images: designImages,
+          canvas_images: validCanvasImages1, design_images: designImages,
           detailed_area_analysis: detailedAreaAnalysis,
           pricing_data: { final_price_per_unit: finalPricingBreakdown.priceBreakdown.finalPrice, currency: 'INR', pricing_breakdown: finalPricingBreakdown },
           mockup_variants: [],
@@ -410,7 +438,27 @@ export const useStoreImport = ({
       }
 
       const designImages = extractDesignImages();
-      const canvasImagesData = await exportAllCanvasImages();
+      const rawCanvasImages2 = await exportAllCanvasImages();
+
+      // ✅ FIX: Resolve any Promise values in image_data before serialization
+      const resolvedCanvasImages = await Promise.all(
+        (rawCanvasImages2 || []).map(async (img: any) => ({
+          ...img,
+          image_data: img.image_data instanceof Promise
+            ? await img.image_data
+            : img.image_data,
+        }))
+      );
+      const validCanvasImages2 = resolvedCanvasImages.filter((img: any) => {
+        const valid = img.image_data &&
+          typeof img.image_data === 'string' &&
+          img.image_data.startsWith('data:image/') &&
+          img.image_data.length > 1000;
+        if (!valid) console.warn('⚠️ Canvas image failed for area:', img.area_id);
+        return valid;
+      });
+      console.log(`✅ Main branch canvas images: ${validCanvasImages2.length}/${(rawCanvasImages2||[]).length}`);
+
       const finalPricingBreakdown = calculateTotalPricing();
       const totalImagesGenerated = mockupVariants.reduce((t, mv) => t + mv.color_combinations.reduce((ct: number, cc: any) => ct + cc.size_variants.reduce((st: number, sv: any) => st + sv.generated_images.length, 0), 0), 0);
 
@@ -421,7 +469,7 @@ export const useStoreImport = ({
         design_elements: designElements,
         design_configuration: { canvas_configs: getAllCanvasConfigs, printable_areas: getAllPrintableAreas, design_metadata: { total_elements: Object.values(designElements).flat().length, areas_used: areasWithElements, creation_timestamp: new Date().toISOString(), last_modified: new Date().toISOString() } },
         mockup_variants: mockupVariants,
-        design_images: designImages, canvas_images: canvasImagesData,
+        design_images: designImages, canvas_images: validCanvasImages2,
         detailed_area_analysis: detailedAreaAnalysis,
         pricing_data: { final_price_per_unit: finalPricingBreakdown.priceBreakdown.finalPrice, currency: 'INR', pricing_breakdown: finalPricingBreakdown, areas_pricing: finalPricingBreakdown.areas },
         generation_summary: { total_combinations: allMockupsForTech.length, total_images_generated: totalImagesGenerated, generation_started: new Date().toISOString(), generation_completed: new Date().toISOString(), total_time_ms: 0, engine_usage: engineUsage, mockup_calculation: mockupCalculation!, errors, areas_with_elements: areasWithElements },
