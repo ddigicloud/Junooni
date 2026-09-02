@@ -1987,67 +1987,80 @@ if (!mergedLocationStateRef.current && location.state) {
 
   if (sessionKey) {
     try {
+      // Tries both chunk formats and single-key format
       const loadChunked = (key: string, fallback: any): any => {
-  try {
-    const chunksStr = sessionStorage.getItem(`${key}_chunks`);
-    if (!chunksStr) return fallback;
-    const totalChunks = parseInt(chunksStr);
-    
-    if (totalChunks === 1) {
-      const data = sessionStorage.getItem(key);
-      if (!data) return fallback;
-      
-      // ❌ REMOVE THESE LINES - don't delete after reading
-      // sessionStorage.removeItem(key);
-      // sessionStorage.removeItem(`${key}_chunks`);
-      
-      return JSON.parse(data);
-    }
-    
-    let fullData = '';
-    for (let i = 0; i < totalChunks; i++) {
-      const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
-      if (!chunk) return fallback;
-      fullData += chunk;
-      
-      // ❌ REMOVE THIS LINE - don't delete after reading
-      // sessionStorage.removeItem(`${key}_chunk_${i}`);
-    }
-    
-    // ❌ REMOVE THIS LINE
-    // sessionStorage.removeItem(`${key}_chunks`);
-    
-    return JSON.parse(fullData);
-  } catch {
-    return fallback;
-  }
-};
+        try {
+          // Format A: key_chunks + key_chunk_0..N
+          const chunksStr = sessionStorage.getItem(`${key}_chunks`);
+          if (chunksStr) {
+            const totalChunks = parseInt(chunksStr);
+            if (totalChunks === 1) {
+              const data = sessionStorage.getItem(key);
+              if (data) return JSON.parse(data);
+            }
+            let fullData = '';
+            for (let i = 0; i < totalChunks; i++) {
+              const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
+              if (!chunk) {
+                console.warn(`⚠️ Missing chunk ${i} for key ${key}`);
+                return fallback;
+              }
+              fullData += chunk;
+            }
+            return JSON.parse(fullData);
+          }
 
-      // Load transfer quality from sessionStorage (for display)
+          // Format B: single key (no chunks metadata)
+          const single = sessionStorage.getItem(key);
+          if (single) return JSON.parse(single);
+
+          console.warn(`⚠️ loadChunked: no data found for key "${key}"`);
+          return fallback;
+        } catch (e) {
+          console.error(`❌ loadChunked error for key "${key}":`, e);
+          return fallback;
+        }
+      };
+
+      // Log ALL sessionStorage keys that match this sessionKey so you can
+      // see exactly what the Canvas page actually wrote
+      const allKeys = Object.keys(sessionStorage).filter(k => k.startsWith(sessionKey));
+      console.log(`🔑 sessionStorage keys for "${sessionKey}":`, allKeys);
+
       const colorSpecificImagesFromStorage = loadChunked(`${sessionKey}_colorSpecificImages`, {});
       const colorSpecificMockups = loadChunked(`${sessionKey}_colorSpecificMockups`, []);
-      const canvasImages = loadChunked(`${sessionKey}_canvasImages`, []);
+      const canvasImages = loadChunked(`${sessionKey}_canvasImages`, null); // ← null not []
 
-      // From navigation state
       const mockupImages = (location.state as any)?.mockupImages || {};
       const designImages = (location.state as any)?.designImages || [];
-
-      // 🔥 Upload quality comes from navigation state directly
       const uploadQualityColorSpecificImages =
         (location.state as any)?.uploadQualityColorSpecificImages || {};
 
-      // Fallbacks
       const finalColorSpecificImages = Object.keys(colorSpecificImagesFromStorage).length > 0
         ? colorSpecificImagesFromStorage
         : ((location.state as any)?.colorSpecificImages || {});
 
+      // Canvas images: prefer sessionStorage, fall back to navigation state, then null
+      const finalCanvasImages =
+        (canvasImages && canvasImages.length > 0)
+          ? canvasImages
+          : ((location.state as any)?.canvasImages?.length > 0
+              ? (location.state as any).canvasImages
+              : null);  // ← null means "not found", distinct from []
+
+      console.log('✅ Canvas images resolved:', {
+        fromSessionStorage: canvasImages?.length ?? 'null',
+        fromNavState: (location.state as any)?.canvasImages?.length ?? 'none',
+        final: finalCanvasImages?.length ?? 'null (not available)'
+      });
+
       mergedLocationStateRef.current = {
         ...(location.state as any),
         mockupImages,
-        colorSpecificImages: finalColorSpecificImages,           // transfer quality - for display
-        uploadQualityColorSpecificImages,                        // upload quality - for product images
+        colorSpecificImages: finalColorSpecificImages,
+        uploadQualityColorSpecificImages,
         designImages,
-        canvasImages,
+        canvasImages: finalCanvasImages,  // null when absent, not []
         designData: {
           ...(location.state as any).designData,
           mockupData: {
@@ -2056,13 +2069,6 @@ if (!mergedLocationStateRef.current && location.state) {
           }
         }
       };
-
-      console.log('✅ Merged synchronously during render:', {
-        colorSpecific: Object.keys(finalColorSpecificImages).length,
-        uploadQuality: Object.keys(uploadQualityColorSpecificImages).length,
-        designImages: designImages.length,
-        canvasImages: canvasImages.length,
-      });
 
     } catch (error) {
       console.error('❌ Merge failed:', error);
@@ -5268,11 +5274,15 @@ useEffect(() => {
       // STEP 1: Extract pre-generated images first
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
 
-      // STEP 2: Process canvas images
-      if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
-        //console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
+      // STEP 2: Process canvas images — only set ref when we have actual data
+      if (locationState.canvasImages && Array.isArray(locationState.canvasImages) 
+          && locationState.canvasImages.length > 0) {
+        console.log('🎯 Canvas images found in locationState:', locationState.canvasImages.length);
         setImportedCanvasImages(locationState.canvasImages);
-        importedCanvasImagesRef.current = locationState.canvasImages; // ✅ FIX: keep ref in sync
+        importedCanvasImagesRef.current = locationState.canvasImages;
+      } else {
+        console.warn('⚠️ No canvas images in locationState — ref NOT overwritten');
+        // Do NOT set ref to [] here — leave it as whatever was previously set
       }
 
       // STEP 3: Process design images ONLY if they exist
@@ -5670,29 +5680,93 @@ const onSubmit = async (values: ProductFormValues) => {
     return;
   }
 
-   const canvasImagesToProcess = (
-    mergedLocationStateRef.current?.canvasImages?.length
-      ? mergedLocationStateRef.current.canvasImages
-      : importedCanvasImagesRef.current.length
-        ? importedCanvasImagesRef.current
-        : importedCanvasImages
-  );
-
-  // ✅ FIX: Diagnose canvas image availability and apply fallbacks
-  console.log('🚀 onSubmit: canvas images check at submission time', {
-    stateCount: importedCanvasImages.length,
-    refCount: importedCanvasImagesRef.current.length,
-    mergedRefCanvasCount: mergedLocationStateRef.current?.canvasImages?.length ?? 0,
-  });
-
-  // Last-resort fallback: pull from mergedLocationStateRef if both state and ref are empty
-  if (importedCanvasImagesRef.current.length === 0) {
-    const fallback = mergedLocationStateRef.current?.canvasImages;
-    if (fallback && fallback.length > 0) {
-      console.log('⚠️ Applying fallback canvas images from mergedLocationStateRef:', fallback.length);
-      importedCanvasImagesRef.current = fallback;
-    }
+   // ─── Canvas images: resolve from all sources in priority order ───────────────
+const canvasImagesToProcess = (() => {
+  // Source 1: mergedRef (set synchronously during render — most reliable)
+  const s1 = mergedLocationStateRef.current?.canvasImages;
+  if (s1 && s1.length > 0) {
+    console.log('✅ [canvas] using mergedRef:', s1.length, 'images');
+    return s1;
   }
+
+  // Source 2: importedCanvasImagesRef (set in [] useEffect)
+  const s2 = importedCanvasImagesRef.current;
+  if (s2 && s2.length > 0) {
+    console.log('✅ [canvas] using importedCanvasImagesRef:', s2.length, 'images');
+    return s2;
+  }
+
+  // Source 3: React state (may be stale in closure but worth trying)
+  if (importedCanvasImages && importedCanvasImages.length > 0) {
+    console.log('✅ [canvas] using importedCanvasImages state:', importedCanvasImages.length, 'images');
+    return importedCanvasImages;
+  }
+
+  // Source 4: Direct sessionStorage read as final fallback
+  try {
+    const sessionKey = (location.state as any)?.sessionKey
+      || (location.state as any)?.navigationContext?.sessionStorageKey;
+
+    if (sessionKey) {
+      // Try chunked format first
+      const chunksStr = sessionStorage.getItem(`${sessionKey}_canvasImages_chunks`);
+      if (chunksStr) {
+        const total = parseInt(chunksStr);
+        let fullData = '';
+        for (let i = 0; i < total; i++) {
+          const chunk = sessionStorage.getItem(`${sessionKey}_canvasImages_chunk_${i}`);
+          if (!chunk) break;
+          fullData += chunk;
+        }
+        if (fullData) {
+          const parsed = JSON.parse(fullData);
+          if (parsed?.length > 0) {
+            console.log('✅ [canvas] recovered from sessionStorage (chunked):', parsed.length);
+            return parsed;
+          }
+        }
+      }
+
+      // Try single key format
+      const single = sessionStorage.getItem(`${sessionKey}_canvasImages`);
+      if (single) {
+        const parsed = JSON.parse(single);
+        if (parsed?.length > 0) {
+          console.log('✅ [canvas] recovered from sessionStorage (single key):', parsed.length);
+          return parsed;
+        }
+      }
+
+      // Log what keys DO exist so you know the correct key name
+      const existingKeys = Object.keys(sessionStorage)
+        .filter(k => k.startsWith(sessionKey) && k.toLowerCase().includes('canvas'));
+      if (existingKeys.length > 0) {
+        console.warn('⚠️ [canvas] canvas-related keys in sessionStorage:', existingKeys);
+        // Try each canvas-related key
+        for (const key of existingKeys) {
+          try {
+            const data = sessionStorage.getItem(key);
+            if (data) {
+              const parsed = JSON.parse(data);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                console.log('✅ [canvas] recovered from key:', key, '→', parsed.length, 'images');
+                return parsed;
+              }
+            }
+          } catch { /* skip */ }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('❌ [canvas] sessionStorage recovery failed:', e);
+  }
+
+  console.warn('⚠️ [canvas] No canvas images found in any source — canvas layout will be skipped');
+  return [];
+})();
+
+console.log('📊 [canvas] Final canvasImagesToProcess count:', canvasImagesToProcess.length);
+// ─────────────────────────────────────────────────────────────────────────────
   
 
   if (!values.title.trim()) {

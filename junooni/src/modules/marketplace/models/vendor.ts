@@ -53,6 +53,7 @@ const Vendor = model.define("vendor", {
   instagram_user_id: model.text().nullable(),
   instagram_token_expires_at: model.dateTime().nullable(),
 
+   design_library: model.json().nullable(),
   // 1:1 relation — created when vendor opts into own store
   vendor_store: model.hasOne(() => VendorStore, { mappedBy: "vendor" }).nullable(),
 })

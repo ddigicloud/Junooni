@@ -363,86 +363,26 @@ export const captureCanvasImageForArea = async (
     stageAnnotated.add(layerAnnotated);
     buildLayer(layerAnnotated);
 
-    // 1. Full printable area boundary — light grey dashed (context only, de-emphasised)
+    // 1. Full printable area boundary — light grey dashed
     layerAnnotated.add(new Konva.Rect({
       x: printableArea.x, y: printableArea.y,
       width: printableArea.width, height: printableArea.height,
       stroke: '#aaaaaa', strokeWidth: 1.5, dash: [5, 5], listening: false,
     }));
 
-    // 2. Consumed design area — orange dashed rectangle tightly around placed elements
+    // 2. Consumed design area — orange dashed rectangle
     layerAnnotated.add(new Konva.Rect({
       x: bbMinX, y: bbMinY, width: bbW, height: bbH,
       stroke: '#e65100', strokeWidth: 2.5, dash: [8, 5],
       fill: 'rgba(230,81,0,0.04)', listening: false,
     }));
 
-    // ── Dimension annotation constants ────────────────────────────────────────
-    const ARROW_OFFSET = 18; // px gap between bounding box edge and arrow line
-    const TICK         = 6;  // px half-length of end tick marks
-    const arrowY       = bbMinY - ARROW_OFFSET; // y-position of horizontal arrow
-    const arrowX       = bbMinX - ARROW_OFFSET; // x-position of vertical arrow
-
-    // 3. Horizontal width arrow (above bounding box)
-    // Main line
-    layerAnnotated.add(new Konva.Line({
-      points: [bbMinX, arrowY, bbMaxX, arrowY],
-      stroke: '#e65100', strokeWidth: 1.5, listening: false,
-    }));
-    // Left arrowhead
-    layerAnnotated.add(new Konva.Line({
-      points: [bbMinX + 8, arrowY - 4, bbMinX, arrowY, bbMinX + 8, arrowY + 4],
-      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
-    }));
-    // Right arrowhead
-    layerAnnotated.add(new Konva.Line({
-      points: [bbMaxX - 8, arrowY - 4, bbMaxX, arrowY, bbMaxX - 8, arrowY + 4],
-      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
-    }));
-    // Left tick
-    layerAnnotated.add(new Konva.Line({
-      points: [bbMinX, arrowY - TICK, bbMinX, arrowY + TICK],
-      stroke: '#e65100', strokeWidth: 1.5, listening: false,
-    }));
-    // Right tick
-    layerAnnotated.add(new Konva.Line({
-      points: [bbMaxX, arrowY - TICK, bbMaxX, arrowY + TICK],
-      stroke: '#e65100', strokeWidth: 1.5, listening: false,
-    }));
-
-    // 4. Vertical height arrow (left of bounding box)
-    // Main line
-    layerAnnotated.add(new Konva.Line({
-      points: [arrowX, bbMinY, arrowX, bbMaxY],
-      stroke: '#e65100', strokeWidth: 1.5, listening: false,
-    }));
-    // Top arrowhead
-    layerAnnotated.add(new Konva.Line({
-      points: [arrowX - 4, bbMinY + 8, arrowX, bbMinY, arrowX + 4, bbMinY + 8],
-      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
-    }));
-    // Bottom arrowhead
-    layerAnnotated.add(new Konva.Line({
-      points: [arrowX - 4, bbMaxY - 8, arrowX, bbMaxY, arrowX + 4, bbMaxY - 8],
-      stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false,
-    }));
-    // Top tick
-    layerAnnotated.add(new Konva.Line({
-      points: [arrowX - TICK, bbMinY, arrowX + TICK, bbMinY],
-      stroke: '#e65100', strokeWidth: 1.5, listening: false,
-    }));
-    // Bottom tick
-    layerAnnotated.add(new Konva.Line({
-      points: [arrowX - TICK, bbMaxY, arrowX + TICK, bbMaxY],
-      stroke: '#e65100', strokeWidth: 1.5, listening: false,
-    }));
-
-    // 5. Combined size badge — centred above the horizontal arrow, single source of truth
+    // 3. Consumed size badge — centred directly above the consumed box top edge
     const badgeH    = 22;
     const badgePadX = 10;
     const badgeW    = sizeLabel.length * 7.5 + badgePadX * 2;
     const badgeX    = bbMinX + bbW / 2 - badgeW / 2;
-    const badgeY    = arrowY - badgeH - 6; // sits 6px above the arrow line
+    const badgeY    = bbMinY - badgeH - 6;
     layerAnnotated.add(new Konva.Rect({
       x: badgeX, y: badgeY, width: badgeW, height: badgeH,
       fill: '#e65100', cornerRadius: 4, listening: false,
@@ -451,6 +391,110 @@ export const captureCanvasImageForArea = async (
       text: sizeLabel, x: badgeX + badgePadX, y: badgeY + 5,
       fontSize: 12, fontFamily: 'Arial', fontStyle: 'bold', fill: '#ffffff', listening: false,
     }));
+
+        // 4. Orange consumed-size arrows — drawn OUTSIDE the grey printable boundary
+    const GAP_FROM_PRINTABLE = 14;
+    const TICK  = 6;
+    const aY = printableArea.y - GAP_FROM_PRINTABLE;
+    const aX = printableArea.x - GAP_FROM_PRINTABLE;
+
+    // Horizontal: bbMinX ←→ bbMaxX, above printable area (blue)
+    layerAnnotated.add(new Konva.Line({ points: [bbMinX, aY, bbMaxX, aY], stroke: '#1565c0', strokeWidth: 1.5, listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [bbMinX + 8, aY - 4, bbMinX, aY, bbMinX + 8, aY + 4], stroke: '#1565c0', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [bbMaxX - 8, aY - 4, bbMaxX, aY, bbMaxX - 8, aY + 4], stroke: '#1565c0', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [bbMinX, aY - TICK, bbMinX, aY + TICK], stroke: '#1565c0', strokeWidth: 1.5, listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [bbMaxX, aY - TICK, bbMaxX, aY + TICK], stroke: '#1565c0', strokeWidth: 1.5, listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [bbMinX, aY + TICK, bbMinX, printableArea.y], stroke: '#1565c0', strokeWidth: 0.8, dash: [3, 3], listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [bbMaxX, aY + TICK, bbMaxX, printableArea.y], stroke: '#1565c0', strokeWidth: 0.8, dash: [3, 3], listening: false }));
+
+    // Vertical: bbMinY ↕ bbMaxY, left of printable area (orange)
+    layerAnnotated.add(new Konva.Line({ points: [aX, bbMinY, aX, bbMaxY], stroke: '#e65100', strokeWidth: 1.5, listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [aX - 4, bbMinY + 8, aX, bbMinY, aX + 4, bbMinY + 8], stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [aX - 4, bbMaxY - 8, aX, bbMaxY, aX + 4, bbMaxY - 8], stroke: '#e65100', strokeWidth: 1.5, lineJoin: 'round', lineCap: 'round', listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [aX - TICK, bbMinY, aX + TICK, bbMinY], stroke: '#e65100', strokeWidth: 1.5, listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [aX - TICK, bbMaxY, aX + TICK, bbMaxY], stroke: '#e65100', strokeWidth: 1.5, listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [aX + TICK, bbMinY, printableArea.x, bbMinY], stroke: '#e65100', strokeWidth: 0.8, dash: [3, 3], listening: false }));
+    layerAnnotated.add(new Konva.Line({ points: [aX + TICK, bbMaxY, printableArea.x, bbMaxY], stroke: '#e65100', strokeWidth: 0.8, dash: [3, 3], listening: false }));
+
+    // 5. Blue leftover gap indicators — one per side, each isolated, no overlaps
+    const LO_COLOR  = '#1565c0';
+    const LO_STROKE = 1.5;
+    const LO_TICK   = 5;
+    const LO_DASH   = [5, 4] as number[];
+    const LB_H      = 20;
+    const LB_PAD    = 8;
+    const LB_FS     = 10;
+    const CHAR_W    = 7;
+
+    const pRight  = printableArea.x + printableArea.width;
+    const pBottom = printableArea.y + printableArea.height;
+
+    const leftoverLeft   = bbMinX - printableArea.x;
+    const leftoverRight  = pRight  - bbMaxX;
+    const leftoverTop    = bbMinY  - printableArea.y;
+    const leftoverBottom = pBottom - bbMaxY;
+
+    // Badge helper — label + value on two lines for clarity
+    const drawGapBadge = (label: string, value: string, cx: number, cy: number) => {
+      const longerLen = Math.max(label.length, value.length);
+      const bw = longerLen * CHAR_W + LB_PAD * 2;
+      const bh = LB_H + 14; // two-line badge
+      layerAnnotated.add(new Konva.Rect({
+        x: cx - bw / 2, y: cy - bh / 2,
+        width: bw, height: bh,
+        fill: LO_COLOR, cornerRadius: 3, listening: false,
+      }));
+      layerAnnotated.add(new Konva.Text({
+        text: label,
+        fontSize: 9, fontFamily: 'Arial', fill: 'rgba(255,255,255,0.75)',
+        x: cx - bw / 2 + LB_PAD, y: cy - bh / 2 + 4,
+        listening: false,
+      }));
+      layerAnnotated.add(new Konva.Text({
+        text: value,
+        fontSize: LB_FS, fontFamily: 'Arial', fontStyle: 'bold', fill: '#ffffff',
+        x: cx - bw / 2 + LB_PAD, y: cy - bh / 2 + 16,
+        listening: false,
+      }));
+    };
+
+    // LEFT gap — horizontal line at mid-height of the left gap, badge to its left
+    if (leftoverLeft > 4) {
+      const ly = printableArea.y + leftoverTop + leftoverBottom > 0
+        ? bbMinY + bbH / 2   // vertically centred on consumed box
+        : printableArea.y + printableArea.height / 2;
+      layerAnnotated.add(new Konva.Line({ points: [printableArea.x, ly, bbMinX, ly], stroke: LO_COLOR, strokeWidth: LO_STROKE, dash: LO_DASH, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [printableArea.x, ly - LO_TICK, printableArea.x, ly + LO_TICK], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [bbMinX, ly - LO_TICK, bbMinX, ly + LO_TICK], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      drawGapBadge('Left gap', `${(leftoverLeft / avgPPI).toFixed(2)}"`, printableArea.x + leftoverLeft / 2, ly);
+    }
+
+    // RIGHT gap — horizontal line at mid-height of consumed box, badge to its right
+    if (leftoverRight > 4) {
+      const ly = bbMinY + bbH / 2;
+      layerAnnotated.add(new Konva.Line({ points: [bbMaxX, ly, pRight, ly], stroke: LO_COLOR, strokeWidth: LO_STROKE, dash: LO_DASH, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [bbMaxX, ly - LO_TICK, bbMaxX, ly + LO_TICK], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [pRight,  ly - LO_TICK, pRight,  ly + LO_TICK], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      drawGapBadge('Right gap', `${(leftoverRight / avgPPI).toFixed(2)}"`, bbMaxX + leftoverRight / 2, ly);
+    }
+
+    // TOP gap — vertical line near the right edge of consumed box, badge right-aligned to avoid orange badge
+    if (leftoverTop > 4) {
+      const lx = bbMaxX - 16; // near right edge of consumed box, away from centre where orange badge sits
+      layerAnnotated.add(new Konva.Line({ points: [lx, printableArea.y, lx, bbMinY], stroke: LO_COLOR, strokeWidth: LO_STROKE, dash: LO_DASH, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [lx - LO_TICK, printableArea.y, lx + LO_TICK, printableArea.y], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [lx - LO_TICK, bbMinY,          lx + LO_TICK, bbMinY         ], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      drawGapBadge('Top gap', `${(leftoverTop / avgPPI).toFixed(2)}"`, lx, printableArea.y + leftoverTop / 2);
+    }
+
+    // BOTTOM gap — vertical line at mid-width of consumed box, badge below it
+    if (leftoverBottom > 4) {
+      const lx = bbMinX + bbW / 2;
+      layerAnnotated.add(new Konva.Line({ points: [lx, bbMaxY, lx, pBottom], stroke: LO_COLOR, strokeWidth: LO_STROKE, dash: LO_DASH, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [lx - LO_TICK, bbMaxY,  lx + LO_TICK, bbMaxY ], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [lx - LO_TICK, pBottom, lx + LO_TICK, pBottom], stroke: LO_COLOR, strokeWidth: LO_STROKE, listening: false }));
+      drawGapBadge('Bottom gap', `${(leftoverBottom / avgPPI).toFixed(2)}"`, lx, bbMaxY + leftoverBottom / 2);
+    }
 
     layerAnnotated.draw();
     await new Promise(r => setTimeout(r, 100));

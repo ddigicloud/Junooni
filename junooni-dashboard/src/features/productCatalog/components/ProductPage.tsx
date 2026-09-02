@@ -274,6 +274,10 @@ const ProductPage = () => {
   const router = useRouter();
   const params = useParams({ strict: false }) as RouteParams;
   const productId = params.id;
+  const [vendorPlan, setVendorPlan] = useState<string>('free');
+  const [vendorProductsCount, setVendorProductsCount] = useState<number>(0);
+  const [planLimitReached, setPlanLimitReached] = useState<boolean>(true); // disabled by default until check completes
+  const [planCheckDone, setPlanCheckDone] = useState<boolean>(false);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -305,6 +309,7 @@ const ProductPage = () => {
   //   console.error("This suggests the router is sending category URLs to ProductPage");
   //   console.error("Check your route configuration!");
   // }
+
 
     const loadProduct = async () => {
       if (!productId) {
@@ -379,6 +384,50 @@ const ProductPage = () => {
     loadProduct();
   }, [productId, router]);
 
+  
+ // ← REPLACE the blank lines here with this:
+  useEffect(() => {
+    const checkPlanLimit = async () => {
+      const token = localStorage.getItem('vendorToken');
+      if (!token) return;
+
+      const PLAN_LIMITS: Record<string, number | null> = {
+        free: 30, starter: 50, growth: null, pro: null, enterprise: null
+      };
+
+      try {
+        const vendorRes = await fetch(
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!vendorRes.ok) return;
+        const vendorData = await vendorRes.json();
+        const plan = vendorData.vendor?.plan || 'free';
+        setVendorPlan(plan);
+
+        const countRes = await fetch(
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=1&fields=id`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!countRes.ok) return;
+        const countData = await countRes.json();
+        const total = countData.count ?? countData.total ?? countData.products?.length ?? 0;
+        setVendorProductsCount(total);
+
+        const limit = PLAN_LIMITS[plan.toLowerCase()] ?? null;
+        setPlanLimitReached(limit !== null && total >= limit);
+      } catch (e) {
+        console.warn('Plan limit check failed:', e);
+        setPlanLimitReached(false);
+      } finally {
+        setPlanCheckDone(true);
+      }
+    };
+
+    checkPlanLimit();
+  }, []);
+
+  
   // Format currency
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-IN', {
@@ -1005,12 +1054,12 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                       )}
 
                       <CardFooter className="flex flex-col gap-3 px-0 pt-2 pb-2 bg-gradient-to-r from-white to-white">
-                        {/* Action Buttons */}
                         <Button 
-                          className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+                          className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                           size="lg"
-                          disabled={!selectedColor || !selectedSize || !selectedTechnology}
+                          disabled={!selectedColor || !selectedSize || !selectedTechnology || !planCheckDone || planLimitReached}
                           onClick={() => {
+                            if (planLimitReached) return;
                             router.navigate({ 
                               to: `/designer/${productId}`, 
                               search: { 
@@ -1020,12 +1069,22 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                             });
                           }}
                         >
-                          {!selectedColor || !selectedSize || !selectedTechnology 
+                          {!planCheckDone
+                            ? 'Checking your plan...'
+                            : planLimitReached
+                            ? `🔒 Product limit reached on ${vendorPlan} plan`
+                            : !selectedColor || !selectedSize || !selectedTechnology 
                             ? 'Select Options Above' 
                             : '🎨 Start Creating Magic'
                           }
                         </Button>
-                        
+
+                        {planLimitReached && (
+                          <p className="text-xs text-center text-red-500">
+                            You've reached your limit on the current plan. Upgrade to add more products.
+                          </p>
+                        )}
+
                         <Button 
                           onClick={() => router.navigate({ to: '/productCatalog' })}
                           variant="outline"
@@ -1034,7 +1093,6 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                           ← Explore More Products
                         </Button>
                         
-                        {/* Trust indicators */}
                         <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-600">
                           <div className="flex items-center gap-1">
                             <Shield className="w-3 h-3 text-green-500" />

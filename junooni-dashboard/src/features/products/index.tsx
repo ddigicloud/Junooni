@@ -221,8 +221,9 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [vendor, setVendor] = useState<{ plan?: string } | null>(null)
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
-  const [vendorId, setVendorId] = useState<string>("")
+  //const [vendorId, setVendorId] = useState<string>("")
   
   // Pagination state
  const [currentPage, setCurrentPage] = useState(1)
@@ -271,6 +272,20 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
 
         const responseBody = await response.json();
         setProducts(responseBody.products || []);
+
+        // ← ADD: fetch vendor plan
+        try {
+          const vendorRes = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (vendorRes.ok) {
+            const vendorData = await vendorRes.json();
+            setVendor(vendorData.vendor);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch vendor plan:', e);
+        }
+
       } catch (error) {
         setError(error instanceof Error ? error.message : "Failed to fetch products");
         toast({
@@ -451,7 +466,10 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
                 </div>
 
                 <div className="flex items-center flex-shrink-0 space-x-2 sm:space-x-3">
-                  <ProductsPrimaryButtons />
+                  <ProductsPrimaryButtons
+                    totalProducts={products.length}
+                    vendorPlan={vendor?.plan}
+                  />
                 </div>
               </div>
 
@@ -625,29 +643,34 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
                     <div
                       style={{ position: "absolute", top: "-9999px", left: "-9999px" }}
                     >
-                      <ProductsPrimaryButtons ref={popupButtonsRef} />
+                      <ProductsPrimaryButtons
+                        ref={popupButtonsRef}
+                        totalProducts={products.length}
+                        vendorPlan={vendor?.plan}
+                      />
                     </div>
                   </div>
                 ) : (
                   <div className="w-full">
                     <div className="p-2 overflow-x-auto sm:p-3 lg:p-6">
                       <div className="min-w-[600px]">
-                         <DataTable
-                      data={paginatedProducts.map(product => ({
-                        ...product,
-                        title: typeof product.title === "string" ? product.title : (product.name ?? "Untitled Product"),
-                        status: (["published", "draft", "archived", "proposed", "rejected"].includes(product.status ?? "") ? product.status : "draft") as "published" | "draft" | "archived" | "proposed" | "rejected",
-                        discountable: typeof product.discountable === "boolean" ? product.discountable : false,
-                        variants: Array.isArray(product.variants)
-                          ? product.variants.map(variant => ({
-                              ...variant,
-                              allowBackorder: typeof variant.allowBackorder === "boolean" ? variant.allowBackorder : false,
-                              manageInventory: typeof variant.manageInventory === "boolean" ? variant.manageInventory : false,
-                            }))
-                          : [],
-                      }))}
-                      columns={columns}
-                    />
+                      <DataTable
+                        data={paginatedProducts.map(product => ({
+                          ...product,
+                          title: typeof product.title === "string" ? product.title : (product.name ?? "Untitled Product"),
+                          status: (["published", "draft", "archived", "proposed", "rejected"].includes(product.status ?? "") ? product.status : "draft") as "published" | "draft" | "archived" | "proposed" | "rejected",
+                          discountable: typeof product.discountable === "boolean" ? product.discountable : false,
+                          variants: Array.isArray(product.variants)
+                            ? product.variants.map(variant => ({
+                                ...variant,
+                                allowBackorder: typeof variant.allowBackorder === "boolean" ? variant.allowBackorder : false,
+                                manageInventory: typeof variant.manageInventory === "boolean" ? variant.manageInventory : false,
+                              }))
+                            : [],
+                        }))}
+                        columns={columns}
+                        onDeleteProduct={handleDeleteProduct}
+                      />
                       </div>
                     </div>
 

@@ -537,6 +537,8 @@ const DashboardPage = () => {
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [vendorPlan, setVendorPlan] = useState<string>('free');  // ← ADD
+  const [productsCount, setProductsCount] = useState<number>(0); // ← ADD (for total count)
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>({
@@ -597,6 +599,18 @@ const DashboardPage = () => {
 
     const fetchProducts = async (token: string): Promise<Product[]> => {
       try {
+        // Fetch count with minimal data
+        const countRes = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=1&fields=id`, {
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+        });
+        if (countRes.ok) {
+          const countData = await countRes.json();
+          // Medusa returns count/total in the response
+          const total = countData.count ?? countData.total ?? countData.products?.length ?? 0;
+          setProductsCount(total);
+        }
+
+        // Fetch only 3 products for display
         const res = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=3`, {
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
         });
@@ -675,6 +689,7 @@ const DashboardPage = () => {
 
       if (!cancelled) {
         setVendor(transformedVendor);
+        setVendorPlan(vendorData.vendor?.plan || 'free');  // ← ADD
         setOnboardingStatus(onboarding);
         setMarketplaceStatus(mpStatus);
         setMarketplaceRejectionReason(vendorData.vendor?.marketplace_rejection_reason || null);
@@ -769,7 +784,7 @@ const DashboardPage = () => {
   if (vendorLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Loader2 className="w-12 h-12 animate-spin mb-3" style={{ color: BRAND.primary }} />
+        <Loader2 className="w-12 h-12 mb-3 animate-spin" style={{ color: BRAND.primary }} />
         <div className="text-base font-medium text-gray-600">Loading dashboard…</div>
       </div>
     );
@@ -829,16 +844,43 @@ const DashboardPage = () => {
               Welcome to your JUNOONI dashboard. Here's an overview of your store performance.
             </p>
           </div>
-          <div className="flex gap-2 mt-4 md:mt-0">
+          {/* <div className="flex gap-2 mt-4 md:mt-0">
             <Button id="tour-add-product" className="flex items-center gap-1"
               onClick={() => popupButtonsRef.current?.openPopup()} style={{ backgroundColor: BRAND.primary }}>
               <PlusSquare className="w-4 h-4" /><span>Add Product</span>
             </Button>
-          </div>
+          </div> */}
+          {(() => {
+            const PLAN_LIMITS: Record<string, number | null> = { free: 30, starter: 50, growth: null, pro: null, enterprise: null };
+            const limit = PLAN_LIMITS[(vendorPlan || 'free').toLowerCase()] ?? null;
+            const isAtLimit = limit !== null && productsCount >= limit;
+            return (
+              <div className="flex flex-col items-start gap-1 mt-4 md:mt-0">
+                <Button
+                  id="tour-add-product"
+                  className="flex items-center gap-1"
+                  onClick={() => !isAtLimit && popupButtonsRef.current?.openPopup()}
+                  disabled={isAtLimit}
+                  style={isAtLimit ? {} : { backgroundColor: BRAND.primary }}
+                >
+                  <PlusSquare className="w-4 h-4" /><span>Add Product</span>
+                </Button>
+                {isAtLimit && (
+                  <p className="text-xs text-red-500 max-w-[200px]">
+                    Limit reached on {vendorPlan} plan. Upgrade to add more.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-          <ProductsPrimaryButtons ref={popupButtonsRef} />
+          <ProductsPrimaryButtons
+            ref={popupButtonsRef}
+            totalProducts={productsCount}
+            vendorPlan={vendorPlan}
+          />
         </div>
 
         {/* Summary Cards — skeleton while data loads */}

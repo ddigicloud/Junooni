@@ -63,11 +63,122 @@ interface Vendor {
   marketplace_rejection_reason?: string | null
   marketplace_applied_at?: string | null
   marketplace_approved_at?: string | null
-  // ── plan fields ─────────────────────────────────────────────────────────────
   plan?: string
   plan_billing_cycle?: string
   plan_activated_at?: string
   razorpay_subscription_id?: string
+}
+
+// ─── Delete confirmation modal ────────────────────────────────────────────────
+
+const DeleteVendorModal = ({
+  vendor,
+  onConfirm,
+  onCancel,
+  isDeleting,
+}: {
+  vendor: Vendor
+  onConfirm: () => void
+  onCancel: () => void
+  isDeleting: boolean
+}) => {
+  const [typedName, setTypedName] = useState("")
+  const nameMatches = typedName.trim() === vendor.name.trim()
+
+  return (
+    // Backdrop
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="relative w-full max-w-md mx-4 bg-white rounded-2xl shadow-2xl border border-red-200 overflow-hidden">
+
+        {/* Red top bar */}
+        <div className="h-1.5 w-full bg-red-600" />
+
+        <div className="p-6">
+          {/* Icon + heading */}
+          <div className="flex items-start gap-4 mb-5">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <span className="text-red-600 text-xl">🗑</span>
+            </div>
+            <div>
+              <Heading level="h2" className="text-xl text-gray-900">
+                Permanently delete creator?
+              </Heading>
+              <Text className="text-sm text-gray-500 mt-1">
+                This cannot be undone.
+              </Text>
+            </div>
+          </div>
+
+          {/* What gets deleted */}
+          <div className="mb-5 p-4 rounded-xl border border-red-100 bg-red-50 space-y-2">
+            <Text className="text-sm font-semibold text-red-800 mb-2">
+              The following will be permanently deleted:
+            </Text>
+            {[
+              "Creator profile and account",
+              "All products linked to this creator",
+              "All artwork files and media assets",
+              "All admin accounts for this creator",
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-red-500 mt-0.5 text-xs">✕</span>
+                <Text className="text-sm text-red-700">{item}</Text>
+              </div>
+            ))}
+          </div>
+
+          {/* Type-to-confirm */}
+          <div className="mb-6">
+            <Label className="block text-sm text-gray-700 mb-2">
+              Type <span className="font-mono font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded">{vendor.name}</span> to confirm
+            </Label>
+            <input
+              type="text"
+              value={typedName}
+              onChange={e => setTypedName(e.target.value)}
+              placeholder={vendor.name}
+              disabled={isDeleting}
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                borderColor: typedName && !nameMatches ? "#ef4444" : "#d1d5db",
+              }}
+            />
+            {typedName && !nameMatches && (
+              <Text className="text-xs text-red-500 mt-1">Name doesn't match.</Text>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={onConfirm}
+              disabled={!nameMatches || isDeleting}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all
+                disabled:opacity-40 disabled:cursor-not-allowed
+                bg-red-600 hover:bg-red-700 active:bg-red-800"
+            >
+              {isDeleting ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete permanently"
+              )}
+            </button>
+            <Button
+              variant="secondary"
+              onClick={onCancel}
+              disabled={isDeleting}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -118,7 +229,6 @@ const CreatorDetailPage = () => {
   const [isImpersonating, setIsImpersonating] = useState(false)
 
   // store mode
-  // store mode
   const [isSavingStoreMode, setIsSavingStoreMode] = useState(false)
   const [storeModeEdit, setStoreModeEdit] = useState({ sell_on_marketplace: false, sell_on_own_store: false })
 
@@ -133,6 +243,10 @@ const CreatorDetailPage = () => {
   const [razorpaySubDetails, setRazorpaySubDetails] = useState<any>(null)
   const [isLoadingSub, setIsLoadingSub] = useState(false)
 
+  // ── delete ──────────────────────────────────────────────────────────────────
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   useEffect(() => { fetchVendorDetails() }, [id])
 
   useEffect(() => {
@@ -145,7 +259,6 @@ const CreatorDetailPage = () => {
     }
   }, [vendor])
 
-  // When plan tab opens, fetch Razorpay subscription details if any
   useEffect(() => {
     if (activeTab === "plan" && vendor?.razorpay_subscription_id && !razorpaySubDetails) {
       fetchRazorpaySub()
@@ -179,6 +292,41 @@ const CreatorDetailPage = () => {
       if (res.ok) { const d = await res.json(); setRazorpaySubDetails(d.subscription) }
     } catch {}
     finally { setIsLoadingSub(false) }
+  }
+
+  // ── Permanent delete ─────────────────────────────────────────────────────────
+  const handlePermanentDelete = async () => {
+    if (!vendor) return
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/vendors/${vendor.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok && response.status !== 207) {
+        throw new Error(data.message || `HTTP ${response.status}`)
+      }
+
+      // 207 = partial success (vendor deleted but some files/products had errors)
+      if (response.status === 207) {
+        toast.warning(
+          `Creator deleted, but some cleanup failed: ${(data.errors ?? []).join("; ")}`
+        )
+      } else {
+        toast.success(`${vendor.name} and all associated data have been permanently deleted.`)
+      }
+
+      setShowDeleteModal(false)
+      navigate("/vendors")
+    } catch (err) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleMarketplaceAction = async (action: "approve" | "reject") => {
@@ -216,26 +364,23 @@ const CreatorDetailPage = () => {
   }
 
   const handleSaveStoreMode = async () => {
-  if (!vendor) return
-  setIsSavingStoreMode(true)
-  try {
-    // Keep marketplace_status in sync with manual admin overrides —
-    // so a directly-checked marketplace box still reads as "approved"
-    const payload: any = { ...storeModeEdit }
-    if (storeModeEdit.sell_on_marketplace && vendor.marketplace_status !== "approved") {
-      payload.marketplace_status = "approved"
-      payload.marketplace_approved_at = new Date().toISOString()
-      payload.marketplace_rejection_reason = null
-    } else if (!storeModeEdit.sell_on_marketplace && vendor.marketplace_status === "approved") {
-      // Admin manually unchecked an approved vendor — reset to none so they could re-apply cleanly
-      payload.marketplace_status = "none"
-    }
+    if (!vendor) return
+    setIsSavingStoreMode(true)
+    try {
+      const payload: any = { ...storeModeEdit }
+      if (storeModeEdit.sell_on_marketplace && vendor.marketplace_status !== "approved") {
+        payload.marketplace_status = "approved"
+        payload.marketplace_approved_at = new Date().toISOString()
+        payload.marketplace_rejection_reason = null
+      } else if (!storeModeEdit.sell_on_marketplace && vendor.marketplace_status === "approved") {
+        payload.marketplace_status = "none"
+      }
 
-    const response = await fetch(`/vendors/${vendor.id}`, {
-      method: "PUT", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+      const response = await fetch(`/vendors/${vendor.id}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       setVendor(prev => prev ? { ...prev, ...storeModeEdit, ...payload } : prev)
       toast.success("Store mode updated.")
@@ -244,7 +389,6 @@ const CreatorDetailPage = () => {
     } finally { setIsSavingStoreMode(false) }
   }
 
-  // Admin override: manually set vendor plan (for support/gifting/corrections)
   const handleSavePlan = async () => {
     if (!vendor) return
     setIsSavingPlan(true)
@@ -316,6 +460,17 @@ const CreatorDetailPage = () => {
 
   return (
     <Container className="py-8">
+
+      {/* ── Delete confirmation modal ──────────────────────────────────────── */}
+      {showDeleteModal && (
+        <DeleteVendorModal
+          vendor={vendor}
+          onConfirm={handlePermanentDelete}
+          onCancel={() => setShowDeleteModal(false)}
+          isDeleting={isDeleting}
+        />
+      )}
+
       {/* Cover + logo */}
       <div className="relative mb-8">
         <div className="h-48 overflow-hidden bg-gray-200 rounded-lg">
@@ -348,7 +503,6 @@ const CreatorDetailPage = () => {
           {vendor.sell_on_own_store && <Badge className="text-green-800 bg-green-100">Own store</Badge>}
           {vendor.marketplace_status === "pending" && <Badge className="text-amber-800 bg-amber-100">Marketplace: Pending review</Badge>}
           {vendor.marketplace_status === "rejected" && <Badge className="text-red-800 bg-red-100">Marketplace: Rejected</Badge>}
-          {/* Plan badge always visible */}
           <PlanBadge plan={vendor.plan} />
         </div>
         <Text className="text-gray-500">{vendor.creator_title || "No title set"}</Text>
@@ -360,7 +514,7 @@ const CreatorDetailPage = () => {
         <div className="flex flex-wrap gap-6">
           {[
             { key: "basic",          label: "Basic Info" },
-            { key: "plan",           label: "Plan & Billing" },   // ← NEW
+            { key: "plan",           label: "Plan & Billing" },
             { key: "store-mode",     label: "Store mode" },
             { key: "profile",        label: "Profile & Social" },
             { key: "business",       label: "Business" },
@@ -389,8 +543,6 @@ const CreatorDetailPage = () => {
       {/* ══ PLAN & BILLING TAB ══════════════════════════════════════════════ */}
       {activeTab === "plan" && (
         <div className="space-y-6">
-
-          {/* Current plan summary card */}
           <div className={`p-6 rounded-xl border-2 ${activePlanMeta.border} ${activePlanMeta.bg}`}>
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
@@ -421,7 +573,6 @@ const CreatorDetailPage = () => {
             </div>
           </div>
 
-          {/* Plan features at a glance */}
           <div className="p-6 bg-white border rounded-xl">
             <Heading level="h2" className="text-xl mb-4">Plan features</Heading>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -442,7 +593,6 @@ const CreatorDetailPage = () => {
             </div>
           </div>
 
-          {/* Razorpay subscription details */}
           {vendor.razorpay_subscription_id && (
             <div className="p-6 bg-white border rounded-xl">
               <div className="flex items-center justify-between mb-4">
@@ -475,7 +625,6 @@ const CreatorDetailPage = () => {
             </div>
           )}
 
-          {/* Admin override — manually change plan */}
           <div className="p-6 bg-white border border-amber-200 rounded-xl">
             <div className="flex items-start gap-3 mb-4">
               <div className="p-2 rounded-lg bg-amber-100">
@@ -517,7 +666,6 @@ const CreatorDetailPage = () => {
             )}
           </div>
 
-          {/* All-plans comparison */}
           <div className="p-6 bg-white border rounded-xl overflow-x-auto">
             <Heading level="h2" className="text-xl mb-4">All plans reference</Heading>
             <table className="w-full text-sm border-collapse">
@@ -589,7 +737,6 @@ const CreatorDetailPage = () => {
                     )}
                   </div>
                 </div>
-                {/* Plan inline summary */}
                 <div>
                   <Label className="block mb-1 text-sm">Plan</Label>
                   <div className="flex items-center gap-3 p-2 border rounded bg-gray-50">
@@ -599,7 +746,6 @@ const CreatorDetailPage = () => {
                     <button className="ml-auto text-xs text-blue-600 underline hover:text-blue-800" onClick={() => setActiveTab("plan")}>Manage</button>
                   </div>
                 </div>
-                {/* Store mode inline */}
                 <div>
                   <Label className="block mb-1 text-sm">Store mode</Label>
                   <div className="flex items-center gap-3 p-2 border rounded bg-gray-50">
@@ -644,7 +790,6 @@ const CreatorDetailPage = () => {
           <Heading level="h2" className="text-xl mb-1">Store mode</Heading>
           <Text className="mb-6 text-sm text-gray-500">Control where {vendor.name}'s merch is sold.</Text>
 
-          {/* Marketplace application review panel — only shown when an application exists */}
           {vendor.marketplace_status && vendor.marketplace_status !== "none" && (
             <div className={`p-5 mb-6 rounded-xl border-2 ${
               vendor.marketplace_status === "pending" ? "border-amber-300 bg-amber-50" :
@@ -677,49 +822,18 @@ const CreatorDetailPage = () => {
                 <div className="mt-3">
                   {!showRejectForm ? (
                     <div className="flex gap-3">
-                      <Button
-                        variant="primary"
-                        onClick={() => handleMarketplaceAction("approve")}
-                        isLoading={isProcessingApplication}
-                        disabled={isProcessingApplication}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => setShowRejectForm(true)}
-                        disabled={isProcessingApplication}
-                      >
-                        Reject
-                      </Button>
+                      <Button variant="primary" onClick={() => handleMarketplaceAction("approve")} isLoading={isProcessingApplication} disabled={isProcessingApplication}>Approve</Button>
+                      <Button variant="danger" onClick={() => setShowRejectForm(true)} disabled={isProcessingApplication}>Reject</Button>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       <div>
                         <Label className="block mb-1 text-sm">Rejection reason</Label>
-                        <Textarea
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          placeholder="e.g. Profile incomplete, content guidelines not met..."
-                          rows={3}
-                        />
+                        <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="e.g. Profile incomplete, content guidelines not met..." rows={3} />
                       </div>
                       <div className="flex gap-3">
-                        <Button
-                          variant="danger"
-                          onClick={() => handleMarketplaceAction("reject")}
-                          isLoading={isProcessingApplication}
-                          disabled={isProcessingApplication || !rejectReason.trim()}
-                        >
-                          Confirm rejection
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={() => { setShowRejectForm(false); setRejectReason("") }}
-                          disabled={isProcessingApplication}
-                        >
-                          Cancel
-                        </Button>
+                        <Button variant="danger" onClick={() => handleMarketplaceAction("reject")} isLoading={isProcessingApplication} disabled={isProcessingApplication || !rejectReason.trim()}>Confirm rejection</Button>
+                        <Button variant="secondary" onClick={() => { setShowRejectForm(false); setRejectReason("") }} disabled={isProcessingApplication}>Cancel</Button>
                       </div>
                     </div>
                   )}
@@ -727,29 +841,19 @@ const CreatorDetailPage = () => {
               )}
 
               {vendor.marketplace_status === "rejected" && (
-                <Text className="text-xs text-gray-500 italic">
-                  The creator can re-apply from their dashboard.
-                </Text>
+                <Text className="text-xs text-gray-500 italic">The creator can re-apply from their dashboard.</Text>
               )}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
             <label className={`flex items-start gap-4 p-5 border-2 rounded-xl transition-all ${storeModeEdit.sell_on_marketplace ? "border-orange-400 bg-orange-50" : "border-gray-200 bg-gray-50"} ${vendor.marketplace_status === "pending" ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-gray-300"}`}>
-              <input
-                type="checkbox"
-                className="mt-1 w-4 h-4 accent-orange-500"
-                checked={storeModeEdit.sell_on_marketplace}
-                disabled={vendor.marketplace_status === "pending"}
-                onChange={e => setStoreModeEdit(p => ({ ...p, sell_on_marketplace: e.target.checked }))}
-              />
+              <input type="checkbox" className="mt-1 w-4 h-4 accent-orange-500" checked={storeModeEdit.sell_on_marketplace} disabled={vendor.marketplace_status === "pending"} onChange={e => setStoreModeEdit(p => ({ ...p, sell_on_marketplace: e.target.checked }))} />
               <div>
                 <Text className="font-semibold">Junooni marketplace</Text>
                 <Text className="mt-1 text-sm text-gray-500">Products on junooni.com/store/{vendor.handle || vendor.id}</Text>
                 <Badge className="mt-2 text-orange-800 bg-orange-100">junooni.com</Badge>
-                {vendor.marketplace_status === "pending" && (
-                  <Text className="mt-2 text-xs text-amber-600">Use Approve/Reject above instead of toggling directly.</Text>
-                )}
+                {vendor.marketplace_status === "pending" && (<Text className="mt-2 text-xs text-amber-600">Use Approve/Reject above instead of toggling directly.</Text>)}
               </div>
             </label>
             <label className={`flex items-start gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all ${storeModeEdit.sell_on_own_store ? "border-green-400 bg-green-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}>
@@ -767,7 +871,7 @@ const CreatorDetailPage = () => {
         </div>
       )}
 
-      {/* ══ OTHER TABS (unchanged) ══════════════════════════════════════════ */}
+      {/* ══ OTHER TABS ══════════════════════════════════════════════════════ */}
       {activeTab === "profile" && (
         <div className="p-6 mb-6 bg-white border rounded-lg">
           <div className="flex items-center justify-between mb-4"><Heading level="h2" className="text-xl">Social & Contact</Heading><Button variant="secondary" size="small" onClick={() => navigate(`/vendors/${vendor.id}/edit?tab=profile`)}>Edit</Button></div>
@@ -843,15 +947,29 @@ const CreatorDetailPage = () => {
         </div>
       )}
 
-      {/* Bottom actions */}
+      {/* ══ BOTTOM ACTIONS ══════════════════════════════════════════════════ */}
       <div className="flex flex-wrap gap-4 mt-8">
         <Button variant="primary" onClick={() => navigate(`/vendors/${vendor.id}/edit`)}>Edit Creator</Button>
-        <Button variant="secondary" onClick={handleLoginAsVendor} isLoading={isImpersonating} disabled={isImpersonating || !vendor.admins?.length}><Users className="mr-1.5" />Login as Vendor</Button>
+        <Button variant="secondary" onClick={handleLoginAsVendor} isLoading={isImpersonating} disabled={isImpersonating || !vendor.admins?.length}>
+          <Users className="mr-1.5" />Login as Vendor
+        </Button>
         <Button variant="secondary" onClick={() => navigate(`/vendors/${vendor.id}/products`)}>Products</Button>
         <Button variant="secondary" onClick={() => navigate(`/vendors/${vendor.id}/orders`)}>Orders</Button>
         <Button variant="secondary" onClick={() => setActiveTab("plan")}>Manage Plan</Button>
         <Button variant="danger" onClick={() => { if (confirm("Deactivate this creator?")) console.log("Deactivating", vendor.id) }}>Deactivate</Button>
+
+        {/* ── Permanent delete — separated visually to avoid accidental clicks ── */}
+        <div className="ml-auto">
+          <Button
+            variant="danger"
+            onClick={() => setShowDeleteModal(true)}
+            className="border-2 border-red-700 bg-red-700 hover:bg-red-800"
+          >
+            🗑 Delete Creator Permanently
+          </Button>
+        </div>
       </div>
+
     </Container>
   )
 }
