@@ -1877,7 +1877,8 @@ const VariantRow = React.memo(({
 }) => {
   const variant = useWatch({ control, name: `variants.${index}` });
   const title = variant?.title ?? '';
-  const price = variant?.price ?? 0;
+  const rawPrice = variant?.price ?? 0;
+  const price = typeof rawPrice === 'string' ? parseFloat(rawPrice) || 0 : rawPrice;
   const optionValues = variant?.optionValues ?? [];
   const profit = price - costPrice;
 
@@ -1929,20 +1930,51 @@ const VariantRow = React.memo(({
       <td className="p-3 border-r border-gray-200">
         <div className="relative">
           <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-          <Input
-            type="number"
-            min="0"
-            step="0.01"
-            {...register(`variants.${index}.price`, { valueAsNumber: true })}
-            className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+          <Controller
+            control={control}
+            name={`variants.${index}.price`}
+            rules={{
+              validate: (val) =>
+                costPrice <= 0 || Number(val) >= costPrice || `Min ₹${costPrice.toFixed(2)}`,
+            }}
+            render={({ field }) => (
+              <Input
+                type="number"
+                min={costPrice > 0 ? costPrice : 0}
+                step="0.01"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                onBlur={() => {
+                  const current = typeof field.value === 'string'
+                    ? parseFloat(field.value) || 0
+                    : (field.value ?? 0);
+                  if (costPrice > 0 && current < costPrice) {
+                    field.onChange(costPrice);
+                  }
+                  field.onBlur();
+                }}
+                className={`w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100] ${
+                  price < costPrice && costPrice > 0
+                    ? 'border-red-500 focus:border-red-500'
+                    : ''
+                }`}
+              />
+            )}
           />
         </div>
       </td>
       <td className="p-3 border-r border-gray-200">
         <div className="text-center">
-          <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ₹{profit.toFixed(2)}
-          </span>
+          <div className="text-center">
+            <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ₹{profit.toFixed(2)}
+            </span>
+            {profit < 0 && costPrice > 0 && (
+              <p className="text-xs text-red-500 mt-0.5 font-semibold animate-[blink_2s_step-start_infinite]">
+                ⚠ Below cost
+              </p>
+            )}
+          </div>
         </div>
       </td>
       <td className="px-0 py-3 text-center">
@@ -2114,6 +2146,7 @@ const SALES_CHANNEL_LABELS: Record<string, string> = {
   [SALES_CHANNEL_MARKETPLACE]: 'Junooni Marketplace',
   [SALES_CHANNEL_OWN_STORE]: 'My Own Store',
 };
+
 
 // ✅ ADD: New state for PayloadCMS fulfillment data
 const [payloadFulfillmentData, setPayloadFulfillmentData] = useState<{
@@ -2369,6 +2402,16 @@ const precomputedCostPrices = useMemo(() => {
     return baseCost + (isNaN(extra) ? 0 : extra);
   });
 }, [watchedVariants, canvasPricingData, enhancedProductData]);
+
+const hasAnyBelowCost = useMemo(() => {
+  return watchedVariants.some((variant: any, index: number) => {
+    const price = typeof variant?.price === 'string'
+      ? parseFloat(variant.price) || 0
+      : (variant?.price ?? 0);
+    const cost = precomputedCostPrices[index] ?? 0;
+    return cost > 0 && price < cost;
+  });
+}, [watchedVariants, precomputedCostPrices]);
 
   // ===== NEW: PRE-GENERATED IMAGE LOOKUP FUNCTION =====
   const getPreGeneratedImage = useCallback((mockupTitle: string, colorName: string, sizeName?: string): string | null => {
@@ -6366,7 +6409,7 @@ const combinedArtworkPayload = {
           origin_country: formValues.origin_country || 'IN',
           material: enhancedProductData?.materials?.primary || undefined,
           prices: [{
-            amount: price,
+            amount: Math.max(price, finalCostPrice > 0 ? finalCostPrice : price),
             currency_code: 'inr'
           }],
           metadata: variantMetadata
@@ -7005,10 +7048,11 @@ if (!printTechId || !printTechName) {
           <Button 
             type="button"
             onClick={handleManualSubmit} 
-            disabled={isSubmitting}
-            className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+            disabled={isSubmitting || hasAnyBelowCost}
+            title={hasAnyBelowCost ? 'Fix below-cost variants before submitting' : undefined}
+            className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Creating...' : 'Create Product'}
+            {isSubmitting ? 'Creating...' : hasAnyBelowCost ? 'Fix Pricing First' : 'Create Product'}
           </Button>
         </div>
       </div>
@@ -8341,10 +8385,11 @@ if (!printTechId || !printTechName) {
               <Button 
                 type="button"
                 onClick={handleManualSubmit} 
-                disabled={isSubmitting}
-                className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+                disabled={isSubmitting || hasAnyBelowCost}
+                title={hasAnyBelowCost ? 'Fix below-cost variants before submitting' : undefined}
+                className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Creating...' : 'Create Product'}
+                {isSubmitting ? 'Creating...' : hasAnyBelowCost ? 'Fix Pricing First' : 'Create Product'}
               </Button>
             </div>
           </div>

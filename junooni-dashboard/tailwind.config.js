@@ -25,6 +25,15 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      keyframes: {
+        blink: {
+          '0%, 100%': { visibility: 'visible' },
+          '50%': { visibility: 'hidden' },
+        },
+      },
+      animation: {
+        blink: 'blink 2s step-start infinite',
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

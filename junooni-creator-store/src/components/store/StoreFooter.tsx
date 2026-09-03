@@ -123,7 +123,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
               className="hidden object-contain w-auto md:block"
               style={{
                 height: footerLogoDesktop,
-                ...(isDark ? { filter: "brightness(0) invert(1)" } : {})
+                // ...(isDark ? { filter: "brightness(0) invert(1)" } : {})
               }}
             />
             <Image
@@ -134,7 +134,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
               className="object-contain w-auto md:hidden"
               style={{
                 height: footerLogoMobile,
-                ...(isDark ? { filter: "brightness(0) invert(1)" } : {})
+                // ...(isDark ? { filter: "brightness(0) invert(1)" } : {})
               }}
             />
           </div>

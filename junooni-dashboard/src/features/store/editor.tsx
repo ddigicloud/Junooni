@@ -44,7 +44,7 @@ import { FooterColumnsEditor } from "./components/editor/FooterColumnsEditor"
 import { NavItemsEditor } from "./components/editor/NavItemsEditor"
 import { PageEditorPanel } from "./components/editor/PageEditorPanel"
 import { SectionSettings, ProductDetailSettings } from "./components/editor/SectionSettings"
-import minimalbanner from "../../../public/images/minimal-template-banner.png"
+// import minimalbanner from "../../../public/images/minimal-template-banner.png"
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 

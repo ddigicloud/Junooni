@@ -852,10 +852,19 @@ const handleSaveAndExit = async () => {
       setVendorData(d);
       setLocalPayload(null);
       setPendingFiles({ logo: null, coverphoto: null, cancelled_checkque: null });
-      if (d.token) {
-        localStorage.setItem('vendorToken', d.token);
-        localStorage.setItem('vendorTokenTimestamp', Date.now().toString());
+
+      // vendor is now linked to this auth identity server-side, but `token`
+      // was issued before that link existed — exchange it for one with actor_id set
+      const refreshRes = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/token/refresh`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!refreshRes.ok) {
+        throw new Error('Vendor created, but session refresh failed — please log in again.');
       }
+      const { token: refreshedToken } = await refreshRes.json();
+      localStorage.setItem('vendorToken', refreshedToken);
+      localStorage.setItem('vendorTokenTimestamp', Date.now().toString());
     }
   };
 

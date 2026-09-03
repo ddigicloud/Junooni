@@ -1624,15 +1624,23 @@ const openChatwoot = () => {
                           </div>
                         )}
                        
-                        {vendorData.vendor.logo && (
+                        {/* Logo — always rendered so upload works even when no logo exists yet */}
                         <div className="absolute z-1 -bottom-12 left-6">
                           <div className="relative">
                             <div className="w-24 h-24 overflow-hidden bg-white border-4 border-white rounded-full shadow-md">
-                              <img
-                                src={vendorData.vendor.logo}
-                                alt="Logo"
-                                className="object-cover w-full h-full"
-                              />
+                              {vendorData.vendor.logo ? (
+                                <img
+                                  src={vendorData.vendor.logo}
+                                  alt="Logo"
+                                  className="object-cover w-full h-full"
+                                />
+                              ) : (
+                                /* Empty-state placeholder shown when there's no logo */
+                                <div className="flex flex-col items-center justify-center w-full h-full bg-gray-100">
+                                  <IconCamera className="w-6 h-6 text-gray-400" />
+                                  <span className="mt-1 text-xs text-gray-400">Logo</span>
+                                </div>
+                              )}
                             </div>
 
                             {editMode.profile && (
@@ -1660,7 +1668,6 @@ const openChatwoot = () => {
                             )}
                           </div>
                         </div>
-                      )}
 
                       </div>
                      
