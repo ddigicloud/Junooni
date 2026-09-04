@@ -5,35 +5,35 @@ export const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 export const PAGE_ALLOWED_SECTIONS: Record<string, SectionType[]> = {
   home: [
     "hero", "ticker", "collection", "featured", "featured_collections",
-    "featured_product", "about", "text", "image", "image_text", "video",
+    "featured_product", "about", "text", "image", "image_slider", "image_text", "video",
     "video_text", "social", "links", "html", "divider"
   ],
   products: [
-    "hero", "ticker", "text", "image", "image_text", "video", "video_text",
+    "hero", "ticker", "text", "image", "image_slider", "image_text", "video", "video_text",
     "html", "divider", "collection"
   ],
   collections: [
-    "hero", "ticker", "text", "image", "html", "divider", "featured_collections"
+    "hero", "ticker", "text", "image", "image_slider", "html", "divider", "featured_collections"
   ],
   collection: [
-    "hero", "ticker", "text", "image", "html", "divider", "collection"
+    "hero", "ticker", "text", "image", "image_slider", "html", "divider", "collection"
   ],
   categories: [
-    "hero", "ticker", "text", "image", "image_text", "video", "html",
+    "hero", "ticker", "text", "image", "image_slider", "image_text", "video", "html",
     "divider", "category_grid"
   ],
   category: [
-    "hero", "ticker", "text", "image", "image_text", "video", "html",
+    "hero", "ticker", "text", "image", "image_slider", "image_text", "video", "html",
     "divider", "collection"
   ],
   product: [
-    "featured", "text", "image", "image_text", "video", "video_text",
+    "featured", "text", "image", "image_slider", "image_text", "video", "video_text",
     "html", "divider", "ticker"
   ],
   cart: ["featured", "text", "html", "divider"],
   search: ["text", "html", "divider"],
   checkout: ["text", "html", "divider"],
-  page_: ["featured","image_text","video_text","text","image","video","ticker","divider","html"],
+  page_: ["featured","image_text","video_text","text","image","image_slider","video","ticker","divider","html"],
 }
 
 export const SECTION_CATEGORIES = [

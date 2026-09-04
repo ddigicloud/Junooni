@@ -1,6 +1,6 @@
 export type SectionType =
   | "header" | "hero" | "featured" | "collection" | "featured_collections"
-  | "about" | "social" | "announcement" | "divider" | "image" | "text"
+  | "about" | "social" | "announcement" | "divider" | "image" | "image_slider" | "text"
   | "html" | "video" | "links" | "footer" | "category_grid" | "category_products"
   | "ticker" | "image_text" | "video_text" | "featured_product"
   | "collections_grid" | "collection_products"
@@ -47,6 +47,9 @@ export interface ProductDetailSettings {
   description_collapsed?: boolean
   show_secure_badge?: boolean
   secure_badge_text?: string
+  accordion_text_color?: string
+  atc_text_color?: string
+  show_short_description?: boolean
 }
 
 export interface StoreSection {

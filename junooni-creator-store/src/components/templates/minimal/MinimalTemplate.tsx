@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ShoppingBag, ShoppingCart, Instagram, Youtube, Twitter, Facebook, ArrowRight, ChevronRight, Loader2, Check, Minus, Plus } from "lucide-react"
@@ -373,7 +373,9 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     case "hero": {
       // overlay_color/overlay_text_color = hero-specific (image tint + text)
       // sectionBg/sectionText = section-level bg/text override (independent)
-      const overlayColor     = (section as any).overlay_color      as string | undefined
+      const overlayColor     = (section as any).overlay_color === "none"
+        ? undefined
+        : (section as any).overlay_color as string | undefined
       const overlayTextColor = (section as any).overlay_text_color as string | undefined
 
       const headlineColor = overlayTextColor ?? sectionText ?? "#111827"
@@ -387,30 +389,61 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const secCtaLabel = (section as any).cta_secondary_label as string | undefined
       const secCtaUrl   = (section as any).cta_secondary_url   as string | undefined
 
+      const heroPaddingY = (section as any).hero_padding_y ?? 64
+      const heroMinHeight = heroPaddingY * 2 + 80
       return (
         <section
           className="relative overflow-hidden border-b border-gray-100"
-          style={{ backgroundColor: sectionBg ?? "#f9fafb" }}
+          style={{
+            backgroundColor: sectionBg ?? "#f9fafb",
+            minHeight: `${heroMinHeight}px`,
+          }}
         >
-          {/* Background image */}
+                    {/* Background image — desktop + optional mobile override */}
           {(section.background_image ?? store?.hero_image) && (
-            <div className="absolute inset-0">
+            <div
+              className="absolute inset-x-0 top-0"
+              style={{ height: `max(100%, ${heroMinHeight}px)`, minHeight: `${heroMinHeight}px` }}
+            >
+              {/* Mobile image — shown only on small screens when set */}
+              {(section as any).background_image_mobile && (
+                <Image
+                  src={(section as any).background_image_mobile}
+                  alt="Hero mobile"
+                  fill
+                  sizes="100vw"
+                  className="object-cover object-top md:hidden"
+                  style={{ opacity: overlayColor ? 1 : 0.15 }}
+                />
+              )}
+              {/* Desktop image — hidden on mobile when mobile image is set */}
               <Image
                 src={section.background_image ?? store!.hero_image!}
                 alt="Hero"
                 fill
                 sizes="100vw"
-                className="object-cover"
+                className={`object-cover object-top ${
+                  (section as any).background_image_mobile ? "hidden md:block" : ""
+                }`}
                 style={{ opacity: overlayColor ? 1 : 0.15 }}
               />
-              {/* Colour overlay tint on top of image */}
               {overlayColor && (
-                <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: 0.55 }} />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundColor: overlayColor,
+                    opacity: ((section as any).overlay_opacity ?? 55) / 100,
+                  }}
+                />
               )}
             </div>
           )}
 
-          <div className="relative z-10 px-6 py-16 mx-auto max-w-7xl md:py-24">
+          <div className="relative z-10 px-6 mx-auto max-w-7xl"
+            style={{
+              paddingTop:    `${heroPaddingY}px`,
+              paddingBottom: `${heroPaddingY}px`,
+            }}>
             <div className={`flex flex-col gap-12 ${
               (section as any).hide_right_image
                 ? (section as any).text_alignment === "center" ? "items-center text-center"
@@ -444,7 +477,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   }`}
                   style={{ color: headlineColor }}
                 >
-                  {section.headline || vendor.name || "Your Headline"}
+                  {section.headline}
                 </h1>
 
                 {(section.subtext || store?.tagline || "Your tagline goes here") && (
@@ -455,7 +488,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                       : ""
                       : ""
                   }`} style={{ color: subtextColor }}>
-                    {section.subtext || store?.tagline || "Your tagline goes here"}
+                    {section.subtext || store?.tagline }
                   </p>
                 )}
 
@@ -471,7 +504,9 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     <Link
                       href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
                       className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold transition-all hover:opacity-90 hover:shadow-lg"
-                      style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
+                      style={{
+                        background: `linear-gradient(135deg, ${brandPrimary} 0%, ${store?.secondary_color ?? brandPrimary} 100%)`,
+                      }}
                     >
                       {section.cta_label}
                       <ArrowRight className="w-4 h-4" />
@@ -722,9 +757,8 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>About</span>
               </div>
               <h2 className="mb-4 text-3xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title ?? vendor.name}</h2>
-              <p className="text-base leading-relaxed" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}>
-                {section.text ?? vendor.creator_bio ?? "Official merchandise store."}
-              </p>
+              <p className="text-base leading-relaxed rte-content" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                dangerouslySetInnerHTML={{ __html: section.text ?? vendor.creator_bio ?? "Official merchandise store." }} />
               {vendor.creator_title && <p className="mt-4 text-sm font-medium" style={{ color: brandPrimary }}>{vendor.creator_title}</p>}
             </div>
           </div>
@@ -909,6 +943,35 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
             }
             {titlePlacement === "below" && titleEl}
           </div>
+        </section>
+      )
+    }
+
+        case "image_slider": {
+      const slides: any[] = (section as any).slides ?? []
+      if (!slides.length) return null
+
+      const height     = (section as any).slider_height    ?? 400
+      const autoplay   = (section as any).slider_autoplay  !== false
+      const interval   = (section as any).slider_interval  ?? 4
+      const fit        = (section as any).slider_fit       ?? "cover"
+      const showDots   = (section as any).slider_show_dots   !== false
+      const showArrows = (section as any).slider_show_arrows !== false
+
+      return (
+        <section style={{ backgroundColor: sectionBg ?? "transparent" }}>
+          <ImageSlider
+            slides={slides}
+            height={height}
+            autoplay={autoplay}
+            interval={interval}
+            fit={fit}
+            showDots={showDots}
+            showArrows={showArrows}
+            brandPrimary={brandPrimary}
+            handle={handle}
+            bare={bare}
+          />
         </section>
       )
     }
@@ -1528,6 +1591,102 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
       </div>
     </section>
   )
+}
+
+// ── ImageSlider component ─────────────────────────────────────────────────────
+// "use client"
+function ImageSlider({ slides, height, autoplay, interval, fit, showDots, showArrows, brandPrimary, handle, bare }: {
+  slides: { image: string; caption?: string; link?: string }[]
+  height: number
+  autoplay: boolean
+  interval: number
+  fit: string
+  showDots: boolean
+  showArrows: boolean
+  brandPrimary: string
+  handle: string
+  bare: boolean
+}) {
+  const [current, setCurrent] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const go = (idx: number) => {
+    setCurrent((idx + slides.length) % slides.length)
+  }
+
+  useEffect(() => {
+    if (!autoplay || slides.length < 2) return
+    timerRef.current = setInterval(() => setCurrent(c => (c + 1) % slides.length), interval * 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [autoplay, interval, slides.length])
+
+  const slide = slides[current]
+  if (!slide?.image) return null
+
+  const content = (
+    <div className="relative w-full overflow-hidden select-none" style={{ height }}>
+      {/* Slides */}
+      {slides.map((s, i) => (
+        <div key={i}
+          className="absolute inset-0 transition-opacity duration-500"
+          style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none" }}
+        >
+          <Image
+            src={s.image}
+            alt={s.caption ?? `Slide ${i + 1}`}
+            fill
+            sizes="100vw"
+            className="transition-opacity duration-500"
+            style={{ objectFit: fit as any }}
+          />
+          {/* Caption */}
+          {s.caption && (
+            <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-gradient-to-t from-black/60 to-transparent">
+              <p className="text-sm font-semibold text-white drop-shadow">{s.caption}</p>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Arrows */}
+      {showArrows && slides.length > 1 && (
+        <>
+          <button
+            onClick={e => { e.preventDefault(); go(current - 1) }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button
+            onClick={e => { e.preventDefault(); go(current + 1) }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </>
+      )}
+
+      {/* Dots */}
+      {showDots && slides.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => go(i)}
+              className="transition-all duration-200 rounded-full"
+              style={{
+                width:  i === current ? 20 : 6,
+                height: 6,
+                background: i === current ? brandPrimary : "rgba(255,255,255,0.6)",
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  return slide.link ? (
+    <Link href={resolveUrl(slide.link, handle, bare)}>{content}</Link>
+  ) : content
 }
 
 // ── Default sections ──────────────────────────────────────────────────────────

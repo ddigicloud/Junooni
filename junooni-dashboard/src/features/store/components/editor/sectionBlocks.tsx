@@ -21,6 +21,7 @@ export const SECTION_BLOCKS: {
   { type: "about",              label: "About",                 icon: <BookOpen className="w-3.5 h-3.5" />,    desc: "Story + image block",                  color: "#10b981", category: "content"  },
   { type: "text",               label: "Text Block",            icon: <Type className="w-3.5 h-3.5" />,        desc: "Rich text / Markdown",                 color: "#14b8a6", category: "content"  },
   { type: "image",              label: "Image",                 icon: <ImageIcon className="w-3.5 h-3.5" />,   desc: "Full-width image",                     color: "#6366f1", category: "content"  },
+  { type: "image_slider",       label: "Image Slider",          icon: <ImageIcon className="w-3.5 h-3.5" />,   desc: "Auto-sliding banner carousel",         color: "#8b5cf6", category: "content"  },
   { type: "video",              label: "Video",                 icon: <Video className="w-3.5 h-3.5" />,       desc: "YouTube / Vimeo embed",                color: "#f43f5e", category: "content"  },
   { type: "social",             label: "Social Links",          icon: <Share2 className="w-3.5 h-3.5" />,      desc: "Instagram, YouTube etc.",              color: "#3b82f6", category: "content"  },
   { type: "links",              label: "Link List",             icon: <LinkIcon className="w-3.5 h-3.5" />,    desc: "Bio-style link buttons",               color: "#0ea5e9", category: "content"  },

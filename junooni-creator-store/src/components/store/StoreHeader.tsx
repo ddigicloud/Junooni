@@ -267,7 +267,7 @@ return (
     {/* ── HEADER BAR — own sticky wrapper ── */}
     <header
       ref={headerBarRef}
-        className={`w-full backdrop-blur-md border-b shadow-sm ${bg}`}
+        className={`w-full backdrop-blur-md border-b shadow-sm overflow-hidden ${bg}`}
         style={{
           ...(headerBg   ? { backgroundColor: headerBg }  : {}),
           ...(headerText ? { borderColor: `${headerText}20` } : {}),
@@ -291,9 +291,9 @@ return (
             }
           `}>
             {(store as any)?.store_logo
-              ? <Image src={(store as any).store_logo} alt={vendor.name} width={240} height={logoSizeDesktop * 2} className="object-contain w-auto md:hidden" style={{ height: logoSizeMobile }} />
+              ? <Image src={(store as any).store_logo} alt={vendor.name} width={240} height={logoSizeDesktop * 2} className="object-contain w-auto md:hidden" style={{ height: Math.min(logoSizeMobile, 48), maxHeight: "48px" }} />
               : vendor?.logo
-              ? <div className="overflow-hidden rounded-full ring-2 ring-gray-100 md:hidden" style={{ width: logoSizeMobile, height: logoSizeMobile }}>
+              ? <div className="overflow-hidden rounded-full ring-2 ring-gray-100 md:hidden" style={{ width: Math.min(logoSizeMobile, 48), height: Math.min(logoSizeMobile, 48) }}>
                   <Image src={vendor.logo} alt={vendor.name} width={logoSizeMobile} height={logoSizeMobile} className="object-cover" />
                 </div>
               : <div className="flex items-center justify-center font-bold text-white rounded-full md:hidden"
@@ -302,9 +302,9 @@ return (
                 </div>
             }
             {(store as any)?.store_logo
-              ? <Image src={(store as any).store_logo} alt={vendor.name} width={240} height={logoSizeDesktop * 2} className="hidden object-contain w-auto md:block" style={{ height: logoSizeDesktop }} />
+              ? <Image src={(store as any).store_logo} alt={vendor.name} width={240} height={logoSizeDesktop * 2} className="hidden object-contain w-auto md:block" style={{ height: Math.min(logoSizeDesktop, 52), maxHeight: "52px" }} />
               : vendor?.logo
-              ? <div className="hidden overflow-hidden rounded-full ring-2 ring-gray-100 md:block" style={{ width: logoSizeDesktop, height: logoSizeDesktop }}>
+              ? <div className="hidden overflow-hidden rounded-full ring-2 ring-gray-100 md:block" style={{ width: Math.min(logoSizeDesktop, 52), height: Math.min(logoSizeDesktop, 52) }}>
                   <Image src={vendor.logo} alt={vendor.name} width={logoSizeDesktop} height={logoSizeDesktop} className="object-cover" />
                 </div>
               : <div className="items-center justify-center hidden font-bold text-white rounded-full md:flex"

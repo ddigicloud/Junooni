@@ -47,7 +47,7 @@ export function ProductDetailSettings({ settings, onChange, isDark, products = [
 
   const optionKeys = productOptions.map(o => o.key)
 
-  const staticBefore = ["title", "price"]
+  const staticBefore = ["title", "short_description", "price"]
   const staticAfter  = ["quantity", "atc", "description", "meta"]
   const defaultOrder = [...staticBefore, ...optionKeys, ...staticAfter]
 
@@ -56,16 +56,13 @@ export function ProductDetailSettings({ settings, onChange, isDark, products = [
 const storedOrder: string[] = settings.element_order ?? []
 const order: string[] = storedOrder.length > 0
   ? (() => {
-      // Find where colors/sizes/option_ keys were in stored order
-      // and replace them in-place with current optionKeys
+      // Replace old colors/sizes/option_ keys with current real optionKeys
       const withoutOptions = storedOrder.filter(k =>
         !k.startsWith("option_") && !["colors", "sizes"].includes(k)
       )
-      // Find insertion point — where first old option key was
       const firstOptionIdx = storedOrder.findIndex(k =>
         k.startsWith("option_") || ["colors", "sizes"].includes(k)
       )
-      // Insert optionKeys at that position, or before "quantity" if not found
       const insertAt = firstOptionIdx !== -1
         ? firstOptionIdx
         : withoutOptions.indexOf("quantity") !== -1
@@ -73,7 +70,17 @@ const order: string[] = storedOrder.length > 0
           : 2
       const result = [...withoutOptions]
       result.splice(insertAt, 0, ...optionKeys)
-      return result.filter((k, i, arr) => arr.indexOf(k) === i)
+      const merged = result.filter((k, i, arr) => arr.indexOf(k) === i)
+
+      // ── Inject short_description if missing from stored order ──
+      // Insert it after "title" (index 0 typically), before "price"
+      if (!merged.includes("short_description")) {
+        const titleIdx = merged.indexOf("title")
+        const insertAfter = titleIdx !== -1 ? titleIdx + 1 : 1
+        merged.splice(insertAfter, 0, "short_description")
+      }
+
+      return merged
     })()
   : defaultOrder
 
@@ -89,9 +96,10 @@ const order: string[] = storedOrder.length > 0
     onChange({ element_order: arr })
   }
 
-  const ELEMENT_META: Record<string, { label: string; icon: string }> = {
-    title:       { label: "Product Title",    icon: "T"  },
-    price:       { label: "Price",            icon: "₹"  },
+    const ELEMENT_META: Record<string, { label: string; icon: string }> = {
+    title:             { label: "Product Title",       icon: "T"  },
+    short_description: { label: "Short Description",   icon: "📄" },
+    price:             { label: "Price",               icon: "₹"  },
     quantity:    { label: "Quantity Stepper", icon: "#"  },
     atc:         { label: "Add to Cart",      icon: "🛒" },
     description: { label: "Description",      icon: "📝" },
@@ -194,6 +202,17 @@ const order: string[] = storedOrder.length > 0
         </div>
       </Field>
     </>
+  )
+
+  const renderShortDescriptionSettings = () => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <div className="relative shrink-0"
+        onClick={() => onChange({ show_short_description: !(settings.show_short_description ?? true) })}>
+        <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_short_description ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+        <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_short_description ?? true) ? "translate-x-4" : ""}`} />
+      </div>
+      <span className={`text-xs ${textPrimary}`}>Show short description</span>
+    </label>
   )
  
   const renderPriceSettings = () => (
@@ -327,7 +346,7 @@ const order: string[] = storedOrder.length > 0
           ))}
         </div>
       </Field>
-      <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-2 cursor-pointer">
         <div className="relative shrink-0"
           onClick={() => onChange({ atc_full_width: !(settings.atc_full_width ?? true) })}>
           <div className={`w-8 h-4 rounded-full transition-colors ${(settings.atc_full_width ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
@@ -335,6 +354,33 @@ const order: string[] = storedOrder.length > 0
         </div>
         <span className={`text-xs ${textPrimary}`}>Full width button</span>
       </label>
+      <Field label="Button text color" faint={textFaint}>
+        <div className="flex gap-1.5">
+          {settings.atc_text_color ? (
+            <>
+              <input type="color" value={settings.atc_text_color}
+                onChange={e => onChange({ atc_text_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text" value={settings.atc_text_color}
+                onChange={e => onChange({ atc_text_color: e.target.value })}
+                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                  isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                }`} />
+              <button onClick={() => onChange({ atc_text_color: undefined })} className="text-red-400 shrink-0">
+                <X className="w-3 h-3" />
+              </button>
+            </>
+          ) : (
+            <button onClick={() => onChange({ atc_text_color: "#ffffff" })}
+              className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                       : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+              }`}>
+              <Plus className="w-3 h-3" />Set text color
+            </button>
+          )}
+        </div>
+      </Field>
     </>
   )
  
@@ -402,8 +448,9 @@ const order: string[] = storedOrder.length > 0
   )
  
   const SETTINGS_MAP: Record<string, () => React.ReactNode> = {
-  title:       renderTitleSettings,
-  price:       renderPriceSettings,
+  title:             renderTitleSettings,
+  short_description: renderShortDescriptionSettings,
+  price:             renderPriceSettings,
   colors:      renderColorsSettings,
   sizes:       renderSizesSettings,
   quantity:    renderQuantitySettings,
@@ -611,7 +658,8 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
 
   const SKIP_COLOR_OVERRIDE = [
     "announcement", "divider", "html", "ticker",
-    "category_grid", "category_products", "collections_grid", "collection_products", "image"
+    "category_grid", "category_products", "collections_grid", "collection_products", "image",
+    "image_slider"
   ]
 
   return (
@@ -622,6 +670,14 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           setUploadingKey(uploadTarget)
           const url = await uploadFile(e.target.files[0])
           if (url) {
+          if (uploadTarget.startsWith("slide_image_")) {
+            const idx = parseInt(uploadTarget.replace("slide_image_", ""), 10)
+            const existing: any[] = (section as any).slides ?? []
+            const updated = [...existing]
+            if (!updated[idx]) updated[idx] = { image: "", caption: "", link: "" }
+            updated[idx] = { ...updated[idx], image: url }
+            onChange({ slides: updated } as any)
+          } else
             if (uploadTarget === "__hero_images__") {
               // Append to hero_images array
               const existing: string[] = (section as any).hero_images ?? []
@@ -724,10 +780,14 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </div>
         )}
 
-        <UploadOnlyImageField label="Background image" value={section.background_image ?? ""}
+        <UploadOnlyImageField label="Background image (desktop)" value={section.background_image ?? ""}
           onChange={v => onChange({ background_image: v || undefined })}
           onUpload={() => triggerUpload("background_image")}
           isUploading={uploadingKey === "background_image"} isDark={isDark} />
+        <UploadOnlyImageField label="Background image (mobile)" value={(section as any).background_image_mobile ?? ""}
+          onChange={v => onChange({ background_image_mobile: v || undefined } as any)}
+          onUpload={() => triggerUpload("background_image_mobile")}
+          isUploading={uploadingKey === "background_image_mobile"} isDark={isDark} />
         {!(section as any).hide_right_image && (
             <UploadOnlyImageField label="Right side image"
               value={[
@@ -840,27 +900,82 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </div>
          )}
         <div className={`pt-2 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
-          <p className={`text-[10px] ${textFaint} mb-2`}>Hero overlay & text</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Overlay color" faint={textFaint}>
-              <div className="flex gap-1.5">
-                <input type="color" value={section.overlay_color ?? "#000000"}
-                  onChange={e => onChange({ overlay_color: e.target.value })}
-                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                <EditorInput value={section.overlay_color ?? ""}
-                  onChange={v => onChange({ overlay_color: v })} placeholder="#000000" isDark={isDark} />
-              </div>
-            </Field>
-            <Field label="Text color" faint={textFaint}>
-              <div className="flex gap-1.5">
-                <input type="color" value={section.overlay_text_color ?? "#ffffff"}
-                  onChange={e => onChange({ overlay_text_color: e.target.value })}
-                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                <EditorInput value={section.overlay_text_color ?? ""}
-                  onChange={v => onChange({ overlay_text_color: v })} placeholder="#ffffff" isDark={isDark} />
-              </div>
-            </Field>
+          <p className={`text-[10px] ${textFaint} mb-2`}>Banner height</p>
+          <div className="flex items-center gap-3 mb-1">
+            <input
+              type="range" min={20} max={180} step={4}
+              value={(section as any).hero_padding_y ?? 64}
+              onChange={e => onChange({ hero_padding_y: Number(e.target.value) } as any)}
+              className="flex-1 accent-orange-500"
+            />
+            <span className={`text-[10px] font-mono w-10 text-right shrink-0 ${textFaint}`}>
+              {(section as any).hero_padding_y ?? 64}px
+            </span>
           </div>
+          <div className={`flex justify-between text-[10px] ${textFaint} opacity-60 mb-3`}>
+            <span>Compact</span><span>Tall</span>
+          </div>
+
+          <p className={`text-[10px] ${textFaint} mb-2`}>Hero overlay & text</p>
+
+          {/* Overlay color — with permanent remove */}
+          <Field label="Overlay color" faint={textFaint}>
+            {(section as any).overlay_color === "none" ? (
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${textFaint}`}>No overlay</span>
+                <button
+                  onClick={() => onChange({ overlay_color: "#000000" } as any)}
+                  className={`text-[10px] px-2 py-1 rounded-lg border transition-colors ${
+                    isDark
+                      ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"
+                      : "border-gray-200 text-gray-500 hover:border-gray-400"
+                  }`}
+                >
+                  Add overlay
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-1.5">
+                  <input type="color"
+                    value={(section as any).overlay_color ?? "#000000"}
+                    onChange={e => onChange({ overlay_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <EditorInput
+                    value={(section as any).overlay_color ?? ""}
+                    onChange={v => onChange({ overlay_color: v })}
+                    placeholder="#000000" isDark={isDark} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range" min={0} max={90} step={5}
+                    value={(section as any).overlay_opacity ?? 55}
+                    onChange={e => onChange({ overlay_opacity: Number(e.target.value) } as any)}
+                    className="flex-1 accent-orange-500"
+                  />
+                  <span className={`text-[10px] font-mono w-10 text-right shrink-0 ${textFaint}`}>
+                    {(section as any).overlay_opacity ?? 55}%
+                  </span>
+                </div>
+                <button
+                  onClick={() => onChange({ overlay_color: "none" } as any)}
+                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg border border-red-900 text-red-400 hover:bg-red-900/20 transition-colors text-xs"
+                >
+                  <X className="w-3 h-3" /> Remove overlay permanently
+                </button>
+              </div>
+            )}
+          </Field>
+
+          <Field label="Text color" faint={textFaint}>
+            <div className="flex gap-1.5">
+              <input type="color" value={section.overlay_text_color ?? "#ffffff"}
+                onChange={e => onChange({ overlay_text_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <EditorInput value={section.overlay_text_color ?? ""}
+                onChange={v => onChange({ overlay_text_color: v })} placeholder="#ffffff" isDark={isDark} />
+            </div>
+          </Field>
         </div>
       </>)}
 
@@ -1336,6 +1451,173 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </div>
         </Field>
       </>)}
+
+            {/* ── IMAGE SLIDER ── */}
+      {section.type === "image_slider" && (() => {
+        const slides: any[] = (section as any).slides ?? []
+        return (
+          <>
+            <div className={`pt-1 pb-2 border-b ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+              <p className={`text-[10px] ${textFaint} mb-1`}>
+                Add up to 8 images. Each slide can have an optional caption and link.
+              </p>
+            </div>
+
+            {/* Slide list */}
+            <div className="space-y-2">
+              {slides.map((slide: any, i: number) => (
+                <div key={i} className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+                  {/* Image preview row */}
+                  <div className="flex items-center gap-2 p-2">
+                    <div className={`w-14 h-14 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${isDark ? "bg-gray-700" : "bg-gray-200"}`}>
+                      {slide.image
+                        ? <img src={slide.image} alt={`Slide ${i + 1}`} className="object-cover w-full h-full" />
+                        : <span className={`text-xs ${textFaint}`}>No img</span>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium truncate ${textPrimary}`}>Slide {i + 1}</p>
+                      <button
+                        onClick={() => { setUploadTarget(`slide_image_${i}`); fileRef.current?.click() }}
+                        disabled={uploadingKey === `slide_image_${i}`}
+                        className={`mt-1 text-[10px] px-2 py-0.5 rounded border transition-colors ${isDark ? "border-gray-600 text-gray-400 hover:border-gray-400" : "border-gray-300 text-gray-500 hover:border-gray-500"}`}
+                      >
+                        {uploadingKey === `slide_image_${i}` ? "Uploading..." : slide.image ? "Change" : "Upload"}
+                      </button>
+                    </div>
+                    {/* Move up/down + delete */}
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button disabled={i === 0} onClick={() => {
+                        const arr = [...slides]; [arr[i-1], arr[i]] = [arr[i], arr[i-1]]
+                        onChange({ slides: arr } as any)
+                      }} className={`p-1 rounded ${i === 0 ? "opacity-30" : isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}>
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 2L2 6h6L5 2z" fill="currentColor" className={textFaint}/></svg>
+                      </button>
+                      <button disabled={i === slides.length - 1} onClick={() => {
+                        const arr = [...slides]; [arr[i], arr[i+1]] = [arr[i+1], arr[i]]
+                        onChange({ slides: arr } as any)
+                      }} className={`p-1 rounded ${i === slides.length - 1 ? "opacity-30" : isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}>
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 8L2 4h6L5 8z" fill="currentColor" className={textFaint}/></svg>
+                      </button>
+                    </div>
+                    <button onClick={() => onChange({ slides: slides.filter((_: any, j: number) => j !== i) } as any)}
+                      className="p-1 rounded hover:bg-red-900/30 text-red-400 shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                  {/* Caption + Link */}
+                  <div className={`px-2 pb-2 space-y-1.5 border-t ${isDark ? "border-gray-700" : "border-gray-200"} pt-2`}>
+                    <EditorInput
+                      value={slide.caption ?? ""}
+                      onChange={v => {
+                        const arr = [...slides]; arr[i] = { ...arr[i], caption: v }
+                        onChange({ slides: arr } as any)
+                      }}
+                      placeholder="Caption (optional)"
+                      isDark={isDark}
+                    />
+                    <EditorInput
+                      value={slide.link ?? ""}
+                      onChange={v => {
+                        const arr = [...slides]; arr[i] = { ...arr[i], link: v }
+                        onChange({ slides: arr } as any)
+                      }}
+                      placeholder="Link URL (optional)"
+                      isDark={isDark}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add slide button */}
+            {slides.length < 8 && (
+              <button
+                onClick={() => onChange({ slides: [...slides, { image: "", caption: "", link: "" }] } as any)}
+                className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-medium transition-all ${
+                  isDark
+                    ? "border-gray-700 text-gray-400 hover:border-orange-500/50 hover:text-orange-400"
+                    : "border-gray-300 text-gray-500 hover:border-orange-400 hover:text-orange-500"
+                }`}
+              >
+                <Plus className="w-3 h-3" /> Add slide
+              </button>
+            )}
+
+            {/* Slider settings */}
+            <div className={`pt-3 border-t space-y-3 ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+              <Field label="Slide height" faint={textFaint}>
+                <div className="flex items-center gap-3">
+                  <input type="range" min={200} max={700} step={20}
+                    value={(section as any).slider_height ?? 400}
+                    onChange={e => onChange({ slider_height: Number(e.target.value) } as any)}
+                    className="flex-1 accent-orange-500" />
+                  <span className={`text-[10px] font-mono w-12 text-right shrink-0 ${textFaint}`}>
+                    {(section as any).slider_height ?? 400}px
+                  </span>
+                </div>
+              </Field>
+
+              <Field label="Auto-play" faint={textFaint}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative shrink-0"
+                    onClick={() => onChange({ slider_autoplay: !((section as any).slider_autoplay ?? true) } as any)}>
+                    <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).slider_autoplay !== false ? "bg-orange-500" : "bg-gray-600"}`} />
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).slider_autoplay !== false ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className={`text-xs ${textPrimary}`}>Auto-advance slides</span>
+                </label>
+              </Field>
+
+              {(section as any).slider_autoplay !== false && (
+                <Field label={`Interval — ${(section as any).slider_interval ?? 4}s`} faint={textFaint}>
+                  <input type="range" min={2} max={10} step={1}
+                    value={(section as any).slider_interval ?? 4}
+                    onChange={e => onChange({ slider_interval: Number(e.target.value) } as any)}
+                    className="w-full accent-orange-500" />
+                </Field>
+              )}
+
+              <Field label="Image fit" faint={textFaint}>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["cover", "contain"] as const).map(fit => (
+                    <button key={fit} onClick={() => onChange({ slider_fit: fit } as any)}
+                      className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                        ((section as any).slider_fit ?? "cover") === fit
+                          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                      }`}>{fit}</button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Show dots" faint={textFaint}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative shrink-0"
+                    onClick={() => onChange({ slider_show_dots: !((section as any).slider_show_dots ?? true) } as any)}>
+                    <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).slider_show_dots !== false ? "bg-orange-500" : "bg-gray-600"}`} />
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).slider_show_dots !== false ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className={`text-xs ${textPrimary}`}>Show dot indicators</span>
+                </label>
+              </Field>
+
+              <Field label="Show arrows" faint={textFaint}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative shrink-0"
+                    onClick={() => onChange({ slider_show_arrows: !((section as any).slider_show_arrows ?? true) } as any)}>
+                    <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).slider_show_arrows !== false ? "bg-orange-500" : "bg-gray-600"}`} />
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).slider_show_arrows !== false ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className={`text-xs ${textPrimary}`}>Show navigation arrows</span>
+                </label>
+              </Field>
+            </div>
+
+            <ColorOverride section={section} onChange={onChange} isDark={isDark} textFaint={textFaint} />
+          </>
+        )
+      })()}
 
       {/* ── VIDEO ── */}
       {section.type === "video" && (<>

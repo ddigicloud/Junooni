@@ -75,6 +75,7 @@ export type StoreSection =
   | SocialSection
   | AnnouncementSection
   | DividerSection
+  | ImageSliderSection
 
 export interface HeroSection {
   type: "hero"
@@ -122,6 +123,19 @@ export interface AnnouncementSection {
 
 export interface DividerSection {
   type: "divider"
+}
+
+export interface ImageSliderSection {
+  type: "image_slider"
+  slides?: { image: string; caption?: string; link?: string }[]
+  slider_height?: number
+  slider_autoplay?: boolean
+  slider_interval?: number
+  slider_fit?: "cover" | "contain"
+  slider_show_dots?: boolean
+  slider_show_arrows?: boolean
+  background_color?: string
+  text_color?: string
 }
 
 // ── Product ───────────────────────────────────────────────────────────────────

@@ -408,7 +408,10 @@ export default function StoreEditorPage() {
         } catch (e) { console.warn("Could not load products/categories:", e) }
 
       } catch (e) { console.error(e) }
-      finally { setIsLoading(false) }
+      finally {
+        loadCompleteRef.current = true
+        setIsLoading(false)
+      }
     }
     load()
   }, [])
@@ -416,12 +419,14 @@ export default function StoreEditorPage() {
   // ── Track unsaved changes ─────────────────────────────────────────────────
   const isFirstRender = useRef(true)
   const skipDirtyEffectRef = useRef(false)
+  const loadCompleteRef = useRef(false)
   useEffect(() => {
     if (isLoading) return
+    if (!loadCompleteRef.current) return
     if (isFirstRender.current) { isFirstRender.current = false; return }
     if (skipDirtyEffectRef.current) { skipDirtyEffectRef.current = false; return }
     setHasUnsavedChanges(true)
-  }, [store, isLoading])
+  }, [store])
 
   // ── Guard: redirect to /store if template not yet selected 
   useEffect(() => {
@@ -586,10 +591,11 @@ export default function StoreEditorPage() {
     ]
   }
 
-  // Keep theme_data always in sync with current active theme
+    // Keep theme_data always in sync with current active theme
   // Keep theme_data always in sync with current active theme (sections + styles)
   useEffect(() => {
     if (!store.template || isLoading) return
+    skipDirtyEffectRef.current = true
     const currentThemeId = store.template
     patchStore(p => ({
       ...p,

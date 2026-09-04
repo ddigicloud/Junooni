@@ -36,6 +36,8 @@ interface ProductDetailSettings {
   atc_label?: string
   atc_style?: "filled" | "outline" | "pill"
   atc_full_width?: boolean
+  atc_text_color?: string
+  show_short_description?: boolean
   show_quantity?: boolean
   show_description?: boolean
   description_collapsed?: boolean
@@ -329,7 +331,7 @@ export default function ProductPageClient({
 // replace old hardcoded colors/sizes with actual product option keys
 const storedOrder: string[] = pd.element_order ?? []
 const elementOrder: string[] = storedOrder.length === 0
-  ? ["title", "price", ...dynamicOptionKeys, "quantity", "atc", "description", "meta"]
+  ? ["title", "short_description", "price", ...dynamicOptionKeys, "quantity", "atc", "description", "meta"]
   : (() => {
       const withoutOldOptions = storedOrder.filter(k =>
         !k.startsWith("option_") && !["colors", "sizes"].includes(k)
@@ -596,6 +598,19 @@ useEffect(() => {
           </h1>
         )
 
+            case "short_description": {
+        if (!(pd.show_short_description ?? true)) return null
+        const shortDesc: string = product?.metadata?.short_description ?? product?.subtitle ?? ""
+        if (!shortDesc) return null
+        return (
+          <p key="short_description"
+            className="text-sm leading-relaxed"
+            style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}
+            dangerouslySetInnerHTML={{ __html: shortDesc }}
+          />
+        )
+      }
+
       case "price": {
         const price = getPrice()
         if (!price) return null
@@ -785,14 +800,12 @@ useEffect(() => {
                       : `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
                 borderColor: style === "outline" && !isOutOfStock ? brandPrimary : undefined,
                 color: isOutOfStock
-                ? (isDark ? "#9ca3af" : "#6b7280")
-                : style === "outline" && !added
-                  ? brandPrimary
-                  : added
-                    ? "#ffffff"
-                    : isDark
+                  ? (isDark ? "#9ca3af" : "#6b7280")
+                  : style === "outline" && !added
+                    ? (pd.atc_text_color ?? brandPrimary)
+                    : added
                       ? "#ffffff"
-                      : "#111827",
+                      : (pd.atc_text_color ?? (isDark ? "#ffffff" : "#ffffff")),
                             }}
             >
               {isOutOfStock ? (
