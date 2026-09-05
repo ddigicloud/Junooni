@@ -1096,7 +1096,7 @@ useEffect(() => {
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
               {/* <Separator orientation='vertical' className='h-6 ml-2' /> */}
             </div>
-            <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+            <div className="absolute -translate-x-1/2 left-1/2 md:hidden">
               <Link to="/dashboard" className="flex items-center">
                 <img 
                   src={Junoonilogo} 
@@ -1827,7 +1827,7 @@ useEffect(() => {
               {selectedTransaction.type === 'earning' && (
                 <div className="p-4 border-l-4 rounded-lg bg-orange-50" style={{ borderLeftColor: BRAND.primary }}>
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-orange-100">
+                    <div className="p-2 bg-orange-100 rounded-lg">
                       <Info className="w-5 h-5" style={{ color: BRAND.primary }} />
                     </div>
                     <div className="flex-1">
@@ -1892,7 +1892,7 @@ useEffect(() => {
               </div>
 
               {/* Related Information */}
-              {(selectedTransaction.order_id || selectedTransaction.product_id || selectedTransaction.order_item_id) && (
+              {/* {(selectedTransaction.order_id || selectedTransaction.product_id || selectedTransaction.order_item_id) && (
                 <div>
                   <h4 className="mb-3 text-sm font-semibold text-gray-900">Related Information</h4>
                   <div className="grid grid-cols-1 gap-3">
@@ -1941,7 +1941,7 @@ useEffect(() => {
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Additional Notes */}
               {selectedTransaction.notes && (
@@ -1954,14 +1954,14 @@ useEffect(() => {
               )}
 
               {/* Reason */}
-              {selectedTransaction.reason && (
+              {/* {selectedTransaction.reason && (
                 <div>
                   <label className="block mb-2 text-sm font-semibold text-gray-900">Reason</label>
                   <div className="p-3 border rounded-lg bg-gray-50">
                     <p className="text-sm text-gray-700">{selectedTransaction.reason}</p>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           )}
           
@@ -1981,22 +1981,22 @@ useEffect(() => {
                 onClick={() => {
                   if (selectedTransaction) {
                     const receiptText = `
-PAYOUT TRANSACTION RECEIPT
-==========================
+                      PAYOUT TRANSACTION RECEIPT
+                      ==========================
 
-Transaction ID: ${selectedTransaction.id}
-Date: ${formatDate(selectedTransaction.created_at)}
-Type: ${selectedTransaction.type.charAt(0).toUpperCase() + selectedTransaction.type.slice(1)}
-Amount: ${formatPrice(selectedTransaction.amount)}
-Status: ${selectedTransaction.status}
-${selectedTransaction.order_id ? `Order ID: ${selectedTransaction.order_id}` : ''}
-${selectedTransaction.product_id ? `Product ID: ${selectedTransaction.product_id}` : ''}
-${selectedTransaction.order_item_id ? `Order Item ID: ${selectedTransaction.order_item_id}` : ''}
-${selectedTransaction.reason ? `Reason: ${selectedTransaction.reason}` : ''}
-${selectedTransaction.notes ? `Notes: ${selectedTransaction.notes}` : ''}
+                      Transaction ID: ${selectedTransaction.id}
+                      Date: ${formatDate(selectedTransaction.created_at)}
+                      Type: ${selectedTransaction.type.charAt(0).toUpperCase() + selectedTransaction.type.slice(1)}
+                      Amount: ${formatPrice(selectedTransaction.amount)}
+                      Status: ${selectedTransaction.status}
+                      ${selectedTransaction.order_id ? `Order ID: ${selectedTransaction.order_id}` : ''}
+                      ${selectedTransaction.product_id ? `Product ID: ${selectedTransaction.product_id}` : ''}
+                      ${selectedTransaction.order_item_id ? `Order Item ID: ${selectedTransaction.order_item_id}` : ''}
+                      ${selectedTransaction.reason ? `Reason: ${selectedTransaction.reason}` : ''}
+                      ${selectedTransaction.notes ? `Notes: ${selectedTransaction.notes}` : ''}
 
-Thank you for using Junooni!
-Contact support: support@junooni.com
+                      Thank you for using Junooni!
+                      Contact support: support@junooni.com
                     `;
                     
                     const blob = new Blob([receiptText], { type: 'text/plain' });

@@ -151,6 +151,8 @@ module.exports = defineConfig({
     { resolve: "./src/modules/invoice-generator" },
     { resolve: "./src/modules/loyalty" },
     { resolve: "@medusajs/index" },
+    // { resolve: "./modules/marketplace", key: "marketplaceModule" }, // ← this key
+    // { resolve: "./modules/artwork", key: "vendorArtworkModule" },   // ← this key
     // ─── Agentic Commerce (ChatGPT Instant Checkout) ───────────────────────────
     {
       resolve: "./src/modules/agentic-commerce",

@@ -1510,7 +1510,7 @@ const openChatwoot = () => {
                             className="text-base"
                             style={{ color: BRAND.textSecondary }}
                           >
-                            Manage how customers see you on the marketplace
+                            Manage how customers see you on your store
                           </CardDescription>
                         </div>
                       </div>

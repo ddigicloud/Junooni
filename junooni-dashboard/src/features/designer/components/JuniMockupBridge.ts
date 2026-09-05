@@ -13,6 +13,7 @@
 import { renderMockupDirectly } from './MockupGeneratorClass'
 import type { DesignElement, TotalPricingBreakdown, AreaPricingInfo } from './types'
 import { resolveImageUrl, optimizeImage, cropTransparentPixels } from './utils'
+import { captureCanvasImageForArea } from './canvas-export-utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 1: Data helpers (same as Canvas.tsx getCanvasConfig / getPrintableAreaFromPhoto)
@@ -477,143 +478,86 @@ export async function generateJuniCanvasLayout(opts: {
   area:             string
 }): Promise<string | null> {
   const { blankData, technologyId, selectedColorHex, designBase64, area } = opts
+  console.log('[JuniLayout] ① function entered', { technologyId, area, selectedColorHex })
 
   const tech = blankData?.printT?.find((t: any) =>
     t.id === technologyId || t.technologyName === technologyId
   ) ?? blankData?.printT?.[0]
+  console.log('[JuniLayout] ② tech found:', tech ? tech.technologyName : 'NULL ← FAILING HERE')
   if (!tech) return null
 
-  const custArea    = getCustArea(tech, area)
+  const custArea = getCustArea(tech, area)
+  console.log('[JuniLayout] ③ custArea found:', custArea ? custArea.areaName : 'NULL ← FAILING HERE')
   if (!custArea) return null
 
   const canvasConfig  = buildCanvasConfig(custArea)
   const printableArea = buildPrintableArea(custArea, canvasConfig)
+  console.log('[JuniLayout] ④ canvasConfig:', canvasConfig)
+  console.log('[JuniLayout] ⑤ printableArea:', printableArea)
 
-  // Build designElements the same way generateJuniMockup does
   const designElement = await buildDesignElementFromBase64(designBase64, printableArea)
-  const areaKey       = area.toLowerCase().trim()
+    .then(el => { console.log('[JuniLayout] ⑥ designElement built OK'); return el })
+    .catch(err => { console.error('[JuniLayout] ⑥ designElement FAILED:', err.message); return null })
+  if (!designElement) return null
+
+  const areaKey = area.toLowerCase().trim()
   const designElements: Record<string, DesignElement[]> = { [areaKey]: [designElement] }
 
-  // captureCanvasImageForArea needs canvasImages — for JUNI chat we load the mockup photo
-  // as the background canvas image (same role as the loaded mockup in Canvas.tsx)
   const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
-  let canvasImages: Record<string, HTMLImageElement | null> = {}
+  console.log('[JuniLayout] ⑦ mockupPhoto found:', mockupPhoto ? 'YES' : 'NULL ← FAILING HERE')
 
+  const canvasImages: Record<string, HTMLImageElement | null> = {}
   if (mockupPhoto?.photo?.url) {
     try {
+      const base = (window as any).__ENV__?.NEXT_PUBLIC_PAYLOAD_URL ?? 'http://localhost:3000'
+      const url  = mockupPhoto.photo.url.startsWith('http')
+        ? mockupPhoto.photo.url
+        : `${base}${mockupPhoto.photo.url}`
+      console.log('[JuniLayout] ⑧ loading mockup image from:', url)
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const i = new Image()
         i.crossOrigin = 'anonymous'
         i.onload  = () => resolve(i)
-        i.onerror = () => reject(new Error('Failed to load mockup for canvas layout'))
-        // Resolve URL relative to blankscms/PayloadCMS
-        const base = (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_PAYLOAD_URL : null)
-          ?? 'http://localhost:3000'
-        i.src = mockupPhoto.photo.url.startsWith('http') ? mockupPhoto.photo.url : `${base}${mockupPhoto.photo.url}`
+        i.onerror = () => reject(new Error('Failed to load mockup'))
+        i.src = url
       })
-      canvasImages[areaKey]                              = img
-      canvasImages[`${areaKey}_${selectedColorHex}`]    = img
-    } catch { /* canvas layout works without background image */ }
+      canvasImages[areaKey]                           = img
+      canvasImages[`${areaKey}_${selectedColorHex}`] = img
+      console.log('[JuniLayout] ⑧ mockup image loaded OK')
+    } catch (err: any) {
+      console.warn('[JuniLayout] ⑧ mockup image load FAILED (continuing):', err.message)
+    }
+  } else {
+    console.warn('[JuniLayout] ⑧ no mockup photo URL — skipping canvasImages')
   }
 
-  // Generate the side-by-side canvas layout using pure Canvas 2D API
-  // (no Konva dependency — works reliably in the JUNI chat browser context)
+  const { canvasConfigs, printableAreas } = getAllConfigs(tech)
+  console.log('[JuniLayout] ⑨ getAllConfigs keys:', Object.keys(canvasConfigs))
+
+  const getCanvasConfig = (areaId: string) =>
+    canvasConfigs[areaId.toLowerCase().trim()] ?? canvasConfig
+
+  const getPrintableAreaFromPhoto = (areaId: string) =>
+    printableAreas[areaId.toLowerCase().trim()] ?? printableArea
+
+  const getCustomizationAreaByName = (areaId: string) =>
+    getCustArea(tech, areaId)
+
+  console.log('[JuniLayout] ⑩ calling captureCanvasImageForArea...')
   try {
-    // Left panel: clean mockup (design on garment, no annotations)
-    const { canvasConfigs, printableAreas } = getAllConfigs(tech)
-    const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
-    if (!mockupPhoto) return null
-
-    const cleanBase64 = await renderMockupDirectly(
-      mockupPhoto, designElements, canvasConfigs, printableAreas, selectedColorHex, canvasConfig.width
+    const result = await captureCanvasImageForArea(
+      areaKey,
+      designElements,
+      selectedColorHex,
+      canvasImages,
+      getCanvasConfig,
+      getPrintableAreaFromPhoto,
+      getCustomizationAreaByName
     )
-    if (!cleanBase64) return null
-
-    // Load the clean panel image
-    const loadImg = (src: string): Promise<HTMLImageElement> =>
-      new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src })
-
-    const cleanImg = await loadImg(cleanBase64)
-
-    // Build side-by-side composite using Canvas 2D
-    const panelW  = cleanImg.width
-    const panelH  = cleanImg.height
-    const DIVIDER = 2
-    const GAP     = 24
-    const HEADER  = 36
-    const TOTAL_W = panelW * 2 + GAP * 2 + DIVIDER
-    const TOTAL_H = panelH + HEADER
-
-    const offscreen = document.createElement('canvas')
-    offscreen.width  = TOTAL_W
-    offscreen.height = TOTAL_H
-    const ctx = offscreen.getContext('2d')!
-
-    // Dark header bar
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(0, 0, TOTAL_W, HEADER)
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `bold ${Math.round(HEADER * 0.45)}px Arial`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('For Manufacturer (Clean)', panelW / 2, HEADER / 2)
-    ctx.fillText('Internal Reference (With Dimensions)', panelW + GAP * 2 + DIVIDER + panelW / 2, HEADER / 2)
-
-    // Divider
-    ctx.fillStyle = '#888888'
-    ctx.fillRect(panelW + GAP, 0, DIVIDER, TOTAL_H)
-
-    // Left: clean panel
-    ctx.fillStyle = '#f8f8f8'
-    ctx.fillRect(0, HEADER, panelW, panelH)
-    ctx.drawImage(cleanImg, 0, HEADER, panelW, panelH)
-
-    // Left: dashed orange print area box
-    const pa = printableArea
-    const scale = panelW / canvasConfig.width
-    ctx.strokeStyle = '#e65100'
-    ctx.lineWidth = 2
-    ctx.setLineDash([6, 4])
-    ctx.strokeRect(pa.x * scale, HEADER + pa.y * scale, pa.width * scale, pa.height * scale)
-    ctx.setLineDash([])
-
-    // Right: annotated panel (same image + dimension badge)
-    ctx.fillStyle = '#f8f8f8'
-    ctx.fillRect(panelW + GAP * 2 + DIVIDER, HEADER, panelW, panelH)
-    ctx.drawImage(cleanImg, panelW + GAP * 2 + DIVIDER, HEADER, panelW, panelH)
-
-    // Right: red dashed print area box
-    const rx = panelW + GAP * 2 + DIVIDER
-    ctx.strokeStyle = '#FF0000'
-    ctx.lineWidth = 2
-    ctx.setLineDash([6, 4])
-    ctx.strokeRect(rx + pa.x * scale, HEADER + pa.y * scale, pa.width * scale, pa.height * scale)
-    ctx.setLineDash([])
-
-    // Dimension badge
-    const avgPPI = ((pa.width / canvasConfig.realWorldWidth) + (pa.height / canvasConfig.realWorldHeight)) / 2
-    const wIn    = (pa.width  / avgPPI).toFixed(2)
-    const hIn    = (pa.height / avgPPI).toFixed(2)
-    const label  = `${wIn}" × ${hIn}"`
-    const badgeW = label.length * 7 + 14
-    const bx     = rx + pa.x * scale
-    const by     = HEADER + pa.y * scale + 4
-    ctx.fillStyle = '#e65100'
-    ctx.beginPath()
-    ctx.roundRect?.(bx, by, badgeW, 22, 3) ?? ctx.rect(bx, by, badgeW, 22)
-    ctx.fill()
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '12px Arial'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(label, bx + 7, by + 11)
-
-    const layoutBase64 = offscreen.toDataURL('image/png', 1.0)
-    console.log(`[JuniMockupBridge] Canvas layout generated: ${layoutBase64.length} chars for area="${area}"`)
-    return layoutBase64
-
+    console.log('[JuniLayout] ⑪ captureCanvasImageForArea result:', result ? `${result.length} chars` : 'NULL')
+    return result
   } catch (err: any) {
-    console.error('[JuniMockupBridge] Canvas layout generation failed:', err.message)
+    console.error('[JuniLayout] ⑪ captureCanvasImageForArea THREW:', err.message)
     return null
   }
 }

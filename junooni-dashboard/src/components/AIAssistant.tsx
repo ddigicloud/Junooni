@@ -722,6 +722,12 @@ export default function AIAssistant({ vendorId }: Props) {
     for (const rd of renderData) {
       if (rd.render_type === "BLANK_DETAILS" && rd.blankData) {
         productSessionRef.current.blankData = rd.blankData
+        if (!productSessionRef.current.technologyId) {
+          const firstTech = rd.blankData?.printT?.[0]
+          if (firstTech?.id) {
+            productSessionRef.current.technologyId = firstTech.id
+          }
+        }
       }
     }
 
@@ -1099,8 +1105,12 @@ export default function AIAssistant({ vendorId }: Props) {
                                   console.error("[JUNI] Failed to upload mockup:", uploadErr)
                                 }
                               }
+                              console.log('[JuniLayout] slides loop done — slides.length:', slides.length) // ADD THIS
+
 
                               if (slides.length > 0) {
+
+                                  console.log('[JuniLayout] ✅ slides.length > 0 block entered, count:', slides.length) // ADD THIS
                                 // Store first slide session as approved mockup
                                 approvedMockupSessionIdRef.current = slides[0].sessionId ?? ""
 
@@ -1114,6 +1124,15 @@ export default function AIAssistant({ vendorId }: Props) {
                                 // Generate canvas layout and store server-side (same as mockups)
                                 // Never keep large base64 in productSessionRef — it goes into every POST body
                                 const canvasLayoutSessionIds: string[] = []
+                                console.log('[JuniLayout] ✅ reached canvasLayoutSessionIds line') // ADD THIS
+
+                                console.log('[JuniLayout] PRE-CHECK', {
+                                  hasBlankData: !!session.blankData,
+                                  technologyId: session.technologyId,
+                                  hasDesignBase64: !!session.designBase64,
+                                  area: session.area,
+                                  selectedColors: session.selectedColors?.length,
+                                })
 
                                 // Try proper side-by-side layout first
                                 if (session.blankData && session.technologyId && session.designBase64) {
@@ -1207,22 +1226,71 @@ Does this look good?`,
 
                   {/* FIX E3: MockupSlider fetches images via GET — no base64 in POST */}
                   {msg.mockupSlides && msg.mockupSlides.length > 0 && (
-                    <MockupSlider
-                      slides={msg.mockupSlides}
-                      onApprove={(approvedSessionId) => {
-                        storeApprovedMockup(approvedSessionId)
-                        // Send approval with pricing context for Gemini's STEP 5
-                        // Gemini will present the breakdown naturally and ask for selling price
-                        // Pass pricing context silently in system field — not visible in chat
-                        const p = productSessionRef.current.priceBreakdown
-                        const pricingContext = p
-                          ? ` CONTEXT_PRICING: blank=${p.blankProductCost} printing=${p.basePrintingCost} gst=${p.printingGSTAmount} shipping=${p.shippingCharges} cost=${p.finalPrice} suggested=${p.suggestedSellingPrice}`
-                          : ""
-                        sendMessage(`Preview approved.${pricingContext}`)
-                      }}
-                      onRetry={() => sendMessage("Please regenerate the mockup preview.")}
-                    />
-                  )}
+                  <MockupSlider
+                    slides={msg.mockupSlides}
+                    onApprove={async (approvedSessionId) => {
+                      storeApprovedMockup(approvedSessionId)
+
+                      // Generate canvas layout here — runs whether position picker was shown or skipped
+                      const session = productSessionRef.current
+                      if (session.blankData && session.technologyId && session.designBase64) {
+                        const token = localStorage.getItem("vendorToken") ?? ""
+                        const areasToLayout = Object.keys(session.designsByArea ?? {}).length > 1
+                          ? Object.keys(session.designsByArea ?? {})
+                          : [session.area ?? "front"]
+
+                        const canvasLayoutSessionIds: string[] = []
+
+                        for (const layoutArea of areasToLayout) {
+                          try {
+                            const areaDesign = session.designsByArea?.[layoutArea]?.base64 ?? session.designBase64!
+                            console.log(`[JuniLayout] generating for area=${layoutArea}`)
+                            const layoutBase64 = await generateJuniCanvasLayout({
+                              blankData:        session.blankData,
+                              technologyId:     session.technologyId!,
+                              selectedColorHex: session.selectedColors[0].hex,
+                              designBase64:     areaDesign,
+                              area:             layoutArea,
+                            })
+                            console.log(`[JuniLayout] result for ${layoutArea}:`, layoutBase64 ? `${layoutBase64.length} chars` : "NULL")
+                            if (layoutBase64 && layoutBase64.length > 100) {
+                              const layoutRes = await fetch(API_URL, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                credentials: "include",
+                                body: JSON.stringify({ action: "store_mockup", vendorId, base64: layoutBase64, area: layoutArea, colorName: "canvas-layout", messages: [] }),
+                              })
+                              if (layoutRes.ok) {
+                                const ld = await layoutRes.json()
+                                canvasLayoutSessionIds.push(ld.mockupSessionId)
+                                console.log(`[JuniLayout] ✅ stored: session=${ld.mockupSessionId} area=${layoutArea}`)
+                              }
+                            }
+                          } catch (err: any) {
+                            console.warn(`[JuniLayout] failed for ${layoutArea}:`, err.message)
+                          }
+                        }
+
+                        if (canvasLayoutSessionIds.length > 0) {
+                          productSessionRef.current.canvasLayoutSessionIds = canvasLayoutSessionIds
+                        }
+                      } else {
+                        console.log(`[JuniLayout] skipped — missing:`, {
+                          hasBlankData: !!session.blankData,
+                          technologyId: session.technologyId,
+                          hasDesignBase64: !!session.designBase64,
+                        })
+                      }
+
+                      const p = productSessionRef.current.priceBreakdown
+                      const pricingContext = p
+                        ? ` CONTEXT_PRICING: blank=${p.blankProductCost} printing=${p.basePrintingCost} gst=${p.printingGSTAmount} shipping=${p.shippingCharges} cost=${p.finalPrice} suggested=${p.suggestedSellingPrice}`
+                        : ""
+                      sendMessage(`Preview approved.${pricingContext}`)
+                    }}
+                    onRetry={() => sendMessage("Please regenerate the mockup preview.")}
+                  />
+                )}
 
                   {msg.createdProduct && (
                     <ProductCreatedCard product={msg.createdProduct}
