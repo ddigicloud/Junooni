@@ -429,25 +429,28 @@ export function EditorInput({ value, onChange, placeholder, isDark, pages, colle
 
 // ─── EditorTextarea ───────────────────────────────────────────────────────────
 
-export function EditorTextarea({ value, onChange, placeholder, rows = 3, isDark, mono, pages, collections, categories }: {
+export function EditorTextarea({ value, onChange, placeholder, rows = 3, isDark, mono, plain, pages, collections, categories }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   rows?: number
   isDark: boolean
   mono?: boolean
+  plain?: boolean
   pages?: any[]
   collections?: { id: string; title: string; handle: string }[]
   categories?: { id: string; name: string; handle: string }[]
 }) {
-  if (mono) {
+  if (mono || plain) {
     return (
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors resize-none font-mono text-xs ${
+        className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors resize-none ${
+          mono ? "font-mono text-xs" : "text-sm"
+        } ${
           isDark
             ? "bg-gray-800 border border-gray-700 text-gray-200"
             : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"

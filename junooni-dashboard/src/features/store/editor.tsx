@@ -345,13 +345,9 @@ export default function StoreEditorPage() {
 
             const hasCollection = finalSecs.some((s: any) => s.type === "collection")
             const hasFeaturedCollections = finalSecs.some((s: any) => s.type === "featured_collections")
-            const hasAbout      = finalSecs.some((s: any) => s.type === "about")
-            const hasSocial     = finalSecs.some((s: any) => s.type === "social")
             const missingSecs: any[] = []
             if (!hasCollection) missingSecs.push({ id: genId(), type: "collection" as SectionType, title: "All Products", limit: 12, columns: 3 })
             if (!hasFeaturedCollections) missingSecs.push({ id: genId(), type: "featured_collections" as SectionType, title: "Shop by Collection", collection_ids: [], columns: 3 })
-            if (!hasAbout)      missingSecs.push({ id: genId(), type: "about"      as SectionType, title: "About Me", text: "" })
-            if (!hasSocial)     missingSecs.push({ id: genId(), type: "social"     as SectionType, show_instagram: true, show_youtube: true, show_twitter: true })
            
 
             if (missingSecs.length > 0) {

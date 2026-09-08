@@ -165,6 +165,8 @@ interface Props {
   showPrice?: boolean
   showHover?: boolean
   showSoldOutBadge?: boolean
+  cardBorderRadius?: number
+  cardBgColor?: string
 }
 
 export default function ProductCard({
@@ -177,6 +179,8 @@ export default function ProductCard({
   showPrice = true,
   showHover = true,
   showSoldOutBadge = true,
+  cardBorderRadius,
+  cardBgColor,
 }: Props) {
   const isDark = variant === "dark"
   const [activeImage, setActiveImage] = useState<string | null>(null)
@@ -220,9 +224,13 @@ export default function ProductCard({
   return (
     <div className="relative group">
       <Link href={`/products/${product.handle}`}>
-        <div className={`rounded-2xl overflow-hidden ${isDark ? "bg-white/5" : "bg-gray-50"} ${
-          showHover ? "transition-transform duration-200 group-hover:-translate-y-1" : ""
-        }`}>
+        <div
+          className={`overflow-hidden ${showHover ? "transition-transform duration-200 group-hover:-translate-y-1" : ""}`}
+          style={{
+            borderRadius: cardBorderRadius !== undefined ? `${cardBorderRadius}px` : "1rem",
+            backgroundColor: cardBgColor ?? (isDark ? "rgba(255,255,255,0.05)" : "#f9fafb"),
+          }}
+        >
 
           {/* Image */}
           <div className={`relative overflow-hidden bg-gray-100 ${aspectClass}`}>

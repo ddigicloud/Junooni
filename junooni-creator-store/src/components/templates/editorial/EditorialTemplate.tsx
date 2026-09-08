@@ -369,80 +369,123 @@ function EditorialSection({
     }
 
     // ── Collections showcase ────────────────────────────────────────────────
-    case "featured_collections": {
+        case "featured_collections": {
       const selectedIds: string[] = (section as any).collection_ids ?? []
       const toShow = selectedIds.length
         ? collections.filter(c => selectedIds.includes(c.id) || selectedIds.includes(c.handle))
         : collections
 
-      if (!toShow.length) {
-        if (!isEditorMode) return null
-        return (
-          <section className="px-6 py-16 border-t border-gray-100"
-            style={{ backgroundColor: sectionBg ?? "transparent" }}>
-            <div className="max-w-6xl mx-auto">
-              <div className="flex items-center gap-4 mb-10">
-                <h2 className="text-xs uppercase tracking-[0.3em] font-semibold text-gray-500">
-                  {(section as any).title ?? "Shop by Collection"}
-                </h2>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-              <PlaceholderCollectionGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
-            </div>
-          </section>
-        )
-      }
+      if (!toShow.length && !isEditorMode) return null
 
       const cols = (section as any).columns ?? 3
-      const gridClass = cols === 2 ? "grid-cols-1 sm:grid-cols-2"
-        : cols === 4 ? "grid-cols-2 sm:grid-cols-4"
-        : "grid-cols-1 sm:grid-cols-3"
+      const gridClass = cols === 2 ? "grid-cols-1 sm:grid-cols-2" : cols === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
+
+      const colAspect  = (section as any).card_aspect_ratio ?? "4/3"
+      const colRadius  = (section as any).card_border_radius ?? 16
+      const labelPos   = (section as any).label_position ?? "over"
+      const labelAlign = (section as any).label_alignment ?? "left"
+      const labelJustify = labelAlign === "center" ? "text-center" : labelAlign === "right" ? "text-right" : "text-left"
 
       return (
-        <section className="px-6 py-16 border-t border-gray-100"
-          style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-4 mb-10">
-              <h2 className="text-xs uppercase tracking-[0.3em] font-semibold"
-                style={{ color: sectionText ? `${sectionText}80` : "#6b7280" }}>
-                {(section as any).title ?? "Shop by Collection"}
-              </h2>
-              <div className="flex-1 h-px bg-gray-200" />
+        <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+          <div className="mx-auto max-w-7xl">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <h2 style={{
+                  color: sectionText ?? "#111827",
+                  fontSize: (section as any).title_size === "sm" ? "1.25rem" : (section as any).title_size === "md" ? "1.5rem" : "1.875rem",
+                  fontWeight: (section as any).title_weight === "black" ? 900 : (section as any).title_weight === "normal" ? 400 : 700,
+                  lineHeight: 1.2,
+                }}>
+                  {(section as any).title ?? "Shop by Collection"}
+                </h2>
+                {(section as any).subtitle && (
+                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}99` : "#6b7280" }}>
+                    {(section as any).subtitle}
+                  </p>
+                )}
+              </div>
               {toShow.length > 0 && (
                 <Link href={bare ? `/collections` : `/${handle}/collections`}
-                  className="text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>
-                  View all →
+                  className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2"
+                  style={{ color: brandPrimary }}>
+                  View all <span>→</span>
                 </Link>
               )}
             </div>
-            <div className={`grid ${gridClass} gap-5`}>
-              {toShow.map(col => {
-                const thumb = (col as any).thumbnail
-                  ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
-                  ?? products.find(p =>
-                    ((section as any).collection_ids ?? []).length === 0 ||
-                    (p as any).collection?.id === col.id
-                  )?.images?.[0]?.url
-                const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
-                return (
-                  <Link key={col.id}
-                    href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`}
-                    className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
-                    {thumb
-                      ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                      : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
-                      {productCount > 0 && <p className="text-white/70 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
+
+            {toShow.length === 0 ? (
+              <PlaceholderCollectionGrid columns={cols} brandPrimary={brandPrimary} />
+            ) : (
+              <div className={`grid ${gridClass} gap-5`}>
+                {toShow.map(col => {
+                  const thumb = (col as any).thumbnail
+                    ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
+                    ?? products.find(p =>
+                        ((section as any).collection_ids ?? []).length === 0 ||
+                        (p as any).collection?.id === col.id
+                      )?.images?.[0]?.url
+                  const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
+                  const href = bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`
+
+                  return (
+                    <div key={col.id}>
+                      {/* Card image */}
+                      <Link href={href}
+                        className="group block overflow-hidden bg-gray-100"
+                        style={{
+                          borderRadius: `${colRadius}px`,
+                          aspectRatio: colAspect.replace("/", " / "),
+                          display: "block",
+                        }}>
+                        <div className="relative w-full h-full">
+                          {thumb
+                            ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                            : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200">
+                                <span className="text-4xl">🛍️</span>
+                              </div>
+                          }
+                          {labelPos === "over" && (
+                            <>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                              <div className="absolute bottom-0 left-0 right-0 p-4">
+                                <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
+                                {productCount > 0 && (
+                                  <p className="text-white/70 text-sm mt-0.5">
+                                    {productCount} product{productCount !== 1 ? "s" : ""}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
+                                <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">
+                                  Shop →
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </Link>
+
+                      {/* Label below image */}
+                      {labelPos === "below" && (
+                        <div className={`mt-2 px-1 ${labelJustify}`}>
+                          <p className="text-sm font-semibold leading-tight"
+                            style={{ color: sectionText ?? "#111827" }}>
+                            {col.title}
+                          </p>
+                          {productCount > 0 && (
+                            <p className="text-xs mt-0.5"
+                              style={{ color: sectionText ? `${sectionText}70` : "#9ca3af" }}>
+                              {productCount} product{productCount !== 1 ? "s" : ""}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
-                      <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </section>
       )
@@ -488,17 +531,25 @@ function EditorialSection({
 
     // ── Divider ─────────────────────────────────────────────────────────────
     case "divider": {
-      const thickness = (section as any).divider_thickness ?? 1
-      const color = (section as any).divider_color ?? "#e5e7eb"
-      const paddingTop = (section as any).padding_top ?? 16
+      const thickness    = (section as any).divider_thickness ?? 1
+      const color        = (section as any).divider_color ?? "#e5e7eb"
+      const paddingTop   = (section as any).padding_top ?? 16
       const paddingBottom = (section as any).padding_bottom ?? 16
+      const widthPct     = (section as any).divider_width ?? 100
       return (
-        <div className="px-6" style={{
+        <div style={{
           backgroundColor: sectionBg ?? "transparent",
           paddingTop: `${paddingTop}px`,
           paddingBottom: `${paddingBottom}px`,
+          display: "flex",
+          justifyContent: "center",
         }}>
-          <div style={{ height: `${thickness}px`, backgroundColor: color, borderRadius: `${thickness}px` }} />
+          <div style={{
+            width: `${widthPct}%`,
+            height: `${thickness}px`,
+            backgroundColor: color,
+            borderRadius: `${thickness}px`,
+          }} />
         </div>
       )
     }
@@ -613,26 +664,44 @@ function EditorialSection({
     }
 
     // ── Image with Text ─────────────────────────────────────────────────────
-    case "image_text": {
+        case "image_text": {
       const imageLeft = (section.image_position ?? "left") === "left"
       const mobileImageTop = ((section as any).mobile_image_position ?? "top") === "top"
-      return (
-        <section className="px-6 py-16 border-t border-gray-100"
-          style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className={`flex gap-10 items-center ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
-              <div className="w-full md:w-1/2 shrink-0">
+      const proportion = (section as any).image_proportion ?? "1/2"
+      const minHeight = (section as any).section_min_height ?? 400
+
+      const imageWidthClass =
+        proportion === "2/5"   ? "md:w-2/5" :
+        proportion === "3/5"   ? "md:w-3/5" :
+        proportion === "full"  ? "md:w-full" :
+        "md:w-1/2"
+
+      const imageAspect =
+        proportion === "portrait" ? "aspect-[3/4]" :
+        proportion === "square"   ? "aspect-square"  :
+        proportion === "full"     ? "aspect-[21/9]"  :
+        "aspect-[4/3]"
+
+            return (
+        <section className="overflow-hidden border-t border-gray-100" style={{
+          backgroundColor: sectionBg ?? "transparent",
+          minHeight: `${minHeight}px`,
+        }}>
+          <div className={`flex ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"} h-full`}
+            style={{ minHeight: `${minHeight}px` }}>
+              {/* Image side — full bleed */}
+              <div className={`w-full ${imageWidthClass} shrink-0 relative`}
+                style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                 {section.image ? (
-                  <div className="relative overflow-hidden rounded-2xl shadow-xl aspect-[4/3]">
-                    <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
-                  </div>
+                  <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
                 ) : (
-                  <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-[4/3]">
+                  <div className="flex items-center justify-center w-full h-full bg-gray-100" style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                     <span className="text-5xl opacity-20">🖼️</span>
                   </div>
                 )}
               </div>
-              <div className="flex-1">
+              {/* Text side */}
+              <div className="flex-1 flex flex-col justify-center px-10 py-14">
                 {section.title && (
                   <h2 className="mb-4 text-3xl font-bold leading-tight"
                     style={{ color: sectionText ?? "#111827", fontFamily: "var(--font-playfair)" }}
@@ -644,14 +713,25 @@ function EditorialSection({
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
-                  <Link href={resolveUrl(section.cta_url, handle, bare)}
-                    className="inline-flex items-center gap-2 pb-1 text-sm font-semibold tracking-widest uppercase transition-opacity border-b-2 hover:opacity-70"
-                    style={{ borderColor: brandPrimary, color: brandPrimary }}>
-                    {section.cta_label} <span>→</span>
-                  </Link>
+                  <div className="mt-2">
+                    <Link href={resolveUrl(section.cta_url, handle, bare)}
+                      className="inline-flex items-center gap-2 text-sm font-semibold tracking-widest uppercase transition-all hover:opacity-80"
+                      style={{
+                        background: (section as any).cta_bg_color ? (section as any).cta_bg_color : "transparent",
+                        color: (section as any).cta_text_color ?? brandPrimary,
+                        borderRadius: `${(section as any).cta_border_radius ?? 2}px`,
+                        border: (section as any).cta_border_color
+                          ? `2px solid ${(section as any).cta_border_color}`
+                          : "none",
+                        paddingBottom: (section as any).cta_bg_color ? undefined : "2px",
+                        borderBottom: !(section as any).cta_bg_color ? `2px solid ${brandPrimary}` : undefined,
+                        padding: (section as any).cta_bg_color ? "0.75rem 1.5rem" : undefined,
+                      }}>
+                      {section.cta_label} {!(section as any).cta_bg_color && <span>→</span>}
+                    </Link>
+                  </div>
                 )}
               </div>
-            </div>
           </div>
         </section>
       )
@@ -1011,7 +1091,7 @@ function EditorialHeroSection({
               section.headline_size === "md" ? "text-5xl md:text-6xl" :
               "text-5xl md:text-7xl"
             }`}
-            style={{ color: headlineColor, fontFamily: "var(--font-playfair)", letterSpacing: "-0.02em" }}
+            style={{ color: headlineColor, fontFamily: "var(--font-playfair)", letterSpacing: "-0.02em", whiteSpace: "pre-wrap" }}
           >
             {section.headline}
           </h1>
@@ -1026,11 +1106,18 @@ function EditorialHeroSection({
           )}
 
           <div className="flex flex-wrap items-center gap-4 mb-8">
-            {section.cta_label && (
+                        {section.cta_label && (
               <Link
                 href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
-                className="inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-bold tracking-widest uppercase text-white transition-all hover:opacity-90 hover:gap-4"
-                style={{ background: brandPrimary, borderRadius: "2px" }}
+                className="inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-bold tracking-widest uppercase transition-all hover:opacity-90 hover:gap-4"
+                style={{
+                  background: (section as any).cta_bg_color ?? brandPrimary,
+                  color: (section as any).cta_text_color ?? "#ffffff",
+                  borderRadius: `${(section as any).cta_border_radius ?? 2}px`,
+                  border: (section as any).cta_border_color
+                    ? `2px solid ${(section as any).cta_border_color}`
+                    : "2px solid transparent",
+                }}
               >
                 {section.cta_label} <span>→</span>
               </Link>
@@ -1039,7 +1126,15 @@ function EditorialHeroSection({
               <Link
                 href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
                 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest transition-all hover:gap-3"
-                style={{ color: isLight ? "#374151" : headlineColor, opacity: 0.7 }}
+                style={{
+                  color: (section as any).sec_cta_text_color ?? (isLight ? "#374151" : headlineColor),
+                  background: (section as any).sec_cta_bg_color ?? "transparent",
+                  borderRadius: `${(section as any).sec_cta_border_radius ?? 2}px`,
+                  border: (section as any).sec_cta_border_color
+                    ? `2px solid ${(section as any).sec_cta_border_color}`
+                    : "none",
+                  opacity: (section as any).sec_cta_text_color ? 1 : 0.7,
+                }}
               >
                 {secCtaLabel} <span>↗</span>
               </Link>

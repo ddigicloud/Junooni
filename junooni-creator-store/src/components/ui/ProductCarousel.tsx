@@ -16,6 +16,8 @@ interface Props {
   showHover?: boolean
   showSoldOutBadge?: boolean
   columns?: number
+  cardBorderRadius?: number
+  cardBgColor?: string
 }
 
 export default function ProductCarousel({
@@ -30,6 +32,8 @@ export default function ProductCarousel({
   showHover = true,
   showSoldOutBadge = true,
   columns = 3,
+  cardBorderRadius,
+  cardBgColor,
 }: Props) {
   const isDark = variant === "dark"
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -117,7 +121,7 @@ export default function ProductCarousel({
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {products.map((product) => (
-          <div
+                    <div
             key={product.id}
             className="shrink-0"
             style={{
@@ -135,6 +139,8 @@ export default function ProductCarousel({
               showPrice={showPrice}
               showHover={showHover}
               showSoldOutBadge={showSoldOutBadge}
+              cardBorderRadius={cardBorderRadius}
+              cardBgColor={cardBgColor}
             />
           </div>
         ))}

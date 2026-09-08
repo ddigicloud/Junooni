@@ -475,7 +475,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                         ? "text-3xl md:text-5xl"
                         : "text-4xl md:text-6xl"
                   }`}
-                  style={{ color: headlineColor }}
+                  style={{ color: headlineColor, whiteSpace: "pre-wrap" }}
                 >
                   {section.headline}
                 </h1>
@@ -503,27 +503,39 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   {section.cta_label && (
                     <Link
                       href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
-                      className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold transition-all hover:opacity-90 hover:shadow-lg"
+                      className="inline-flex items-center gap-2 px-7 py-3.5 font-semibold transition-all hover:opacity-90 hover:shadow-lg"
                       style={{
-                        background: `linear-gradient(135deg, ${brandPrimary} 0%, ${store?.secondary_color ?? brandPrimary} 100%)`,
+                        background: (section as any).cta_bg_color
+                          ? (section as any).cta_bg_color
+                          : store?.secondary_color && store.secondary_color !== "#ffffff" && store.secondary_color !== "#000000"
+                            ? `linear-gradient(135deg, ${brandPrimary} 0%, ${store.secondary_color} 100%)`
+                            : `linear-gradient(135deg, ${brandPrimary} 0%, ${brandPrimary}cc 100%)`,
+                        color: (section as any).cta_text_color ?? "#ffffff",
+                        borderRadius: `${(section as any).cta_border_radius ?? 50}px`,
+                        border: (section as any).cta_border_color
+                          ? `2px solid ${(section as any).cta_border_color}`
+                          : "2px solid transparent",
                       }}
                     >
                       {section.cta_label}
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                   )}
-                  {/* Secondary CTA — only render if label is set */}
                   {secCtaLabel && (
                     <Link
                       href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
-                      className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold border-2 transition-all hover:border-gray-400"
+                      className="inline-flex items-center gap-2 px-7 py-3.5 font-semibold transition-all hover:opacity-90"
                       style={{
-                        color: headlineColor,
-                        borderColor: overlayTextColor
-                          ? `${overlayTextColor}50`
-                          : sectionText
-                            ? `${sectionText}40`
-                            : "#e5e7eb",
+                        color: (section as any).sec_cta_text_color ?? headlineColor,
+                        background: (section as any).sec_cta_bg_color ?? "transparent",
+                        borderRadius: `${(section as any).sec_cta_border_radius ?? 50}px`,
+                        border: (section as any).sec_cta_border_color
+                          ? `2px solid ${(section as any).sec_cta_border_color}`
+                          : overlayTextColor
+                            ? `2px solid ${overlayTextColor}50`
+                            : sectionText
+                              ? `2px solid ${sectionText}40`
+                              : "2px solid #e5e7eb",
                       }}
                     >
                       {secCtaLabel}
@@ -594,24 +606,49 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       if (!limited.length && !isEditorMode) return null  // ← change
 
       return (
-        <section id="products" className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
+                <section id="products" className="px-4 sm:px-6" style={{
+          backgroundColor: sectionBg ?? "#f9fafb",
+          paddingTop: `${(section as any).padding_top ?? 64}px`,
+          paddingBottom: `${(section as any).padding_bottom ?? 64}px`,
+        }}>
           <div className="mx-auto max-w-7xl">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-end justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title ?? "All Products"}</h2>
+                <h2 style={{
+                  color: sectionText ?? "#111827",
+                  fontSize: (section as any).title_size === "sm" ? "1.25rem" : (section as any).title_size === "md" ? "1.5rem" : "1.875rem",
+                  fontWeight: (section as any).title_weight === "black" ? 900 : (section as any).title_weight === "normal" ? 400 : 700,
+                  lineHeight: 1.2,
+                }}>
+                  {section.title ?? "All Products"}
+                </h2>
+                {(section as any).subtitle && (
+                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}99` : "#6b7280" }}>
+                    {(section as any).subtitle}
+                  </p>
+                )}
                 {section.show_product_count !== false && (
-                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
+                  <p className="mt-1 text-xs" style={{ color: sectionText ? `${sectionText}60` : "#9ca3af" }}>
                     {limited.length > 0 ? `${products.length} products available` : "No products yet"}
                   </p>
                 )}
               </div>
+              {(section as any).view_all_url && (
+                <Link href={resolveUrl((section as any).view_all_url, handle, bare)}
+                  className="flex items-center gap-1 text-sm font-semibold shrink-0 ml-4 transition-opacity hover:opacity-70"
+                  style={{ color: brandPrimary }}>
+                  View all <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
             </div>
             {limited.length === 0 ? (
               <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
             ) : (
               <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light"
                 aspectRatio={cardAspectRatio} alignment={cardAlignment} showPrice={cardShowPrice}
-                showHover={cardShowHover} showSoldOutBadge={cardShowSoldOut} columns={(section as any).columns ?? 3} />
+                showHover={cardShowHover} showSoldOutBadge={cardShowSoldOut} columns={(section as any).columns ?? 3}
+                cardBorderRadius={(section as any).card_border_radius}
+                cardBgColor={(section as any).card_bg_color} />
             )}
           </div>
         </section>
@@ -624,25 +661,46 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const toShow = selectedIds.length
         ? collections.filter(c => selectedIds.includes(c.id) || selectedIds.includes(c.handle))
         : collections
-      
+
       if (!toShow.length && !isEditorMode) return null
-      
+
       const cols = (section as any).columns ?? 3
       const gridClass = cols === 2 ? "grid-cols-1 sm:grid-cols-2" : cols === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
-      
+
+      const colAspect  = (section as any).card_aspect_ratio ?? "4/3"
+      const colRadius  = (section as any).card_border_radius ?? 16
+      const labelPos   = (section as any).label_position ?? "over"
+      const labelAlign = (section as any).label_alignment ?? "left"
+      const labelJustify = labelAlign === "center" ? "text-center" : labelAlign === "right" ? "text-right" : "text-left"
+
       return (
         <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="mx-auto max-w-7xl">
             <div className="flex items-end justify-between mb-8">
-              <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>
-                {(section as any).title ?? "Shop by Collection"}
-              </h2>
+              <div>
+                <h2 style={{
+                  color: sectionText ?? "#111827",
+                  fontSize: (section as any).title_size === "sm" ? "1.25rem" : (section as any).title_size === "md" ? "1.5rem" : "1.875rem",
+                  fontWeight: (section as any).title_weight === "black" ? 900 : (section as any).title_weight === "normal" ? 400 : 700,
+                  lineHeight: 1.2,
+                }}>
+                  {(section as any).title ?? "Shop by Collection"}
+                </h2>
+                {(section as any).subtitle && (
+                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}99` : "#6b7280" }}>
+                    {(section as any).subtitle}
+                  </p>
+                )}
+              </div>
               {toShow.length > 0 && (
-                <Link href={bare ? `/collections` : `/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
+                <Link href={bare ? `/collections` : `/${handle}/collections`}
+                  className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2"
+                  style={{ color: brandPrimary }}>
                   View all <span>→</span>
                 </Link>
               )}
             </div>
+
             {toShow.length === 0 ? (
               <PlaceholderCollectionGrid columns={cols} brandPrimary={brandPrimary} />
             ) : (
@@ -650,22 +708,67 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 {toShow.map(col => {
                   const thumb = (col as any).thumbnail
                     ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
-                    ?? products.find(p => ((section as any).collection_ids ?? []).length === 0 || (p as any).collection?.id === col.id)?.images?.[0]?.url
+                    ?? products.find(p =>
+                        ((section as any).collection_ids ?? []).length === 0 ||
+                        (p as any).collection?.id === col.id
+                      )?.images?.[0]?.url
                   const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
+                  const href = bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`
+
                   return (
-                    <Link key={col.id} href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`} className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
-                      {thumb
-                        ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                        : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
-                        {productCount > 0 && <p className="text-white/70 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
-                      </div>
-                      <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
-                        <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
-                      </div>
-                    </Link>
+                    <div key={col.id}>
+                      {/* Card image */}
+                      <Link href={href}
+                        className="group block overflow-hidden bg-gray-100"
+                        style={{
+                          borderRadius: `${colRadius}px`,
+                          aspectRatio: colAspect.replace("/", " / "),
+                          display: "block",
+                        }}>
+                        <div className="relative w-full h-full">
+                          {thumb
+                            ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                            : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200">
+                                <span className="text-4xl">🛍️</span>
+                              </div>
+                          }
+                          {labelPos === "over" && (
+                            <>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                              <div className="absolute bottom-0 left-0 right-0 p-4">
+                                <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
+                                {productCount > 0 && (
+                                  <p className="text-white/70 text-sm mt-0.5">
+                                    {productCount} product{productCount !== 1 ? "s" : ""}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
+                                <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">
+                                  Shop →
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </Link>
+
+                      {/* Label below image */}
+                      {labelPos === "below" && (
+                        <div className={`mt-2 px-1 ${labelJustify}`}>
+                          <p className="text-sm font-semibold leading-tight"
+                            style={{ color: sectionText ?? "#111827" }}>
+                            {col.title}
+                          </p>
+                          {productCount > 0 && (
+                            <p className="text-xs mt-0.5"
+                              style={{ color: sectionText ? `${sectionText}70` : "#9ca3af" }}>
+                              {productCount} product{productCount !== 1 ? "s" : ""}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -679,65 +782,29 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     //   return <hr className="mt-6 border-gray-100" />
     // }
 
-    case "divider": {
-      const thickness = (section as any).divider_thickness ?? 1
-      const color = (section as any).divider_color ?? "#e5e7eb"
-      const paddingTop = (section as any).padding_top ?? 16
+       case "divider": {
+      const thickness    = (section as any).divider_thickness ?? 1
+      const color        = (section as any).divider_color ?? "#e5e7eb"
+      const paddingTop   = (section as any).padding_top ?? 16
       const paddingBottom = (section as any).padding_bottom ?? 16
+      const widthPct     = (section as any).divider_width ?? 100
       return (
-        <div className="px-6" style={{
+        <div style={{
           backgroundColor: sectionBg ?? "transparent",
           paddingTop: `${paddingTop}px`,
           paddingBottom: `${paddingBottom}px`,
+          display: "flex",
+          justifyContent: "center",
         }}>
-          <div style={{ height: `${thickness}px`, backgroundColor: color, borderRadius: `${thickness}px` }} />
+          <div style={{
+            width: `${widthPct}%`,
+            height: `${thickness}px`,
+            backgroundColor: color,
+            borderRadius: `${thickness}px`,
+          }} />
         </div>
       )
     }
-
-    // case "divider": {
-    //   if (!collections.length) return <hr className="mx-6 border-gray-100" />
-    //   return (
-    //     <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-    //       <div className="mx-auto max-w-7xl">
-    //         <div className="flex items-center justify-between mb-8">
-    //           <div>
-    //             <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>Collections</h2>
-    //             <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>Shop by collection</p>
-    //           </div>
-    //           <Link href={bare ? `/collections` : `/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
-    //             View all <ChevronRight className="w-4 h-4" />
-    //           </Link>
-    //         </div>
-    //         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-    //           {collections.slice(0, 4).map(col => {
-    //             const colThumb = (col as any).thumbnail
-    //             const colProductIds = (col as any).product_ids ?? []
-    //             const colProduct = colProductIds.length > 0
-    //               ? products.find(p => colProductIds.includes(p.id))
-    //               : products.find(p => (p as any).collection?.handle === col.handle)
-    //             const coverImg = colThumb || colProduct?.thumbnail
-    //             return (
-    //               <Link key={col.id} href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`}
-    //                 className="overflow-hidden transition-all border border-gray-100 shadow-sm group rounded-2xl hover:shadow-md"
-    //                 style={{ backgroundColor: sectionBg ? `${sectionBg}cc` : "#ffffff" }}>
-    //                 <div className="aspect-[4/3] relative bg-gray-100 overflow-hidden">
-    //                   {coverImg
-    //                     ? <Image src={coverImg} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
-    //                     : <div className="flex items-center justify-center w-full h-full"><span className="text-3xl opacity-20">🛍</span></div>}
-    //                 </div>
-    //                 <div className="p-4">
-    //                   <p className="text-sm font-semibold" style={{ color: sectionText ?? "#111827" }}>{col.title}</p>
-    //                   <p className="text-xs mt-0.5" style={{ color: brandPrimary }}>{col.product_count} items</p>
-    //                 </div>
-    //               </Link>
-    //             )
-    //           })}
-    //         </div>
-    //       </div>
-    //     </section>
-    //   )
-    // }
 
     // ── About ──────────────────────────────────────────────────────────────────
     case "about": return (
@@ -1101,27 +1168,44 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     }
 
     // ── Image with Text ────────────────────────────────────────────────────────
-    case "image_text": {
+       case "image_text": {
       const imageLeft = (section.image_position ?? "left") === "left"
       const mobileImageTop = ((section as any).mobile_image_position ?? "top") === "top"
+      const proportion = (section as any).image_proportion ?? "1/2"
+      const minHeight = (section as any).section_min_height ?? 400
+
+      const imageWidthClass =
+        proportion === "2/5"   ? "md:w-2/5" :
+        proportion === "3/5"   ? "md:w-3/5" :
+        proportion === "full"  ? "md:w-full" :
+        "md:w-1/2"
+
+      const imageAspect =
+        proportion === "portrait" ? "aspect-[3/4]" :
+        proportion === "square"   ? "aspect-square"  :
+        proportion === "full"     ? "aspect-[21/9]"  :
+        "aspect-[4/3]"
+
       return (
-        <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="max-w-6xl mx-auto">
-            <div className={`flex gap-10 items-center ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
-              {/* Image side */}
-              <div className="w-full md:w-1/2 shrink-0">
+        <section className="overflow-hidden" style={{
+          backgroundColor: sectionBg ?? "transparent",
+          minHeight: `${minHeight}px`,
+        }}>
+          <div className={`flex ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"} h-full`}
+            style={{ minHeight: `${minHeight}px` }}>
+              {/* Image side — full bleed, no padding, no rounding */}
+              <div className={`w-full ${imageWidthClass} shrink-0 relative`}
+                style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                 {section.image ? (
-                  <div className="relative overflow-hidden rounded-2xl shadow-xl aspect-[4/3]">
-                    <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
-                  </div>
+                  <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
                 ) : (
-                  <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-[4/3]">
+                  <div className="flex items-center justify-center w-full h-full bg-gray-100" style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                     <span className="text-5xl opacity-20">🖼️</span>
                   </div>
                 )}
               </div>
-              {/* Text side */}
-              <div className="flex-1">
+              {/* Text side — keeps padding */}
+              <div className="flex-1 flex flex-col justify-center px-8 py-14">
                 {section.title && (
                   <h2 className="mb-4 text-3xl font-bold leading-tight" style={{ color: sectionText ?? "#111827" }}
                     dangerouslySetInnerHTML={{ __html: section.title }} />
@@ -1131,14 +1215,20 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
-                  <Link href={resolveUrl(section.cta_url, handle, bare)}
-                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
-                    style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
-                    {section.cta_label}
-                  </Link>
+                  <div className="mt-2">
+                    <Link href={resolveUrl(section.cta_url, handle, bare)}
+                      className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg"
+                      style={{
+                        background: (section as any).cta_bg_color ?? `linear-gradient(135deg, ${brandPrimary} 0%, ${store?.secondary_color ?? brandPrimary} 100%)`,
+                        color: (section as any).cta_text_color ?? "#ffffff",
+                        borderRadius: `${(section as any).cta_border_radius ?? 50}px`,
+                        border: (section as any).cta_border_color ? `2px solid ${(section as any).cta_border_color}` : "2px solid transparent",
+                      }}>
+                      {section.cta_label}
+                    </Link>
+                  </div>
                 )}
               </div>
-            </div>
           </div>
         </section>
       )

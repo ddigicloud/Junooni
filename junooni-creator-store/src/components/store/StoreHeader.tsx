@@ -344,7 +344,7 @@ return (
                     <button
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                       style={headerText
-                        ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
+                        ? (isActive(href) ? { color: headerText } : { color: headerText, opacity: 0.7 })
                         : (isActive(href) ? { color: brandPrimary } : {})
                       }>
                       {item.label}
@@ -363,7 +363,7 @@ return (
                     <button
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                       style={headerText
-                        ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
+                        ? (isActive(href) ? { color: headerText } : { color: headerText, opacity: 0.7 })
                         : (isActive(href) ? { color: brandPrimary } : {})
                       }>
                       {item.label}
@@ -379,7 +379,7 @@ return (
                   rel={item.external ? "noopener noreferrer" : undefined}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                   style={headerText
-                    ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
+                    ? (isActive(href) ? { color: headerText } : { color: headerText, opacity: 0.7 })
                     : (isActive(href) ? { color: brandPrimary } : {})
                   }
                 >
