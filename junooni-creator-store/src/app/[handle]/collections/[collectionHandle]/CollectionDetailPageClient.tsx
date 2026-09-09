@@ -63,10 +63,13 @@ export default function CollectionDetailPageClient({
 
   // Virtual section settings — reads __collection_products__ for grid config
   const gridSettings = pageSections.find((s: any) => s.id === "__collection_products__") ?? {}
-  const gridColumns  = gridSettings.columns ?? 3
-  const gridBg       = gridSettings.background_color
-  const gridText     = gridSettings.text_color
+  const gridColumns      = gridSettings.columns ?? 3
+  const gridBg           = gridSettings.background_color
+  const gridText         = gridSettings.text_color
   const showProductCount = gridSettings.show_product_count !== false
+  const hideBanner       = gridSettings.hide_banner ?? false
+  const cardBorderRadius = gridSettings.card_border_radius
+  const cardBgColor      = gridSettings.card_bg_color
 
   const showFilters          = gridSettings.show_filters           !== false
   const showSort             = gridSettings.show_sort              !== false
@@ -370,16 +373,18 @@ export default function CollectionDetailPageClient({
       </div>
 
       {/* ── Collection hero — always first ── */}
-      <div className={`border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
-        {col.thumbnail && (
+      <div className={`border-b ${isDark ? "border-white/10" : "border-gray-100"}`}
+        style={{ backgroundColor: gridBg ?? undefined }}>
+        {!hideBanner && col.thumbnail && (
           <div className="relative h-48 overflow-hidden md:h-64">
             <img src={col.thumbnail} alt={col.title}
               className="object-cover w-full h-full opacity-60" />
             <div className={`absolute inset-0 ${isDark ? "bg-black/60" : "bg-white/60"}`} />
           </div>
         )}
-        <div className="max-w-7xl px-4 py-8 mx-auto sm:px-6">
-          <Link href={`/${vendor.handle}/collections`}
+        <div className="max-w-7xl px-4 py-8 mx-auto sm:px-6"
+          style={{ backgroundColor: gridBg ?? undefined }}>
+          <Link href={`/collections`}
             className="flex items-center gap-1.5 text-sm mb-4 opacity-60 hover:opacity-100 transition-opacity"
             style={{ color: brandPrimary }}
             onClick={e => { if (isEditorMode) e.preventDefault() }}>
@@ -449,13 +454,14 @@ export default function CollectionDetailPageClient({
             showSort={showSort}
             showPriceFilter={showPriceFilter}
             showCategoryFilter={showCategoryFilter}
-            // showCollectionFilter={showCollectionFilter}
             filterOrder={filterOrder}
             cardAspectRatio={cardAspectRatio}
             cardAlignment={cardAlignment}
             cardShowPrice={cardShowPrice}
             cardShowHover={cardShowHover}
             cardShowSoldOut={cardShowSoldOut}
+            cardBorderRadius={cardBorderRadius}
+            cardBgColor={cardBgColor}
           />
         </div>
       </div>

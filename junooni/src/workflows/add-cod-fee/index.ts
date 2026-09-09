@@ -28,7 +28,7 @@ const addCodFeeLineItemStep = createStep(
       {
         cart_id: input.cart_id,
         title: "COD Fee",
-        unit_price: 35, // ₹35 in paise
+        unit_price: 40, // ₹40 in paise
         quantity: 1,
         requires_shipping: false,
         is_discountable: false,

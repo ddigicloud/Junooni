@@ -41,6 +41,8 @@ interface Props {
   cardShowPrice?:    boolean
   cardShowHover?:    boolean
   cardShowSoldOut?:  boolean
+  cardBorderRadius?: number
+  cardBgColor?:      string
 }
 
 type SortOption = "newest" | "price_asc" | "price_desc" | "name_asc"
@@ -167,6 +169,8 @@ export default function ProductGrid({
   cardShowPrice = true,
   cardShowHover = true,
   cardShowSoldOut = true,
+  cardBorderRadius,
+  cardBgColor,
   showProductCount = true,
 }: Props) {
 
@@ -478,6 +482,8 @@ export default function ProductGrid({
                   showPrice={cardShowPrice}
                   showHover={cardShowHover}
                   showSoldOutBadge={cardShowSoldOut}
+                  cardBorderRadius={cardBorderRadius}
+                  cardBgColor={cardBgColor}
                 />
               ))}
             </div>

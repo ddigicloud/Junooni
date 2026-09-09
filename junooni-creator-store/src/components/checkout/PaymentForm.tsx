@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { initiatePaymentSession } from "@/lib/cart"
+import { initiatePaymentSession, addCodFee, removeCodFee } from "@/lib/cart"
 import { CreditCard, CheckCircle2, Loader2, ArrowRight } from "lucide-react"
 
 const PROVIDER_LABELS: Record<string, { label: string; desc: string; icon: string }> = {
@@ -27,9 +27,9 @@ function getProviderLabel(id: string) {
 }
 
 export default function PaymentForm({
-  cart, paymentMethods, handle, brandPrimary = "#e65100", isDark = false,
+  cart, paymentMethods, handle, brandPrimary = "#e65100", isDark = false, onProviderChange,
 }: {
-  cart: any; paymentMethods: any[]; handle: string; brandPrimary?: string; isDark?: boolean
+  cart: any; paymentMethods: any[]; handle: string; brandPrimary?: string; isDark?: boolean; onProviderChange?: (id: string) => void
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -133,7 +133,15 @@ export default function PaymentForm({
                 style={isSelected ? { borderColor: brandPrimary } : {}}
               >
                 <input type="radio" name="payment_method" value={method.id}
-                  checked={isSelected} onChange={() => setSelected(method.id)}
+                  checked={isSelected} onChange={async () => {
+                    setSelected(method.id)
+                    onProviderChange?.(method.id)
+                    if (method.id === "pp_system_default") {
+                      await addCodFee(handle)
+                    } else {
+                      await removeCodFee(handle)
+                    }
+                  }}
                   className="w-4 h-4 mt-0.5" style={{ accentColor: brandPrimary }}
                 />
                 <div className="flex-1 min-w-0">

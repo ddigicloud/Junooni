@@ -192,3 +192,46 @@ export interface StorefrontData {
   categories?: CategoryMeta[]
   collections?: CollectionMeta[]
 }
+
+
+interface ProductDetailSettings {
+  element_order?: string[]
+  title_size?: "sm" | "md" | "lg" | "xl"
+  title_weight?: "normal" | "semibold" | "bold" | "extrabold"
+  title_color?: string
+  price_color?: string
+  price_size?: "sm" | "md" | "lg" | "xl"
+  colors_label?: string
+  show_color_label?: boolean
+  color_swatch_size?: "sm" | "md" | "lg"
+  sizes_label?: string
+  show_size_label?: boolean
+  size_style?: "pill" | "box" | "underline"
+  size_bg_color?: string
+  size_text_color?: string
+  size_border_color?: string
+  atc_label?: string
+  atc_style?: "filled" | "outline" | "pill"
+  atc_full_width?: boolean
+  atc_text_color?: string
+  show_quantity?: boolean
+  qty_bg_color?: string
+  qty_text_color?: string
+  qty_border_color?: string
+  show_description?: boolean
+  description_collapsed?: boolean
+  show_secure_badge?: boolean
+  secure_badge_text?: string
+  accordion_text_color?: string
+  show_short_description?: boolean
+  page_bg_color?: string
+  image_border_radius?: number
+  thumbnail_position?: "below" | "left"
+  related_heading?: string
+  related_heading_size?: "sm" | "md" | "lg"
+  related_heading_align?: "left" | "center" | "right"
+  related_card_radius?: number
+  related_card_bg?: string
+  related_card_text?: string
+  [key: string]: any
+}

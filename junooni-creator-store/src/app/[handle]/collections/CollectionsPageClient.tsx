@@ -66,11 +66,26 @@ export default function CollectionsPageClient({
   }, [])
 
   // Virtual grid settings
-  const gridSettings = pageSections.find((s: any) => s.id === "__collections_grid__") ?? {}
-  const gridColumns  = gridSettings.columns ?? 3
-  const gridTitle    = gridSettings.title   ?? "Collections"
-  const gridBg       = gridSettings.background_color
-  const gridText     = gridSettings.text_color
+  const gridSettings    = pageSections.find((s: any) => s.id === "__collections_grid__") ?? {}
+  const gridColumns     = gridSettings.columns ?? 3
+  const gridTitle       = gridSettings.title   ?? "Collections"
+  const gridBg          = gridSettings.background_color
+  const gridText        = gridSettings.text_color
+  const cardRadius      = gridSettings.card_border_radius ?? 16
+  const cardBgColor     = gridSettings.card_bg_color
+  const namePosition    = gridSettings.name_position  ?? "below"
+  const nameAlignment   = gridSettings.name_alignment ?? "left"
+  const nameSize        = gridSettings.name_size      ?? "md"
+  const showColCount    = gridSettings.show_product_count !== false
+
+  const nameSizeClass =
+    nameSize === "sm" ? "text-sm"  :
+    nameSize === "lg" ? "text-xl"  :
+    "text-base"
+  const nameAlignClass =
+    nameAlignment === "center" ? "text-center" :
+    nameAlignment === "right"  ? "text-right"  :
+    "text-left"
 
   // Real editor sections (exclude virtual)
   const visibleSections = pageSections.filter(
@@ -428,25 +443,35 @@ export default function CollectionsPageClient({
           {collections.length === 0 && isEditorMode ? (
             <div className={`grid ${gridColClass} gap-6`}>
               {FAKE_COLLECTIONS.slice(0, gridColumns).map(col => (
-                <div key={col.id} className={`rounded-2xl overflow-hidden border cursor-default select-none ${
-                  isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
-                }`}>
-                  <div className="aspect-[4/5] relative bg-gray-100 overflow-hidden">
-                    <img
-                      src={col.image}
-                      alt={col.title}
-                      className="w-full h-full object-cover opacity-60"
-                    />
+                <div key={col.id}
+                  className="overflow-hidden border cursor-default select-none"
+                  style={{
+                    borderRadius: `${cardRadius}px`,
+                    backgroundColor: cardBgColor ?? (isDark ? "rgba(255,255,255,0.05)" : "#ffffff"),
+                    borderColor: isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6",
+                  }}>
+                  <div className="aspect-[4/5] relative bg-gray-100 overflow-hidden"
+                    style={{ borderRadius: namePosition === "over" ? `${cardRadius}px` : `${cardRadius}px ${cardRadius}px 0 0` }}>
+                    <img src={col.image} alt={col.title} className="w-full h-full object-cover opacity-60" />
+                    {namePosition === "over" && (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                        <div className={`absolute bottom-0 left-0 right-0 p-4 ${nameAlignClass}`}>
+                          <h2 className={`font-bold text-white ${nameSizeClass}`}>{col.title}</h2>
+                          {showColCount && <p className="text-white/70 text-sm mt-0.5">{col.count} products</p>}
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="p-5">
-                    <h2 className="font-semibold text-base mb-0.5"
-                      style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
-                      {col.title}
-                    </h2>
-                    <p className="text-sm" style={{ color: brandPrimary }}>
-                      {col.count} products
-                    </p>
-                  </div>
+                  {namePosition === "below" && (
+                    <div className={`p-4 ${nameAlignClass}`}>
+                      <h2 className={`font-semibold mb-0.5 ${nameSizeClass}`}
+                        style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
+                        {col.title}
+                      </h2>
+                      {showColCount && <p className="text-sm" style={{ color: brandPrimary }}>{col.count} products</p>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -458,35 +483,63 @@ export default function CollectionsPageClient({
                 const thumb = col.thumbnail ??
                   products.find((p: any) => colProductIds.map(String).includes(String(p.id)))?.thumbnail
                 return (
-                  <Link
-                    key={col.id}
-                    href={`/collections/${col.handle}`}
-                    className={`group rounded-2xl overflow-hidden border hover:shadow-md transition-all ${
-                      isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
-                    }`}
-                    onClick={e => { if (isEditorMode) e.preventDefault() }}
-                  >
-                    <div className="aspect-[4/5] relative bg-gray-100 overflow-hidden">
-                      {thumb ? (
-                        <Image src={thumb} alt={col.title} fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${isDark ? "bg-white/10" : "bg-gray-100"}`}>
-                          <span className="text-4xl opacity-20">🛍</span>
+                  <div key={col.id} className="group">
+                    <Link
+                      href={`/collections/${col.handle}`}
+                      className="block overflow-hidden border hover:shadow-md transition-all"
+                      style={{
+                        borderRadius: `${cardRadius}px`,
+                        backgroundColor: cardBgColor ?? (isDark ? "rgba(255,255,255,0.05)" : "#ffffff"),
+                        borderColor: isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6",
+                      }}
+                      onClick={e => { if (isEditorMode) e.preventDefault() }}
+                    >
+                      <div className="aspect-[4/5] relative bg-gray-100 overflow-hidden"
+                        style={{ borderRadius: namePosition === "over" ? `${cardRadius}px` : `${cardRadius}px ${cardRadius}px 0 0` }}>
+                        {thumb ? (
+                          <Image src={thumb} alt={col.title} fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <div className={`w-full h-full flex items-center justify-center ${isDark ? "bg-white/10" : "bg-gray-100"}`}>
+                            <span className="text-4xl opacity-20">🛍</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+
+                        {/* Name over image */}
+                        {namePosition === "over" && (
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                            <div className={`absolute bottom-0 left-0 right-0 p-4 ${nameAlignClass}`}>
+                              <h2 className={`font-bold leading-tight text-white ${nameSizeClass}`}>
+                                {col.title}
+                              </h2>
+                              {showColCount && (
+                                <p className="text-white/70 text-sm mt-0.5">
+                                  {productCount} product{productCount !== 1 ? "s" : ""}
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Name below image */}
+                      {namePosition === "below" && (
+                        <div className={`p-4 ${nameAlignClass}`}>
+                          <h2 className={`font-semibold leading-snug mb-0.5 ${nameSizeClass}`}
+                            style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
+                            {col.title}
+                          </h2>
+                          {showColCount && (
+                            <p className="text-sm" style={{ color: brandPrimary }}>
+                              {productCount} product{productCount !== 1 ? "s" : ""}
+                            </p>
+                          )}
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
-                    </div>
-                    <div className="p-5">
-                      <h2 className="font-semibold text-base mb-0.5"
-                        style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
-                        {col.title}
-                      </h2>
-                      <p className="text-sm" style={{ color: brandPrimary }}>
-                        {productCount} product{productCount !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
                 )
               })}
             </div>

@@ -303,7 +303,7 @@ const order: string[] = storedOrder.length > 0
         <span className={`text-xs ${textPrimary}`}>Show size label</span>
       </label>
       <Field label="Button style" faint={textFaint}>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-3 gap-1.5">
           {(["pill","box","underline"] as const).map(s => (
             <button key={s} onClick={() => onChange({ size_style: s })}
               className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
@@ -314,18 +314,98 @@ const order: string[] = storedOrder.length > 0
           ))}
         </div>
       </Field>
+
+              <div className={`pt-2 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${textFaint}`}>Unselected button</p>
+          <div className="grid grid-cols-3 gap-1.5 mb-3">
+            {[
+              { key: "size_bg_color",     label: "Background" },
+              { key: "size_text_color",   label: "Text"       },
+              { key: "size_border_color", label: "Border"     },
+            ].map(({ key, label }) => (
+              <Field key={key} label={label} faint={textFaint}>
+                <div className="flex items-center gap-1">
+                  <input type="color"
+                    value={(settings as any)[key] ?? "#e5e7eb"}
+                    onChange={e => onChange({ [key]: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  {(settings as any)[key] && (
+                    <button onClick={() => onChange({ [key]: undefined })} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <p className={`text-[9px] mt-0.5 ${textFaint} opacity-60`}>
+                  {(settings as any)[key] ?? "Default"}
+                </p>
+              </Field>
+            ))}
+          </div>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${textFaint}`}>Selected button</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { key: "size_selected_bg_color",     label: "Background" },
+              { key: "size_selected_text_color",   label: "Text"       },
+              { key: "size_selected_border_color", label: "Border"     },
+            ].map(({ key, label }) => (
+            <Field key={key} label={label} faint={textFaint}>
+              <div className="flex items-center gap-1">
+                <input type="color"
+                  value={(settings as any)[key] ?? "#e5e7eb"}
+                  onChange={e => onChange({ [key]: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                {(settings as any)[key] && (
+                  <button onClick={() => onChange({ [key]: undefined })} className="text-red-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <p className={`text-[9px] mt-0.5 ${textFaint} opacity-60`}>
+                {(settings as any)[key] ?? "Default"}
+              </p>
+            </Field>
+          ))}
+        </div>
+      </div>
     </>
   )
  
-  const renderQuantitySettings = () => (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <div className="relative shrink-0"
-        onClick={() => onChange({ show_quantity: !(settings.show_quantity ?? true) })}>
-        <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_quantity ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
-        <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_quantity ?? true) ? "translate-x-4" : ""}`} />
+    const renderQuantitySettings = () => (
+    <>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <div className="relative shrink-0"
+          onClick={() => onChange({ show_quantity: !(settings.show_quantity ?? true) })}>
+          <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_quantity ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_quantity ?? true) ? "translate-x-4" : ""}`} />
+        </div>
+        <span className={`text-xs ${textPrimary}`}>Show quantity stepper</span>
+      </label>
+      <div className={`pt-2 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Stepper style</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {[
+            { key: "qty_bg_color",     label: "Background", placeholder: "Default" },
+            { key: "qty_text_color",   label: "Text",       placeholder: "Default" },
+            { key: "qty_border_color", label: "Border",     placeholder: "Default" },
+          ].map(({ key, label, placeholder }) => (
+            <Field key={key} label={label} faint={textFaint}>
+              <div className="flex items-center gap-1">
+                <input type="color"
+                  value={(settings as any)[key] ?? "#e5e7eb"}
+                  onChange={e => onChange({ [key]: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                {(settings as any)[key] && (
+                  <button onClick={() => onChange({ [key]: undefined })} className="text-red-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <p className={`text-[9px] mt-0.5 ${textFaint} opacity-60`}>{(settings as any)[key] ?? placeholder}</p>
+            </Field>
+          ))}
+        </div>
       </div>
-      <span className={`text-xs ${textPrimary}`}>Show quantity stepper</span>
-    </label>
+    </>
   )
  
   const renderAtcSettings = () => (
@@ -476,6 +556,170 @@ const order: string[] = storedOrder.length > 0
  
   return (
     <div className="space-y-1">
+
+      {/* ── Page-level settings ── always visible above the element list ── */}
+      <div className={`rounded-lg border ${borderCls} mb-3`}>
+        <details className="group">
+          <summary className={`flex items-center gap-2 px-2.5 py-2 cursor-pointer select-none list-none rounded-lg ${hoverBg}`}>
+            <ChevronRight className={`w-3.5 h-3.5 ${textFaint} transition-transform group-open:rotate-90`} />
+            <span className="text-xs" style={{ fontSize: "11px" }}>🎨</span>
+            <span className={`flex-1 text-xs font-medium ${textPrimary}`}>Page settings</span>
+          </summary>
+          <div className={`px-3 pb-3 pt-2 border-t ${borderCls} space-y-4`}>
+
+            {/* Page background */}
+            <div>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Page background</p>
+              <div className="flex items-center gap-1.5">
+                <input type="color"
+                  value={(settings as any).page_bg_color ?? "#ffffff"}
+                  onChange={e => onChange({ page_bg_color: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                <input type="text"
+                  value={(settings as any).page_bg_color ?? ""}
+                  onChange={e => onChange({ page_bg_color: e.target.value })}
+                  placeholder="Default"
+                  className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                    isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                  }`} />
+                {(settings as any).page_bg_color && (
+                  <button onClick={() => onChange({ page_bg_color: undefined })} className="text-red-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Gallery */}
+            <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Gallery</p>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className={`text-[10px] ${textFaint}`}>Image border radius</span>
+                    <span className={`text-[10px] font-mono ${textFaint}`}>{(settings as any).image_border_radius ?? 16}px</span>
+                  </div>
+                  <input type="range" min={0} max={32} step={2}
+                    value={(settings as any).image_border_radius ?? 16}
+                    onChange={e => onChange({ image_border_radius: Number(e.target.value) })}
+                    className="w-full accent-orange-500" />
+                </div>
+                <div>
+                  <p className={`text-[10px] ${textFaint} mb-1.5`}>Thumbnail position</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { val: "below", label: "Below" },
+                      { val: "left",  label: "Left column" },
+                    ] as const).map(opt => (
+                      <button key={opt.val}
+                        onClick={() => onChange({ thumbnail_position: opt.val })}
+                        className={`py-1.5 rounded-lg border text-xs transition-all ${
+                          ((settings as any).thumbnail_position ?? "below") === opt.val
+                            ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                            : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                        }`}>{opt.label}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Related products */}
+            <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Related products</p>
+              <div className="space-y-3">
+                <Field label="Section heading" faint={textFaint}>
+                  <EditorInput value={(settings as any).related_heading ?? ""}
+                    onChange={v => onChange({ related_heading: v })}
+                    placeholder="More from store" isDark={isDark} />
+                </Field>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className={`text-[10px] ${textFaint} mb-1.5`}>Heading size</p>
+                    <div className="flex gap-1">
+                      {(["sm","md","lg"] as const).map(s => (
+                        <button key={s} onClick={() => onChange({ related_heading_size: s })}
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                            ((settings as any).related_heading_size ?? "sm") === s
+                              ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                              : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                          }`}>{s === "sm" ? "Sm" : s === "md" ? "Md" : "Lg"}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className={`text-[10px] ${textFaint} mb-1.5`}>Alignment</p>
+                    <div className="flex gap-1">
+                      {(["left","center","right"] as const).map(a => (
+                        <button key={a} onClick={() => onChange({ related_heading_align: a })}
+                          className={`flex-1 py-1.5 rounded-lg border text-[10px] capitalize transition-all ${
+                            ((settings as any).related_heading_align ?? "left") === a
+                              ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                              : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                          }`}>{a === "left" ? "L" : a === "center" ? "C" : "R"}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className={`text-[10px] ${textFaint}`}>Card border radius</span>
+                    <span className={`text-[10px] font-mono ${textFaint}`}>{(settings as any).related_card_radius ?? 12}px</span>
+                  </div>
+                  <input type="range" min={0} max={32} step={2}
+                    value={(settings as any).related_card_radius ?? 12}
+                    onChange={e => onChange({ related_card_radius: Number(e.target.value) })}
+                    className="w-full accent-orange-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Card background" faint={textFaint}>
+                    <div className="flex items-center gap-1.5">
+                      <input type="color"
+                        value={(settings as any).related_card_bg ?? "#f9fafb"}
+                        onChange={e => onChange({ related_card_bg: e.target.value })}
+                        className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                      <input type="text"
+                        value={(settings as any).related_card_bg ?? ""}
+                        onChange={e => onChange({ related_card_bg: e.target.value })}
+                        placeholder="Default"
+                        className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                          isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                        }`} />
+                      {(settings as any).related_card_bg && (
+                        <button onClick={() => onChange({ related_card_bg: undefined })} className="text-red-400 shrink-0">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </Field>
+                  <Field label="Text color" faint={textFaint}>
+                    <div className="flex items-center gap-1.5">
+                      <input type="color"
+                        value={(settings as any).related_card_text ?? "#111827"}
+                        onChange={e => onChange({ related_card_text: e.target.value })}
+                        className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                      <input type="text"
+                        value={(settings as any).related_card_text ?? ""}
+                        onChange={e => onChange({ related_card_text: e.target.value })}
+                        placeholder="Default"
+                        className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                          isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                        }`} />
+                      {(settings as any).related_card_text && (
+                        <button onClick={() => onChange({ related_card_text: undefined })} className="text-red-400 shrink-0">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </Field>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </details>
+      </div>
+
       {order.map((key, i) => {
         const meta = ELEMENT_META[key]
         if (!meta) return null
@@ -2507,6 +2751,143 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </>)
       })()}
 
+      {/* ── PRODUCT DETAIL PAGE ── */}
+      {section.type === "product_detail" && (<>
+
+        {/* Page background */}
+        <div className={`pt-1 pb-3 border-b ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Page</p>
+          <Field label="Page background color" faint={textFaint}>
+            <div className="flex items-center gap-1.5">
+              <input type="color"
+                value={(section as any).page_bg_color ?? "#ffffff"}
+                onChange={e => onChange({ page_bg_color: e.target.value } as any)}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={(section as any).page_bg_color ?? ""}
+                onChange={e => onChange({ page_bg_color: e.target.value } as any)}
+                placeholder="Default"
+                className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                  isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                }`} />
+              {(section as any).page_bg_color && (
+                <button onClick={() => onChange({ page_bg_color: undefined } as any)} className="text-red-400 shrink-0">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </Field>
+        </div>
+
+        {/* Gallery */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Product gallery</p>
+
+          <Field label="Image border radius" faint={textFaint}>
+            <div className="flex items-center gap-3">
+              <input type="range" min={0} max={32} step={2}
+                value={(section as any).image_border_radius ?? 16}
+                onChange={e => onChange({ image_border_radius: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-[10px] font-mono w-8 text-right shrink-0 ${textFaint}`}>
+                {(section as any).image_border_radius ?? 16}px
+              </span>
+            </div>
+          </Field>
+
+          <div className="mt-3">
+            <Field label="Thumbnail position" faint={textFaint}>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { val: "below", label: "Below main image" },
+                  { val: "left",  label: "Left column"      },
+                ] as const).map(opt => (
+                  <button key={opt.val}
+                    onClick={() => onChange({ thumbnail_position: opt.val } as any)}
+                    className={`py-2 rounded-lg border text-xs transition-all ${
+                      ((section as any).thumbnail_position ?? "below") === opt.val
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{opt.label}</button>
+                ))}
+              </div>
+            </Field>
+          </div>
+        </div>
+
+        {/* Related products */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Related products</p>
+
+          <Field label="Section heading" faint={textFaint}>
+            <EditorInput value={(section as any).related_heading ?? ""}
+              onChange={v => onChange({ related_heading: v } as any)}
+              placeholder={`More from store`} isDark={isDark} />
+          </Field>
+
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <Field label="Heading size" faint={textFaint}>
+              <div className="flex gap-1">
+                {(["sm","md","lg"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ related_heading_size: s } as any)}
+                    className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                      ((section as any).related_heading_size ?? "sm") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s === "sm" ? "Sm" : s === "md" ? "Md" : "Lg"}</button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Alignment" faint={textFaint}>
+              <div className="flex gap-1">
+                {(["left","center","right"] as const).map(a => (
+                  <button key={a} onClick={() => onChange({ related_heading_align: a } as any)}
+                    className={`flex-1 py-1.5 rounded-lg border text-[10px] capitalize transition-all ${
+                      ((section as any).related_heading_align ?? "left") === a
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{a === "left" ? "L" : a === "center" ? "C" : "R"}</button>
+                ))}
+              </div>
+            </Field>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className={`text-[10px] ${textFaint}`}>Card border radius</span>
+                <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).related_card_radius ?? 12}px</span>
+              </div>
+              <input type="range" min={0} max={32} step={2}
+                value={(section as any).related_card_radius ?? 12}
+                onChange={e => onChange({ related_card_radius: Number(e.target.value) } as any)}
+                className="w-full accent-orange-500" />
+            </div>
+
+            <Field label="Card background" faint={textFaint}>
+              <div className="flex items-center gap-1.5">
+                <input type="color"
+                  value={(section as any).related_card_bg ?? "#f9fafb"}
+                  onChange={e => onChange({ related_card_bg: e.target.value } as any)}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                <input type="text"
+                  value={(section as any).related_card_bg ?? ""}
+                  onChange={e => onChange({ related_card_bg: e.target.value } as any)}
+                  placeholder="Default"
+                  className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                    isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                  }`} />
+                {(section as any).related_card_bg && (
+                  <button onClick={() => onChange({ related_card_bg: undefined } as any)} className="text-red-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </Field>
+          </div>
+        </div>
+      </>)}
+
       {/* ── HEADER ── */}
       {section.type === "header" && (<>
         <StyleSection title="Logo Size" isDark={isDark}>
@@ -2605,7 +2986,117 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </div>
         </Field>
 
-        {(section.type === "collection_products" || section.type === "category_products") && (
+                {/* ── Collections grid specific settings ── */}
+        {section.type === "collections_grid" && (<>
+
+          {/* Card style */}
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Card style</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className={`text-[10px] ${textFaint}`}>Border radius</span>
+                  <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).card_border_radius ?? 16}px</span>
+                </div>
+                <input type="range" min={0} max={40} step={2}
+                  value={(section as any).card_border_radius ?? 16}
+                  onChange={e => onChange({ card_border_radius: Number(e.target.value) } as any)}
+                  className="w-full accent-orange-500" />
+              </div>
+              <Field label="Card background" faint={textFaint}>
+                <div className="flex items-center gap-1.5">
+                  <input type="color"
+                    value={(section as any).card_bg_color ?? "#ffffff"}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text"
+                    value={(section as any).card_bg_color ?? ""}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    placeholder="Default"
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                    }`} />
+                  {(section as any).card_bg_color && (
+                    <button onClick={() => onChange({ card_bg_color: undefined } as any)} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </div>
+          </div>
+
+          {/* Collection name style */}
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Collection name</p>
+
+            <Field label="Position" faint={textFaint}>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { val: "below", label: "Below image" },
+                  { val: "over",  label: "Over image"  },
+                ] as const).map(opt => (
+                  <button key={opt.val}
+                    onClick={() => onChange({ name_position: opt.val } as any)}
+                    className={`py-2 rounded-lg border text-xs transition-all ${
+                      ((section as any).name_position ?? "below") === opt.val
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{opt.label}</button>
+                ))}
+              </div>
+            </Field>
+
+            <div className="mt-2.5">
+              <Field label="Alignment" faint={textFaint}>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["left","center","right"] as const).map(align => (
+                    <button key={align}
+                      onClick={() => onChange({ name_alignment: align } as any)}
+                      className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                        ((section as any).name_alignment ?? "left") === align
+                          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                      }`}>{align}</button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+
+            <div className="mt-2.5">
+              <Field label="Font size" faint={textFaint}>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { val: "sm", label: "Small"  },
+                    { val: "md", label: "Medium" },
+                    { val: "lg", label: "Large"  },
+                  ] as const).map(opt => (
+                    <button key={opt.val}
+                      onClick={() => onChange({ name_size: opt.val } as any)}
+                      className={`py-1.5 rounded-lg border text-xs transition-all ${
+                        ((section as any).name_size ?? "md") === opt.val
+                          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                      }`}>{opt.label}</button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+
+            <div className="mt-2.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div className="relative"
+                  onClick={() => onChange({ show_product_count: !((section as any).show_product_count ?? true) } as any)}>
+                  <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).show_product_count !== false ? "bg-orange-500" : "bg-gray-600"}`} />
+                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).show_product_count !== false ? "translate-x-4" : ""}`} />
+                </div>
+                <span className={`text-xs ${textPrimary}`}>Show product count</span>
+              </label>
+            </div>
+          </div>
+        </>)}
+
+        {(section.type === "collection_products" || section.type === "category_products") && (<>
           <label className="flex items-center gap-2 cursor-pointer">
             <div className="relative" onClick={() => onChange({ show_product_count: !(section.show_product_count ?? true) })}>
               <div className={`w-8 h-4 rounded-full transition-colors ${section.show_product_count !== false ? "bg-orange-500" : "bg-gray-600"}`} />
@@ -2613,7 +3104,55 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             </div>
             <span className={`text-xs ${textPrimary}`}>Show product count</span>
           </label>
-        )}
+
+          {/* Banner image toggle — only for collection_products */}
+          {section.type === "collection_products" && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="relative" onClick={() => onChange({ hide_banner: !((section as any).hide_banner ?? false) } as any)}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${!(section as any).hide_banner ? "bg-orange-500" : "bg-gray-600"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${!(section as any).hide_banner ? "translate-x-4" : ""}`} />
+              </div>
+              <span className={`text-xs ${textPrimary}`}>Show banner image</span>
+            </label>
+          )}
+
+          {/* Card style */}
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Card style</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className={`text-[10px] ${textFaint}`}>Border radius</span>
+                  <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).card_border_radius ?? 16}px</span>
+                </div>
+                <input type="range" min={0} max={32} step={2}
+                  value={(section as any).card_border_radius ?? 16}
+                  onChange={e => onChange({ card_border_radius: Number(e.target.value) } as any)}
+                  className="w-full accent-orange-500" />
+              </div>
+              <Field label="Card background" faint={textFaint}>
+                <div className="flex items-center gap-1.5">
+                  <input type="color"
+                    value={(section as any).card_bg_color ?? "#f9fafb"}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text"
+                    value={(section as any).card_bg_color ?? ""}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    placeholder="Default"
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                    }`} />
+                  {(section as any).card_bg_color && (
+                    <button onClick={() => onChange({ card_bg_color: undefined } as any)} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </div>
+          </div>
+        </>)}
         
         {/* ── Filter settings for category/collection detail pages ── */}
         {(section.type === "category_products" || section.type === "collection_products") && (<>

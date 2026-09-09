@@ -9,6 +9,8 @@ import AddressForm from "@/components/checkout/AddressForm"
 import ShippingForm from "@/components/checkout/ShippingForm"
 import PaymentForm from "@/components/checkout/PaymentForm"
 import ReviewForm from "@/components/checkout/ReviewForm"
+import codimage from "../../../../public/cod_black_truck.png"
+
 
 interface Props {
   vendor: any
@@ -43,6 +45,8 @@ export default function CheckoutPageClient({
 }: Props) {
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<string>("")
+  const isCOD = selectedProvider === "pp_system_default"
 
   const previewCart = previewProduct ? {
   ...MOCK_CART,
@@ -243,6 +247,7 @@ const paymentComplete = isPreviewMode || (
                 handle={handle}
                 brandPrimary={brandPrimary}
                 isDark={isDark}
+                onProviderChange={setSelectedProvider}
               />
             )}
 
@@ -302,7 +307,9 @@ const paymentComplete = isPreviewMode || (
                 {activeCart.items?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow-hidden">
-                      {item.thumbnail && !item.thumbnail.includes("placehold") ? (
+                      {item.metadata?.is_cod_fee ? (
+                        <Image src={codimage} alt="COD Fee" fill className="object-cover rounded-xl" />
+                      ) : item.thumbnail && !item.thumbnail.includes("placehold") ? (
                         <Image src={item.thumbnail} alt={item.title} fill className="object-cover rounded-xl" />
                       ) : (
                         <img
@@ -357,9 +364,15 @@ const paymentComplete = isPreviewMode || (
                   <span>{formatPrice(activeCart.tax_total)}</span>
                 </div>
               )}
+              {isCOD && (
+                <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
+                  <span>Cash on Delivery fee</span>
+                  <span>{formatPrice(40)}</span>
+                </div>
+              )}
               <div className={`flex justify-between text-base font-bold pt-2 border-t ${isDark ? "border-white/10 text-white" : "border-gray-100 text-gray-900"}`}>
                 <span>Total</span>
-                <span style={{ color: brandPrimary }}>{formatPrice(activeCart.total ?? 0)}</span>
+                <span style={{ color: brandPrimary }}>{formatPrice((activeCart.total ?? 0) + (isCOD ? 40 : 0))}</span>
               </div>
             </div>
 

@@ -252,6 +252,7 @@ export default function ProductPageClient({
   vendor, initialStore, product, products, categories, collections,
 }: Props) {
   const [store, setStore] = useState(initialStore)
+  const [productDetail, setProductDetail] = useState<any>(initialStore?.product_detail ?? {})
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   // Add this alongside the other useState declarations:
   const [relatedLoading, setRelatedLoading] = useState(true)
@@ -279,7 +280,17 @@ export default function ProductPageClient({
   const brandPrimary   = store?.primary_color   ?? "#e65100"
   const brandSecondary = store?.secondary_color ?? "#ac1900"
   const isDark         = store?.template === "bold"
-  const pd: ProductDetailSettings = store?.product_detail ?? {}
+  const pd: ProductDetailSettings = productDetail
+  const pdEx: any = productDetail
+  const pageBgColor       = pdEx.page_bg_color
+  const imageBorderRadius = pdEx.image_border_radius ?? 16
+  const thumbnailPosition = pdEx.thumbnail_position ?? "below"
+  const relatedHeading    = pdEx.related_heading
+  const relatedHeadingSize = pdEx.related_heading_size ?? "sm"
+  const relatedHeadingAlign = pdEx.related_heading_align ?? "left"
+  const relatedCardRadius  = pdEx.related_card_radius  ?? 12
+  const relatedCardBg      = pdEx.related_card_bg
+  const relatedCardText    = pdEx.related_card_text
 
   const brandStyles = {
     "--brand-primary":   brandPrimary,
@@ -547,6 +558,9 @@ useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "STORE_UPDATE" && e.data.store) {
         setStore(e.data.store)
+        if (e.data.store.product_detail) {
+          setProductDetail(e.data.store.product_detail)
+        }
       }
       if (e.data?.type === "STORE_UPDATE") {
         setSelectedSectionId(e.data.selectedId ?? null)
@@ -718,13 +732,15 @@ useEffect(() => {
                           : "px-4 py-1.5 rounded-full border-2"
                     }`}
                     style={{
-                      borderColor: isSelected ? brandPrimary : `${brandPrimary}30`,
-                      backgroundColor:
-                        isSelected && style !== "underline" ? brandPrimary : "transparent",
-                      color:
-                        isSelected && style !== "underline"
-                          ? "#ffffff"
-                          : (isDark ? "#ffffff" : "#374151"),
+                      borderColor: isSelected
+                        ? (pdEx.size_selected_border_color ?? brandPrimary)
+                        : (pdEx.size_border_color ?? `${brandPrimary}30`),
+                      backgroundColor: isSelected && style !== "underline"
+                        ? (pdEx.size_selected_bg_color ?? brandPrimary)
+                        : (pdEx.size_bg_color ?? "transparent"),
+                      color: isSelected && style !== "underline"
+                        ? (pdEx.size_selected_text_color ?? "#ffffff")
+                        : (pdEx.size_text_color ?? (isDark ? "#ffffff" : "#374151")),
                       transform: isSelected ? "scale(1.05)" : "scale(1)",
                     }}
                   >
@@ -737,29 +753,32 @@ useEffect(() => {
           </div>
         )
 
-      case "quantity":
+        case "quantity":
         if (!(pd.show_quantity ?? true)) return null
         return (
           <div key="quantity"
             className="flex items-center overflow-hidden rounded-full w-fit"
-            style={{ border: `2px solid ${isDark ? "rgba(255,255,255,0.15)" : "#e5e7eb"}` }}>
+            style={{
+              border: `2px solid ${pdEx.qty_border_color ?? (isDark ? "rgba(255,255,255,0.15)" : "#e5e7eb")}`,
+              backgroundColor: pdEx.qty_bg_color ?? "transparent",
+            }}>
             <button
               onClick={() => setQuantity(q => Math.max(1, q - 1))}
               className="flex items-center justify-center w-10 h-12 transition-colors"
-              style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}
+              style={{ color: pdEx.qty_text_color ?? (isDark ? "rgba(255,255,255,0.6)" : "#6b7280") }}
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
             <span
               className="w-8 text-sm font-semibold text-center"
-              style={{ color: isDark ? "#ffffff" : "#111827" }}
+              style={{ color: pdEx.qty_text_color ?? (isDark ? "#ffffff" : "#111827") }}
             >
               {quantity}
             </span>
             <button
               onClick={() => setQuantity(q => q + 1)}
               className="flex items-center justify-center w-10 h-12 transition-colors"
-              style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}
+              style={{ color: pdEx.qty_text_color ?? (isDark ? "rgba(255,255,255,0.6)" : "#6b7280") }}
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -1068,11 +1087,12 @@ useEffect(() => {
                             className="object-cover transition-transform duration-500 group-hover:scale-105" />
                         )}
                       </div>
-                      <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
+                      <p className="text-sm font-medium truncate"
+                        style={{ color: relatedCardText ?? (isDark ? "#ffffff" : "#111827") }}>
                         {p.title}
                       </p>
                       {p.variants?.[0]?.prices?.[0]?.amount && (
-                        <p className="text-sm" style={{ color: brandPrimary }}>
+                        <p className="text-sm" style={{ color: relatedCardText ? `${relatedCardText}99` : brandPrimary }}>
                           {formatPrice(p.variants[0].prices[0].amount)}
                         </p>
                       )}
@@ -1388,7 +1408,8 @@ useEffect(() => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={brandStyles} className={`min-h-screen ${bgColor} ${fontClass}`}>
+    <div style={{ ...brandStyles, ...(pageBgColor ? { backgroundColor: pageBgColor } : {}) }}
+      className={`min-h-screen ${bgColor} ${fontClass}`}>
 
       {/* Header — live store so nav/colors update instantly */}
       <StoreHeader
@@ -1411,6 +1432,8 @@ useEffect(() => {
               fallbackThumbnail={displayImage ?? product.thumbnail}
               productTitle={product.title}
               isDark={isDark}
+              borderRadius={imageBorderRadius}
+              thumbnailPosition={thumbnailPosition}
             />
 
             {/* Right: Dynamic element order */}
@@ -1430,18 +1453,26 @@ useEffect(() => {
 
         {/* Default related products — only shown when no editor sections exist */}
         {pageSections.length === 0 && (relatedLoading || relatedProducts.length > 1) && (
-          <div className={`mt-24 pt-12 z-0 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
-            <h2 className={`text-sm uppercase tracking-widest font-semibold mb-8 ${
-              isDark ? "text-white/60" : "text-gray-500"
-            }`}>
-              {relatedLoading ? "More from " + vendor.name : `More from ${vendor.name}`}
+          <div className={`mt-16 pt-10 z-0 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
+            <h2 style={{
+              fontSize: relatedHeadingSize === "lg" ? "1.875rem" : relatedHeadingSize === "md" ? "1.25rem" : "0.75rem",
+              fontWeight: relatedHeadingSize === "lg" ? 700 : relatedHeadingSize === "md" ? 600 : 600,
+              textAlign: relatedHeadingAlign as any,
+              letterSpacing: relatedHeadingSize === "sm" ? "0.1em" : "0",
+              textTransform: relatedHeadingSize === "sm" ? "uppercase" : "none",
+              color: isDark ? "rgba(255,255,255,0.6)" : "#374151",
+              marginBottom: "2rem",
+            }}>
+              {relatedHeading || `More from ${vendor.name} Store`}
             </h2>
             <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
               {relatedLoading ? (
-                // ── Skeleton cards ──
                 [...Array(4)].map((_, i) => (
                   <div key={i} className="space-y-3 animate-pulse">
-                    <div className={`aspect-square rounded-xl ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+                    <div className="aspect-square" style={{
+                      borderRadius: `${relatedCardRadius}px`,
+                      backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"
+                    }} />
                     <div className={`h-4 w-3/4 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                     <div className={`h-4 w-1/3 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                   </div>
@@ -1453,23 +1484,30 @@ useEffect(() => {
                   .map((p: any) => (
                     <Link key={p.id}
                       href={`/products/${p.handle}`}
-                      className="group">
-                      <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
-                        isDark ? "bg-white/5" : "bg-gray-50"
-                      }`}>
+                      className="group overflow-hidden"
+                      style={{
+                        borderRadius: `${relatedCardRadius}px`,
+                        backgroundColor: relatedCardBg ?? (isDark ? "rgba(255,255,255,0.05)" : "#f9fafb"),
+                        display: "block",
+                      }}>
+                      <div className="aspect-square relative overflow-hidden"
+                        style={{ borderRadius: `${relatedCardRadius}px ${relatedCardRadius}px 0 0` }}>
                         {p.thumbnail && (
                           <Image src={p.thumbnail} alt={p.title} fill
                             className="object-cover transition-transform duration-500 group-hover:scale-105" />
                         )}
                       </div>
-                      <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
-                        {p.title}
-                      </p>
-                      {p.variants?.[0]?.prices?.[0]?.amount && (
-                        <p className="text-sm" style={{ color: brandPrimary }}>
-                          {formatPrice(p.variants[0].prices[0].amount)}
+                      <div className="px-3 py-2.5">
+                        <p className="text-sm font-medium truncate"
+                          style={{ color: relatedCardText ?? (isDark ? "#ffffff" : "#111827") }}>
+                          {p.title}
                         </p>
-                      )}
+                        {p.variants?.[0]?.prices?.[0]?.amount && (
+                          <p className="text-sm mt-0.5" style={{ color: relatedCardText ? `${relatedCardText}99` : brandPrimary }}>
+                            {formatPrice(p.variants[0].prices[0].amount)}
+                          </p>
+                        )}
+                      </div>
                     </Link>
                   ))
               )}

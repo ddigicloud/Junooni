@@ -235,3 +235,39 @@ export async function placeOrder(handle: string) {
 
   throw new Error("Order placement failed")
 }
+
+export async function addCodFee(handle: string) {
+  const cartId = await getCartId(handle)
+  if (!cartId) return
+
+  const BACKEND = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
+  const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
+
+  await fetch(`${BACKEND}/store/carts/cod-fee`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-publishable-api-key": PUB_KEY,
+    },
+    body: JSON.stringify({ cart_id: cartId }),
+  })
+
+  revalidateTag("creator-carts")
+}
+
+export async function removeCodFee(handle: string) {
+  const cartId = await getCartId(handle)
+  if (!cartId) return
+
+  const BACKEND = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
+  const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
+
+  await fetch(`${BACKEND}/store/carts/cod-fee?cart_id=${cartId}`, {
+    method: "DELETE",
+    headers: {
+      "x-publishable-api-key": PUB_KEY,
+    },
+  })
+
+  revalidateTag("creator-carts")
+}

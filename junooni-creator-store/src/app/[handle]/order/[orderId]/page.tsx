@@ -8,6 +8,7 @@ import {
   CheckCircle2, ArrowRight, MapPin, Truck, Check,
   Clock, Package, AlertCircle, ExternalLink, ShoppingBag
 } from "lucide-react"
+import codimage from "../../../../public/cod_black_truck.png"
 
 interface Props {
   params: { handle: string; orderId: string }
@@ -325,9 +326,11 @@ export default async function OrderPage({ params }: Props) {
             {order.items?.map((item: any) => (
               <div key={item.id} className="flex gap-3 p-3 rounded-xl bg-gray-50">
                 <div className="relative overflow-hidden bg-gray-100 rounded-lg w-14 h-14 shrink-0">
-                  {item.thumbnail && (
-                    <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
-                  )}
+                  {item.metadata?.is_cod_fee ? (
+                      <Image src={codimage} alt="COD Fee" fill className="object-cover" />
+                    ) : item.thumbnail ? (
+                      <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
+                    ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
