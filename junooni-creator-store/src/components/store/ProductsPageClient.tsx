@@ -58,7 +58,14 @@ export default function ProductsPageClient({
   const cardShowPrice    = store?.product_card?.show_price          !== false
   const cardShowHover    = store?.product_card?.show_hover          !== false
   const cardShowSoldOut  = store?.product_card?.show_sold_out_badge !== false
-  const showProductCount = gridSection.show_product_count !== false
+  const showProductCount  = gridSection.show_product_count !== false
+  const gridSubtitle      = gridSection.subtitle
+  const gridTitleSize     = gridSection.title_size    ?? "lg"
+  const gridTitleWeight   = gridSection.title_weight  ?? "bold"
+  const paddingTop        = gridSection.padding_top   ?? 64
+  const paddingBottom     = gridSection.padding_bottom ?? 64
+  const cardBorderRadius  = gridSection.card_border_radius
+  const cardBgColor       = gridSection.card_bg_color
 
   const brandStyles = {
     "--brand-primary":   brandPrimary,
@@ -129,9 +136,11 @@ export default function ProductsPageClient({
             window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId }, "*")
           }
         }}
-        className={`px-4 py-10 mx-auto max-w-7xl sm:px-6 relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
+        className={`px-4 sm:px-6 mx-auto max-w-7xl relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
           backgroundColor: gridBg ?? "transparent",
+          paddingTop: `${paddingTop}px`,
+          paddingBottom: `${paddingBottom}px`,
           ...(isSelected ? { outline: "2px solid #e65100", outlineOffset: "-2px" } : {}),
         }}
       >
@@ -143,19 +152,23 @@ export default function ProductsPageClient({
         )}
 
         <div className="mb-8">
-          {/* <p
-            className="mb-1 text-xs font-semibold tracking-widest uppercase"
-            style={{ color: brandPrimary }}
-          >
-            {vendor.name}
-          </p> */}
-          <h1 className="text-3xl font-bold"
-            style={{ color: gridTextColor ?? (isDark ? "#ffffff" : "#111827") }}>
+          <h1 style={{
+            color: gridTextColor ?? (isDark ? "#ffffff" : "#111827"),
+            fontSize: gridTitleSize === "sm" ? "1.25rem" : gridTitleSize === "md" ? "1.5rem" : "1.875rem",
+            fontWeight: gridTitleWeight === "black" ? 900 : gridTitleWeight === "normal" ? 400 : 700,
+            lineHeight: 1.2,
+          }}>
             {gridTitle}
           </h1>
-          {gridSection.show_product_count !== false && (
+          {gridSubtitle && (
             <p className="mt-1 text-sm"
               style={{ color: gridTextColor ? `${gridTextColor}99` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}>
+              {gridSubtitle}
+            </p>
+          )}
+          {gridSection.show_product_count !== false && (
+            <p className="mt-1 text-xs"
+              style={{ color: gridTextColor ? `${gridTextColor}60` : (isDark ? "rgba(255,255,255,0.4)" : "#9ca3af") }}>
               {products.length} product{products.length !== 1 ? "s" : ""}
             </p>
           )}
@@ -187,6 +200,8 @@ export default function ProductsPageClient({
             cardShowHover={cardShowHover}
             cardShowSoldOut={cardShowSoldOut}
             filterOrder={filterOrder}
+            cardBorderRadius={cardBorderRadius}
+            cardBgColor={cardBgColor}
           />
         )}
       </div>

@@ -25,8 +25,6 @@ const processAllPayoutDetailsStep = createStep(
     }
 
     // ── STEP 1: Detect payment method ────────────────────────────────────────
-    // Collect provider IDs from ALL possible locations — payment_collections
-    // may be empty if the step runs before payment fully settles
     const payments        = order.payment_collections?.flatMap((col: any) => col.payments         || []) || []
     const paymentSessions = order.payment_collections?.flatMap((col: any) => col.payment_sessions || []) || []
 
@@ -35,8 +33,6 @@ const processAllPayoutDetailsStep = createStep(
       ...paymentSessions.map((s: any) => s.provider_id),
       order.metadata?.payment_provider,
       order.metadata?.provider_id,
-      // ❌ DO NOT include order.metadata?.payment_method here —
-      // it gets written as "razorpay" upstream even for COD orders
     ].filter(Boolean).map((id: string) => String(id).toLowerCase())
 
     console.log("╔══════════════════════════════════════════════════════════╗")
@@ -48,15 +44,11 @@ const processAllPayoutDetailsStep = createStep(
     console.log(`║  metadata.cod_order: ${order.metadata?.cod_order ?? 'not set'}`)
     console.log("╚══════════════════════════════════════════════════════════╝")
 
-    // Priority 1: pp_system_default = COD (Junooni uses this for all COD orders)
     const hasSystemDefault = actualProviderIds.some(id => id === "pp_system_default")
-    // Priority 2: explicit razorpay provider string
     const hasRazorpay      = actualProviderIds.some(id => id.includes('razorpay'))
-    // Priority 3: explicit cod/manual/cash string in provider
     const hasCODProvider   = actualProviderIds.some(id =>
       id.includes('cod') || id.includes('cash_on_delivery') || id.includes('manual')
     )
-    // Priority 4: metadata.cod_order flag — last resort when providers not loaded
     const metadataCodFlag  = order.metadata?.cod_order === true
 
     let isCOD: boolean
@@ -110,9 +102,6 @@ const processAllPayoutDetailsStep = createStep(
         continue
       }
 
-      // COD ₹35 split — only relevant when isCOD=true but fee=0 for COD anyway
-      const codFeePerItem = 0
-
       console.log("──────────────────────────────────────────────────────────")
       console.log(`🏪 Vendor: ${vendorId} | Products: ${vendorItems.length}`)
 
@@ -138,18 +127,14 @@ const processAllPayoutDetailsStep = createStep(
           console.log(`🎯 Fulfillment: ${fulfillmentType}`)
 
           // ── Resolve unit price → rupees ───────────────────────────────
-          // Medusa sends unit_price as paise in most contexts (e.g. 200000 = ₹2000)
-          // But some workflow contexts already have it in rupees (e.g. 2000 = ₹2000)
-          // Heuristic: values > 10000 are almost certainly paise
-          const rawUnitPrice   = item.unit_price
-          const rawTaxTotal    = item.tax_total
+          const rawUnitPrice    = item.unit_price
+          const rawTaxTotal     = item.tax_total
           const unitPriceRupees = rawUnitPrice > 10000 ? toRupees(rawUnitPrice) : rawUnitPrice
           const itemTotalRupees = unitPriceRupees * item.quantity
           const taxTotalRupees  = rawTaxTotal
             ? (rawTaxTotal > 10000 ? toRupees(rawTaxTotal) : rawTaxTotal)
             : 0
 
-          // cost_price in metadata is always stored in RUPEES by admin
           const costPriceRupees = Number(
             item.variant?.metadata?.cost_price ||
             item.product?.metadata?.cost_price ||
@@ -165,7 +150,6 @@ const processAllPayoutDetailsStep = createStep(
             paymentMethod,
           })
 
-          // Guard: skip if cost exceeds total (would produce negative earnings)
           if (fulfillmentType === "junooni_fulfillment" && costPriceRupees > itemTotalRupees) {
             console.warn(`⚠️ Skipping ${item.id} — cost ₹${costPriceRupees} > total ₹${itemTotalRupees}`)
             continue
@@ -175,12 +159,12 @@ const processAllPayoutDetailsStep = createStep(
           // Deduction order (enforced in calculateEarningsFromOrder):
           //
           //  ONLINE (razorpay):
-          //    junooni  → [1] GST  [2] Razorpay 2.36%  [3] cost  [4] TDS 1%
-          //    creator  → [1] Razorpay 2.36%  [2] ×90%  [3] TDS 1%
+          //    junooni  → [1] GST  [2] Razorpay 2.36%  [3] cost
+          //    creator  → [1] Razorpay 2.36%  [2] ×90%
           //
           //  COD:
-          //    junooni  → [1] GST  [2] cost  [3] TDS 1%   ← NO processing fee
-          //    creator  → [1] ×90%  [2] TDS 1%             ← NO processing fee
+          //    junooni  → [1] GST  [2] cost   ← NO processing fee
+          //    creator  → [1] ×90%             ← NO processing fee
           const earnings = await payoutModuleService.calculateEarningsFromOrder(
             itemTotalRupees,
             fulfillmentType,
@@ -196,41 +180,35 @@ const processAllPayoutDetailsStep = createStep(
             tax:           earnings.taxAmount,
             processingFee: earnings.paymentProcessingFee,
             vendorShare:   earnings.commissionAmount,
-            tds:           earnings.tdsAmount,
             net:           earnings.netAmount,
           })
 
           // ── Store in DB ───────────────────────────────────────────────
           // All monetary values stored as PAISE (integer)
-          // tds_percentage stored as basis points: 1% → 100
           const payoutDetailInput = {
             payout_id:              payoutId,
             order_id:               orderId,
             order_item_id:          item.id,
             product_id:             item.product_id,
-            amount:                 Math.round(earnings.netAmount             * 100),  // paise
-            tax_amount:             Math.round(earnings.taxAmount             * 100),  // paise
+            amount:                 Math.round(earnings.netAmount             * 100),
+            tax_amount:             Math.round(earnings.taxAmount             * 100),
             tax_type:               "igst" as const,
-            tds_percentage:         Math.round(earnings.tdsPercentage         * 100),  // 1 → 100
-            tds_amount:             Math.round(earnings.tdsAmount             * 100),  // paise
-            payment_processing_fee: Math.round(earnings.paymentProcessingFee * 100),  // ← ADD THIS
+            payment_processing_fee: Math.round(earnings.paymentProcessingFee * 100),
             type:                   "earning" as const,
             fulfillment_type:       fulfillmentType,
-            cost_price:             Math.round(costPriceRupees                * 100),  // paise
-            commission_rate:        Math.round(earnings.commissionRate        * 100),  // 90 → 9000
-            selling_price:          Math.round(itemTotalRupees                * 100),  // paise
+            cost_price:             Math.round(costPriceRupees                * 100),
+            commission_rate:        Math.round(earnings.commissionRate        * 100), // 90 → 9000
+            selling_price:          Math.round(itemTotalRupees                * 100),
             status:                 "completed" as const,
             reason:                 `Order earnings - ${orderId} - ${item.product_id}`,
             notes:                  null,
           }
 
           console.log('💾 Storing (paise):', {
-            amount:          payoutDetailInput.amount,
-            tax_amount:      payoutDetailInput.tax_amount,
-            tds_percentage:  payoutDetailInput.tds_percentage,
-            tds_amount:      payoutDetailInput.tds_amount,
-            selling_price:   payoutDetailInput.selling_price,
-            cost_price:      payoutDetailInput.cost_price,
+            amount:        payoutDetailInput.amount,
+            tax_amount:    payoutDetailInput.tax_amount,
+            selling_price: payoutDetailInput.selling_price,
+            cost_price:    payoutDetailInput.cost_price,
           })
 
           const payoutDetail = await payoutModuleService.createPayoutDetails(payoutDetailInput)

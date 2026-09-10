@@ -1935,45 +1935,36 @@ const isNewVariant = (variant) => {
 
   // Remove an image and revoke its object URL if necessary
   const handleRemoveImage = (index: number) => {
-  console.log("=== handleRemoveImage called ===");
-  console.log("index:", index);
-  console.log("hasImageChanges BEFORE:", hasImageChanges);
-  
-  setHasImageChanges(true);
-  
-  console.log("setHasImageChanges(true) called");
-
-  setMediaItems((prev) => {
-    const removed = prev[index];
+    // Read the item BEFORE any setState call
+    const removed = mediaItems[index];
     
-    console.log("removed image:", removed);
-    console.log("removed.id:", removed?.id);
-    console.log("removed.isNew:", removed?.isNew);
+    if (!removed) return;
 
+    // ✅ Track deleted image ID FIRST, outside of any setState updater
     if (removed.id && removed.id.startsWith('img_') && !removed.isNew) {
-      console.log("✅ Adding to deletedImageIds:", removed.id);
-      setDeletedImageIds(prevDeleted => {
-        if (!prevDeleted.includes(removed.id)) {
-          return [...prevDeleted, removed.id];
+      setDeletedImageIds(prev => {
+        if (!prev.includes(removed.id)) {
+          return [...prev, removed.id];
         }
-        return prevDeleted;
-      });
-    } else {
-      console.log("⚠️ NOT adding to deletedImageIds - reason:", {
-        hasId: !!removed?.id,
-        startsWithImg: removed?.id?.startsWith('img_'),
-        isNew: removed?.isNew
+        return prev;
       });
     }
 
+    // Revoke blob URL if needed
     if (removed.file && removed.url.startsWith('blob:')) {
       URL.revokeObjectURL(removed.url);
     }
 
-    const filtered = prev.filter((_, i) => i !== index);
-    return filtered.map((item, i) => ({ ...item, rank: i }));
-  });
-};
+    // Update mediaItems separately
+    setMediaItems(prev => {
+      const filtered = prev.filter((_, i) => i !== index);
+      return filtered.map((item, i) => ({ ...item, rank: i }));
+    });
+
+    setHasImageChanges(true);
+  };
+
+
   // Move image up in order
   const handleMoveImageUp = (index: number) => {
     if (index === 0) return; // Already at the top
@@ -2824,7 +2815,35 @@ const onSubmit = async (values: ProductFormValues) => {
                       delete: deletedVariantIds.length
                     });
                     
+
                     // Construct the product object in API format (without variants)
+
+                    // Deleted images are already removed from mediaItems/updatedMedia by
+                    // handleRemoveImage before onSubmit runs. So we simply check:
+                    // is the current thumbnail URL still present in updatedMedia?
+                    // If not → it was deleted → use first remaining image or empty string.
+                    const currentThumbnail = values.thumbnail || '';
+
+                    const remainingImages = updatedMedia
+                      .filter(item => item.url && !item.url.startsWith('blob:'));
+
+                    const remainingUrls = new Set(remainingImages.map(item => item.url));
+
+                    const isThumbnailDeleted =
+                      currentThumbnail !== '' && !remainingUrls.has(currentThumbnail);
+
+                    const newThumbnail = isThumbnailDeleted
+                      ? (remainingImages[0]?.url || '')
+                      : currentThumbnail;
+
+                    console.log('🖼 Thumbnail check:', {
+                      currentThumbnail,
+                      isThumbnailDeleted,
+                      newThumbnail,
+                      remainingCount: remainingImages.length,
+                      remainingUrls: [...remainingUrls],
+                    });
+
                     const productData = {
                       title: values.title.trim(),
                       subtitle: values.subtitle?.trim() || "",
@@ -2835,7 +2854,7 @@ const onSubmit = async (values: ProductFormValues) => {
                       status: values.status === 'published' && selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE)
                         ? 'proposed'
                         : values.status,
-                      thumbnail: values.thumbnail || "",
+                      thumbnail: newThumbnail,
                       discountable: Boolean(values.discountable),
                       weight: values.weight ? parseFloat(values.weight) || 0 : 0,
                       length: values.length ? parseFloat(values.length) || 0 : 0,
@@ -2854,16 +2873,19 @@ const onSubmit = async (values: ProductFormValues) => {
                     
                     console.log("Updating product with data:", productData);
                     
-                    // --- STEP 8.5: Delete images from server ---
-                      // ✅ FIX: Delete all images in parallel instead of one-by-one
+                    // --- STEP 8.5: Delete images from server (single batch request) ---
                       if (deletedImageIds && deletedImageIds.length > 0) {
-                        console.log(`Deleting ${deletedImageIds.length} images in parallel...`);
-                        await Promise.allSettled(
-                          deletedImageIds.map(imageId =>
-                            uploadProductImage({ productId: id, imageId, action: 'delete' })
-                              .catch(err => console.error(`Failed to delete image ${imageId}:`, err))
-                          )
-                        );
+                        console.log(`Deleting ${deletedImageIds.length} images in single batch request...`);
+                        try {
+                          await uploadProductImage({ 
+                            productId: id, 
+                            imageId: deletedImageIds,  // send all IDs at once
+                            action: 'delete' 
+                          });
+                          console.log(`✅ Batch delete successful`);
+                        } catch (err) {
+                          console.error(`Failed to batch delete images:`, err);
+                        }
                       }
                     // --- STEP 9: Make API Calls ---
                     try {
@@ -3075,8 +3097,23 @@ const onSubmit = async (values: ProductFormValues) => {
                               } catch (err) {
                                 console.error(`Failed variant image association for ${completedVariant.title}:`, err);
                               }
-                            } else {
-                              console.log(`⚠️ No images found for variant: ${completedVariant.title}`);
+                                                        } else {
+                              // No images remain — clear variant thumbnail via batch update
+                              console.log(`⚠️ No images found for variant: ${completedVariant.title} — clearing thumbnail`);
+                              try {
+                                await batchUpdateVariants({
+                                  productId: id,
+                                  variantChanges: {
+                                    update: [{
+                                      id: completedVariant.id,
+                                      thumbnail: null,
+                                    }]
+                                  }
+                                });
+                                console.log(`✅ Cleared thumbnail for variant: ${completedVariant.title}`);
+                              } catch (err) {
+                                console.error(`Failed to clear thumbnail for variant ${completedVariant.title}:`, err);
+                              }
                             }
                           }
                         }
@@ -3152,7 +3189,10 @@ const onSubmit = async (values: ProductFormValues) => {
                         // --- STEP 10: Handle Success ---
                         // Reset unsaved changes flag
                         setHasUnsavedVariantChanges(false);
-                        setHasImageChanges(false); // ← ADD THIS
+                        setHasImageChanges(false);
+
+                        // Always sync thumbnail in form to match what was sent to API
+                        form.setValue('thumbnail', newThumbnail);
 
                         // ✅ ADD THIS: Update mediaItems state to remove deleted images
                         if (deletedImageIds.length > 0) {
@@ -3930,18 +3970,20 @@ const isFormDirty =
                         {hasVariants && imageAssociatedOptions.length > 0 ? (
                           // Show variant-specific upload interface with FIXED functions for image uploads
                           <StreamlinedImageManager
-                          mediaItems={mediaItems}
-                          setMediaItems={setMediaItems}
-                          options={form.getValues('options')}
-                          variants={form.getValues('variants')}
-                          fileInputRef={fileInputRef}
-                          handleFileChange={handleFileChange}
-                          // FIXED: Use the direct upload handlers
-                          handleVariantImageUpload={handleDirectVariantUpload}
-                          handleOptionImageUpload={handleDirectOptionUpload}
-                          getImageDisplayUrl={getImageDisplayUrl}
-                          onImageChange={() => setHasImageChanges(true)}
-                        />
+                            mediaItems={mediaItems}
+                            setMediaItems={setMediaItems}
+                            options={form.getValues('options')}
+                            variants={form.getValues('variants')}
+                            fileInputRef={fileInputRef}
+                            handleFileChange={handleFileChange}
+                            handleVariantImageUpload={handleDirectVariantUpload}
+                            handleOptionImageUpload={handleDirectOptionUpload}
+                            getImageDisplayUrl={getImageDisplayUrl}
+                            onImageChange={() => setHasImageChanges(true)}
+                            handleRemoveImage={handleRemoveImage}
+                            handleMoveImageUp={handleMoveImageUp}
+                            handleMoveImageDown={handleMoveImageDown}
+                          />
                         ) : (
                           // Show standard upload interface
                           <div

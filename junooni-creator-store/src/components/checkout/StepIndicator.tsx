@@ -29,15 +29,16 @@ export default function StepIndicator({
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all"
                 style={{
-                  background: isDone || isActive ? brandPrimary : "#f3f4f6",
-                  color: isDone || isActive ? "white" : "#9ca3af",
+                  background: isDone || isActive ? brandPrimary : `${brandPrimary}18`,
+                  color: isDone || isActive ? "white" : `${brandPrimary}70`,
+                  border: isDone || isActive ? "none" : `1.5px solid ${brandPrimary}30`,
                 }}
               >
                 {isDone ? <Check className="w-4 h-4" strokeWidth={3} /> : i + 1}
               </div>
               <span
                 className="text-xs font-medium whitespace-nowrap"
-                style={{ color: isActive ? brandPrimary : isDone ? "#6b7280" : "#d1d5db" }}
+                style={{ color: isActive ? brandPrimary : isDone ? `${brandPrimary}cc` : `${brandPrimary}50` }}
               >
                 {step.label}
               </span>
@@ -45,7 +46,7 @@ export default function StepIndicator({
             {i < STEPS.length - 1 && (
               <div
                 className="h-0.5 w-10 sm:w-16 mx-2 mb-5 rounded-full transition-all"
-                style={{ background: isDone ? brandPrimary : "#e5e7eb" }}
+                style={{ background: isDone ? brandPrimary : `${brandPrimary}25` }}
               />
             )}
           </div>

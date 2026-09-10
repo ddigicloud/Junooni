@@ -243,27 +243,176 @@ function CheckoutSettingsPanel({
         </div>
       </div>
 
-      <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
-        showTrustNote ? "border-orange-500/40 bg-orange-500/10" : `${isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200"}`
-      }`}>
-        <div className="relative mt-0.5 shrink-0" onClick={() => onChange({ show_trust_note: !showTrustNote })}>
-          <div className={`w-8 h-4 rounded-full transition-colors ${showTrustNote ? "bg-orange-500" : "bg-gray-600"}`} />
-          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${showTrustNote ? "translate-x-4" : ""}`} />
+      {/* ── Page style ── */}
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Page style</p>
+        <div className="space-y-2.5">
+          <div>
+            <label className={`text-[10px] ${textFaint} block mb-1`}>Page background</label>
+            <div className="flex items-center gap-2">
+              <input type="color"
+                value={settings.page_bg_color || "#f9fafb"}
+                onChange={e => onChange({ page_bg_color: e.target.value })}
+                className="w-7 h-7 rounded-lg border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={settings.page_bg_color ?? ""}
+                onChange={e => onChange({ page_bg_color: e.target.value })}
+                placeholder="Default"
+                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+              {settings.page_bg_color && (
+                <button onClick={() => onChange({ page_bg_color: undefined })} className="text-red-400 shrink-0">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className={`text-[10px] ${textFaint} block mb-1`}>Header background</label>
+            <div className="flex items-center gap-2">
+              <input type="color"
+                value={settings.header_bg_color || "#ffffff"}
+                onChange={e => onChange({ header_bg_color: e.target.value })}
+                className="w-7 h-7 rounded-lg border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={settings.header_bg_color ?? ""}
+                onChange={e => onChange({ header_bg_color: e.target.value })}
+                placeholder="Default white"
+                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+              {settings.header_bg_color && (
+                <button onClick={() => onChange({ header_bg_color: undefined })} className="text-red-400 shrink-0">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className={`text-[10px] ${textFaint} block mb-1`}>Header text color</label>
+            <div className="flex items-center gap-2">
+              <input type="color"
+                value={settings.header_text_color || "#111827"}
+                onChange={e => onChange({ header_text_color: e.target.value })}
+                className="w-7 h-7 rounded-lg border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={settings.header_text_color ?? ""}
+                onChange={e => onChange({ header_text_color: e.target.value })}
+                placeholder="Default"
+                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+              {settings.header_text_color && (
+                <button onClick={() => onChange({ header_text_color: undefined })} className="text-red-400 shrink-0">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex-1">
-          <p className={`text-xs font-medium ${textPrimary}`}>Show trust note</p>
-          <p className={`text-[10px] mt-0.5 ${textFaint}`}>Small reassurance line below the order summary</p>
-        </div>
-      </label>
+      </div>
 
-      {showTrustNote && (
-        <EditorInput
-          value={settings.trust_note ?? ""}
-          onChange={(v: string) => onChange({ trust_note: v })}
-          placeholder="🔒 Secure checkout · SSL encrypted"
-          isDark={isDark}
-        />
-      )}
+      {/* ── Continue button ── */}
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Continue button</p>
+        <div className="grid grid-cols-2 gap-2 mb-2.5">
+          <div>
+            <label className={`text-[10px] ${textFaint} block mb-1`}>Background</label>
+            <div className="flex items-center gap-1.5">
+              <input type="color"
+                value={settings.btn_bg_color || "#e65100"}
+                onChange={e => onChange({ btn_bg_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={settings.btn_bg_color ?? ""}
+                onChange={e => onChange({ btn_bg_color: e.target.value })}
+                placeholder="Brand color"
+                className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+            </div>
+          </div>
+          <div>
+            <label className={`text-[10px] ${textFaint} block mb-1`}>Text color</label>
+            <div className="flex items-center gap-1.5">
+              <input type="color"
+                value={settings.btn_text_color || "#ffffff"}
+                onChange={e => onChange({ btn_text_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={settings.btn_text_color ?? ""}
+                onChange={e => onChange({ btn_text_color: e.target.value })}
+                placeholder="#ffffff"
+                className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between mb-1">
+            <span className={`text-[10px] ${textFaint}`}>Border radius</span>
+            <span className={`text-[10px] font-mono ${textFaint}`}>{settings.btn_border_radius ?? 50}px</span>
+          </div>
+          <input type="range" min={0} max={50} step={2}
+            value={settings.btn_border_radius ?? 50}
+            onChange={e => onChange({ btn_border_radius: Number(e.target.value) })}
+            className="w-full accent-orange-500" />
+        </div>
+      </div>
+
+      {/* ── Order summary card ── */}
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Order summary card</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={`text-[10px] ${textFaint} block mb-1`}>Background</label>
+            <div className="flex items-center gap-1.5">
+              <input type="color"
+                value={settings.summary_bg_color || "#ffffff"}
+                onChange={e => onChange({ summary_bg_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text"
+                value={settings.summary_bg_color ?? ""}
+                onChange={e => onChange({ summary_bg_color: e.target.value })}
+                placeholder="Default"
+                className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+              {settings.summary_bg_color && (
+                <button onClick={() => onChange({ summary_bg_color: undefined })} className="text-red-400 shrink-0">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between mb-1">
+              <span className={`text-[10px] ${textFaint}`}>Border radius</span>
+              <span className={`text-[10px] font-mono ${textFaint}`}>{settings.summary_border_radius ?? 16}px</span>
+            </div>
+            <input type="range" min={0} max={32} step={2}
+              value={settings.summary_border_radius ?? 16}
+              onChange={e => onChange({ summary_border_radius: Number(e.target.value) })}
+              className="w-full accent-orange-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Trust note ── */}
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+          showTrustNote ? "border-orange-500/40 bg-orange-500/10" : `${isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200"}`
+        }`}>
+          <div className="relative mt-0.5 shrink-0" onClick={() => onChange({ show_trust_note: !showTrustNote })}>
+            <div className={`w-8 h-4 rounded-full transition-colors ${showTrustNote ? "bg-orange-500" : "bg-gray-600"}`} />
+            <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${showTrustNote ? "translate-x-4" : ""}`} />
+          </div>
+          <div className="flex-1">
+            <p className={`text-xs font-medium ${textPrimary}`}>Show trust note</p>
+            <p className={`text-[10px] mt-0.5 ${textFaint}`}>Small reassurance line below the order summary</p>
+          </div>
+        </label>
+        {showTrustNote && (
+          <div className="mt-2">
+            <EditorInput
+              value={settings.trust_note ?? ""}
+              onChange={(v: string) => onChange({ trust_note: v })}
+              placeholder="🔒 Secure checkout · SSL encrypted"
+              isDark={isDark}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

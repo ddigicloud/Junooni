@@ -354,19 +354,24 @@ export const StreamlinedImageManager: React.FC<{
     }
   };
 
-  // Remove an image
-  const handleRemoveImage = handleRemoveImageProp || ((index: number) => {
-     onImageChange?.(); 
+  // Remove an image — always use the prop version if provided (it handles deletedImageIds)
+  // Fallback only used if parent doesn't pass the handler
+  const handleRemoveImage = (index: number) => {
+    if (handleRemoveImageProp) {
+      handleRemoveImageProp(index);
+      return;
+    }
+    // Fallback (no deletedImageIds tracking — only used if prop not passed)
+    onImageChange?.();
+    const removed = mediaItems[index];
+    if (removed?.file && removed.url.startsWith('blob:')) {
+      URL.revokeObjectURL(removed.url);
+    }
     setMediaItems((prev) => {
-      const removed = prev[index];
-      if (removed.file) {
-        URL.revokeObjectURL(removed.url);
-      }
-      // Return filtered array with reordered ranks
       const filtered = prev.filter((_, i) => i !== index);
       return filtered.map((item, i) => ({ ...item, rank: i }));
     });
-  });
+  };
 
   // Move image up in order
    const handleMoveImageUp = (index: number) => {

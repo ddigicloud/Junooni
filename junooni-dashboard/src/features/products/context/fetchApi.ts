@@ -378,7 +378,7 @@ export async function uploadProductImage({
   
   try {
     // ✅ Handle image deletion
-    if (action === 'delete' && imageId) {
+        if (action === 'delete' && imageId) {
       console.log(`🗑️ Deleting image ${imageId} from product ${productId}`);
       
       const response = await axios.delete(
@@ -389,13 +389,13 @@ export async function uploadProductImage({
             'Content-Type': 'application/json'
           },
           data: {
-            fileId: imageId,
-            productId: productId  // Include productId to help with thumbnail handling
+            fileIds: Array.isArray(imageId) ? imageId : [imageId],
+            productId: productId
           }
         }
       );
       
-      console.log(`✅ Image deleted successfully:`, response.data);
+      console.log(`✅ Image(s) deleted successfully:`, response.data);
       return response.data;
     }
     
@@ -772,21 +772,29 @@ export async function updateVariantImages({
   productId,
   variantId,
   imageIds,
-  thumbnailUrl,  // ← rename from thumbnailId to thumbnailUrl
+  thumbnailUrl,
 }: {
   productId: string;
   variantId: string;
   imageIds: string[];
-  thumbnailUrl?: string;  // ← URL string now
+  thumbnailUrl?: string;
 }): Promise<any> {
   const token = localStorage.getItem("vendorToken");
   try {
+    // Build payload — only include thumbnail_url if we have one
+    // For clearing, send null explicitly (empty string is not accepted by Medusa)
+    const payload: Record<string, any> = {
+      images: imageIds.map(id => ({ id })),
+    };
+    if (thumbnailUrl) {
+      payload.thumbnail_url = thumbnailUrl;
+    } else {
+      payload.thumbnail_url = null;  // null tells Medusa to clear it
+    }
+
     const response = await axios.post(
       `${API_BASE_URL}/vendors/products/${productId}/variants/${variantId}`,
-      { 
-        images: imageIds.map(id => ({ id })),
-        thumbnail_url: thumbnailUrl  // ← send URL directly
-      },
+      payload,
       {
         headers: {
           Authorization: `Bearer ${token}`,

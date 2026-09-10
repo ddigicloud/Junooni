@@ -12,9 +12,9 @@ function formatPrice(amount: number) {
 }
 
 export default function ShippingForm({
-  cart, shippingMethods, handle, brandPrimary = "#e65100", isDark = false,
+  cart, shippingMethods, handle, brandPrimary = "#e65100", isDark = false, btnTextColor, btnBorderRadius,
 }: {
-  cart: any; shippingMethods: any[]; handle: string; brandPrimary?: string; isDark?: boolean
+  cart: any; shippingMethods: any[]; handle: string; brandPrimary?: string; isDark?: boolean; btnTextColor?: string; btnBorderRadius?: number
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -58,7 +58,11 @@ export default function ShippingForm({
             </div>
             <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Method</h2>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
-              style={{ background: brandPrimary }}>Done</span>
+              style={{
+                background: `var(--checkout-btn-bg, ${brandPrimary})`,
+                color: `var(--checkout-btn-text, #ffffff)`,
+                borderRadius: `var(--checkout-btn-radius, 50px)`,
+              }}>Done</span>
           </div>
           <button
             onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
@@ -89,7 +93,11 @@ export default function ShippingForm({
       style={{ borderColor: brandPrimary }}>
       <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: brandPrimary }}>
+          style={{
+            background: `var(--checkout-btn-bg, ${brandPrimary})`,
+            color: `var(--checkout-btn-text, #ffffff)`,
+            borderRadius: `var(--checkout-btn-radius, 50px)`,
+          }}>
           <Truck className="w-4 h-4 text-white" />
         </div>
         <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Method</h2>
@@ -139,8 +147,12 @@ export default function ShippingForm({
         )}
 
         <button onClick={handleContinue} disabled={!selected || isPending}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: brandPrimary,
+            color: btnTextColor ?? "#ffffff",
+            borderRadius: `${btnBorderRadius ?? 12}px`,
+          }}
         >
           {isPending
             ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</>

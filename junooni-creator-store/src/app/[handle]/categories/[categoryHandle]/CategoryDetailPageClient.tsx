@@ -65,16 +65,20 @@ export default function CategoryDetailPageClient({
     setIsEditorMode(window.parent !== window)
   }, [])
   const gridSettings = pageSections.find((s: any) => s.id === "__category_products__") ?? {}
-    const gridColumns    = gridSettings.columns ?? 3
-    const gridBg         = gridSettings.background_color
-    const gridText       = gridSettings.text_color
-    const showFilters          = gridSettings.show_filters           !== false
-    const showSort             = gridSettings.show_sort              !== false
-    const showPriceFilter      = gridSettings.show_price_filter      !== false
-    const showCategoryFilter   = gridSettings.show_category_filter   !== false
-    const showCollectionFilter = gridSettings.show_collection_filter !== false
-
-    const filterOrder = gridSettings.filter_order ?? ["sort", "price", "category", "collection"]
+  const gridColumns          = gridSettings.columns          ?? 3
+  const gridBg               = gridSettings.background_color
+  const gridText             = gridSettings.text_color
+  const showFilters          = gridSettings.show_filters           !== false
+  const showSort             = gridSettings.show_sort              !== false
+  const showPriceFilter      = gridSettings.show_price_filter      !== false
+  const showCategoryFilter   = gridSettings.show_category_filter   !== false
+  const showCollectionFilter = gridSettings.show_collection_filter !== false
+  const filterOrder          = gridSettings.filter_order ?? ["sort", "price", "category", "collection"]
+  const hideBanner           = gridSettings.hide_banner     ?? false
+  const paddingTop           = gridSettings.padding_top     ?? 40
+  const paddingBottom        = gridSettings.padding_bottom  ?? 40
+  const cardBorderRadius     = gridSettings.card_border_radius
+  const cardBgColor          = gridSettings.card_bg_color
 
   const renderSection = (section: any) => {
     const isSelected = selectedSectionId === section.id
@@ -386,8 +390,12 @@ export default function CategoryDetailPageClient({
 
       {/* ── Category Product Grid ── */}
       <div
-        className="px-4 py-10 mx-auto max-w-7xl sm:px-6"
-        style={{ backgroundColor: gridBg ?? undefined }}
+        className="px-4 sm:px-6 mx-auto max-w-7xl"
+        style={{
+          backgroundColor: gridBg ?? undefined,
+          paddingTop: `${paddingTop}px`,
+          paddingBottom: `${paddingBottom}px`,
+        }}
         onClick={() => {
           if (isEditorMode)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: "__category_products__" }, "*")
@@ -396,30 +404,32 @@ export default function CategoryDetailPageClient({
           if (isEditorMode)
             window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: "__category_products__" }, "*")
         }}
-        >
+      >
         <div className="mb-8">
-            <p className="mb-1 text-xs font-semibold tracking-widest uppercase"
+          <p className="mb-1 text-xs font-semibold tracking-widest uppercase"
             style={{ color: brandPrimary }}>
             Category
-            </p>
-            <h1 className="text-3xl font-bold"
+          </p>
+          <h1 className="text-3xl font-bold"
             style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
-            {category.name}
-            </h1>
+            {gridSettings.title || category.name}
+          </h1>
+          {gridSettings.show_product_count !== false && (
             <p className="mt-1 text-sm"
-            style={{ color: gridText ? `${gridText}80` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}>
-            {catProducts.length} product{catProducts.length !== 1 ? "s" : ""}
+              style={{ color: gridText ? `${gridText}80` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}>
+              {catProducts.length} product{catProducts.length !== 1 ? "s" : ""}
             </p>
+          )}
         </div>
 
         {catProducts.length === 0 ? (
-            <div className="py-20 text-center">
+          <div className="py-20 text-center">
             <p className={`text-lg ${isDark ? "text-white/40" : "text-gray-400"}`}>
-                No products in this category yet
+              No products in this category yet
             </p>
-            </div>
+          </div>
         ) : (
-            <ProductGrid
+          <ProductGrid
             products={catProducts}
             categories={categories}
             collections={collections}
@@ -433,12 +443,13 @@ export default function CategoryDetailPageClient({
             showFilters={showFilters}
             showSort={showSort}
             showPriceFilter={showPriceFilter}
-            // showCategoryFilter={showCategoryFilter}
             showCategoryFilter={false}
             showCollectionFilter={showCollectionFilter}
-            />
+            cardBorderRadius={cardBorderRadius}
+            cardBgColor={cardBgColor}
+          />
         )}
-        </div>
+      </div>
 
         {visibleSections.filter(s => s.type !== "collection").map(renderSection)}
 

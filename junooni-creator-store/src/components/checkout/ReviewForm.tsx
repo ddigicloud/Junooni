@@ -17,9 +17,9 @@ const loadRazorpayScript = (): Promise<boolean> =>
   })
 
 export default function ReviewForm({
-  cart, handle, brandPrimary = "#e65100", isDark = false,
+  cart, handle, brandPrimary = "#e65100", isDark = false, btnTextColor, btnBorderRadius,
 }: {
-  cart: any; handle: string; brandPrimary?: string; isDark?: boolean
+  cart: any; handle: string; brandPrimary?: string; isDark?: boolean; btnTextColor?: string; btnBorderRadius?: number
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -151,7 +151,11 @@ export default function ReviewForm({
       <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div
           className="flex items-center justify-center w-8 h-8 rounded-full"
-          style={{ background: brandPrimary }}
+          style={{
+            background: `var(--checkout-btn-bg, ${brandPrimary})`,
+            color: `var(--checkout-btn-text, #ffffff)`,
+            borderRadius: `var(--checkout-btn-radius, 50px)`,
+          }}
         >
           <ShieldCheck className="w-4 h-4 text-white" />
         </div>
@@ -167,7 +171,11 @@ export default function ReviewForm({
         >
           <div
             className="flex items-center justify-center rounded-full w-7 h-7 shrink-0"
-            style={{ background: brandPrimary }}
+            style={{
+              background: `var(--checkout-btn-bg, ${brandPrimary})`,
+              color: `var(--checkout-btn-text, #ffffff)`,
+              borderRadius: `var(--checkout-btn-radius, 50px)`,
+            }}
           >
             <CheckCircle2 className="w-4 h-4 text-white" />
           </div>
@@ -180,7 +188,11 @@ export default function ReviewForm({
         {/* Big checkmark */}
         <div
           className="flex items-center justify-center w-20 h-20 mt-2 rounded-full"
-          style={{ background: brandPrimary }}
+          style={{
+            background: `var(--checkout-btn-bg, ${brandPrimary})`,
+            color: `var(--checkout-btn-text, #ffffff)`,
+            borderRadius: `var(--checkout-btn-radius, 50px)`,
+          }}
         >
           <CheckCircle2 className="w-10 h-10 text-white" />
         </div>
@@ -215,8 +227,12 @@ export default function ReviewForm({
           <button
             onClick={handlePlaceOrder}
             disabled={loading}
-            className="flex items-center justify-center w-full gap-2 py-4 text-base font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
-            style={{ background: loading ? "#666" : `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
+            className="flex items-center justify-center w-full gap-2 py-4 text-base font-bold transition-all hover:opacity-90 disabled:opacity-60"
+            style={{
+              background: loading ? "#666" : brandPrimary,
+              color: btnTextColor ?? "#ffffff",
+              borderRadius: `${btnBorderRadius ?? 12}px`,
+            }}
           >
             {loading ? (
               <>

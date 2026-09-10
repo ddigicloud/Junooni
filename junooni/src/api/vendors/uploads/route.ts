@@ -23,7 +23,7 @@ export const POST = async (
         filename: f.originalname,
         mimeType: f.mimetype,
         content: f.buffer.toString("base64"),
-        access: "public", // or "private" depending on your needs
+        access: "public",
       })),
     },
   })
@@ -36,30 +36,44 @@ export const DELETE = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
-  const { fileId, productId } = req.body
+  const { fileId, fileIds, productId } = req.body
+
+  // Support both single fileId and batch fileIds array
+  const idsToDelete: string[] = fileIds 
+    ? (Array.isArray(fileIds) ? fileIds : [fileIds])
+    : fileId ? [fileId] : []
 
   console.log("=== DELETE REQUEST RECEIVED ===")
-  console.log("File ID:", fileId)
+  console.log("File IDs to delete:", idsToDelete)
   console.log("Product ID:", productId)
   console.log("================================")
 
-  if (!fileId) {
+  if (idsToDelete.length === 0) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "File ID is required"
+      "File ID(s) are required"
     )
   }
 
   try {
-    console.log(`🗑️ Attempting to delete file: ${fileId}`)
+    // ✅ STEP 1: Delete ALL files from storage first in one go
+    // Single sequential operation — no parallel calls, no deadlock
+    console.log(`🗑️ Deleting ${idsToDelete.length} files from storage...`)
+    try {
+      await deleteFilesWorkflow(req.scope).run({
+        input: { ids: idsToDelete }
+      })
+      console.log(`✅ All files deleted from storage`)
+    } catch (fileDeleteError) {
+      console.warn(`⚠️ Storage deletion failed (continuing):`, fileDeleteError.message)
+    }
 
-    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-    
-    // ✅ If productId is provided, handle product-specific deletion
+    // ✅ STEP 2: Update product once with all images removed
     if (productId) {
-      console.log(`📦 Deleting image ${fileId} from product ${productId}`)
+      console.log(`📦 Updating product ${productId} to remove ${idsToDelete.length} images`)
 
-      // Get the current product
+      const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+
       const { data: products } = await query.graph({
         entity: "product",
         fields: ["id", "thumbnail", "images.*"],
@@ -67,100 +81,67 @@ export const DELETE = async (
       })
 
       if (!products || products.length === 0) {
-        console.error(`❌ Product ${productId} not found`)
-        throw new MedusaError(
-          MedusaError.Types.NOT_FOUND,
-          `Product not found`
-        )
+        console.warn(`⚠️ Product ${productId} not found — files already deleted from storage`)
+        return res.status(200).json({
+          success: true,
+          deleted: true,
+          ids: idsToDelete,
+          warning: "Product not found but files deleted from storage"
+        })
       }
 
       const product = products[0]
-      
-      console.log("📸 Current product state:")
-      console.log("  - Thumbnail:", product.thumbnail)
-      console.log("  - Total images:", product.images.length)
-      console.log("  - Image IDs:", product.images.map(img => img.id))
-      
-      // Check if this image is the thumbnail
-      const isThumbnail = product.thumbnail && (
-        product.thumbnail.includes(fileId) || 
-        product.thumbnail === fileId ||
-        product.images.find(img => img.id === fileId && img.url === product.thumbnail)
-      )
-      
-      console.log(`🎯 Is this image the thumbnail? ${isThumbnail}`)
-      
-      // Remove image from product's images array
+
+      console.log("📸 Current product images:", product.images.length)
+
+      // Remove ALL deleted images in one filter pass
+      const deletedSet = new Set(idsToDelete)
       const updatedImages = product.images
-        .filter(img => {
-          const shouldKeep = img.id !== fileId
-          console.log(`  - Image ${img.id}: ${shouldKeep ? 'KEEP' : 'REMOVE'}`)
-          return shouldKeep
-        })
-        .map(img => ({ id: img.id, url: img.url }))
+        .filter((img: any) => !deletedSet.has(img.id))
+        .map((img: any) => ({ id: img.id, url: img.url }))
 
-      console.log(`📝 Images after filtering: ${product.images.length} -> ${updatedImages.length}`)
+      console.log(`📝 Images: ${product.images.length} → ${updatedImages.length}`)
 
-      // If this was the thumbnail, set a new one
-      let newThumbnail = product.thumbnail
-      if (isThumbnail) {
-        newThumbnail = updatedImages.length > 0 ? updatedImages[0].url : null
-        console.log(`⚠️ Image was thumbnail, setting new thumbnail: ${newThumbnail}`)
-      } else {
-        console.log(`✅ Image was not thumbnail, keeping current: ${product.thumbnail}`)
-      }
+      // Check if thumbnail was deleted
+      const deletedImage = product.images.find((img: any) => deletedSet.has(img.id))
+      const isThumbnailDeleted = product.thumbnail && (
+        idsToDelete.some(id => product.thumbnail.includes(id)) ||
+        (deletedImage && deletedImage.url === product.thumbnail)
+      )
 
-      // Update the product
-      console.log("🔄 Updating product with new image list and thumbnail...")
+      const newThumbnail = isThumbnailDeleted
+        ? (updatedImages.length > 0 ? updatedImages[0].url : null)
+        : product.thumbnail
+
+      console.log(`🖼 Thumbnail: ${isThumbnailDeleted ? `cleared → ${newThumbnail}` : 'unchanged'}`)
+
+      // ✅ Single product update call — no concurrent transactions
       const { updateProductsWorkflow } = await import("@medusajs/medusa/core-flows")
-      
-      const updatePayload = {
-        products: [{
-          id: productId,
-          thumbnail: newThumbnail,
-          images: updatedImages
-        }]
-      }
-      
-      console.log("📤 Update payload:", JSON.stringify(updatePayload, null, 2))
-      
+
       await updateProductsWorkflow(req.scope).run({
-        input: updatePayload
+        input: {
+          products: [{
+            id: productId,
+            thumbnail: newThumbnail,
+            images: updatedImages
+          }]
+        }
       })
 
       console.log(`✅ Product updated successfully`)
     }
 
-    // ✅ Now delete the actual file
-    console.log(`🗑️ Now deleting the actual file: ${fileId}`)
-    
-    try {
-      await deleteFilesWorkflow(req.scope).run({
-        input: {
-          ids: [fileId]
-        }
-      })
-      console.log(`✅ File deleted successfully from storage`)
-    } catch (fileDeleteError) {
-      console.error(`❌ Error deleting file from storage:`, fileDeleteError)
-      // Log but continue - the file might already be deleted
-      console.warn("⚠️ Continuing despite file deletion error...")
-    }
-
-    console.log(`✅ Successfully completed deletion process for: ${fileId}`)
-
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       deleted: true,
-      id: fileId
+      ids: idsToDelete
     })
+
   } catch (error: any) {
-    console.error(`❌ Error deleting file ${fileId}:`, error)
-    console.error("Error stack:", error.stack)
-    
+    console.error(`❌ Error deleting files:`, error)
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      `Failed to delete file: ${error.message}`
+      `Failed to delete files: ${error.message}`
     )
   }
 }

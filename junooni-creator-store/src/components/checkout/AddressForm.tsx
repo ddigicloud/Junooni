@@ -28,9 +28,9 @@ function Field({ label, name, type = "text", placeholder, required, defaultValue
 }
 
 export default function AddressForm({
-  cart, handle, brandPrimary = "#e65100", isDark = false,
+  cart, handle, brandPrimary = "#e65100", isDark = false, btnTextColor, btnBorderRadius,
 }: {
-  cart: any; handle: string; brandPrimary?: string; isDark?: boolean
+  cart: any; handle: string; brandPrimary?: string; isDark?: boolean; btnTextColor?: string; btnBorderRadius?: number
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -73,7 +73,11 @@ export default function AddressForm({
             </div>
             <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Address</h2>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
-              style={{ background: brandPrimary }}>Done</span>
+              style={{
+                background: `var(--checkout-btn-bg, ${brandPrimary})`,
+                color: `var(--checkout-btn-text, #ffffff)`,
+                borderRadius: `var(--checkout-btn-radius, 50px)`,
+              }}>Done</span>
           </div>
           <button onClick={() => router.push(`/${handle}/checkout?step=address`)}
             className="text-sm font-medium underline underline-offset-2"
@@ -109,7 +113,11 @@ export default function AddressForm({
       style={{ borderColor: brandPrimary }}>
       <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div className="flex items-center justify-center w-8 h-8 rounded-full"
-          style={{ background: brandPrimary }}>
+          style={{
+            background: `var(--checkout-btn-bg, ${brandPrimary})`,
+            color: `var(--checkout-btn-text, #ffffff)`,
+            borderRadius: `var(--checkout-btn-radius, 50px)`,
+          }}>
           <MapPin className="w-4 h-4 text-white" />
         </div>
         <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Address</h2>
@@ -146,8 +154,12 @@ export default function AddressForm({
         )}
 
         <button type="submit" disabled={isPending}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60"
-          style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
+          className="w-full flex items-center justify-center gap-2 py-3.5 font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60"
+          style={{
+            background: brandPrimary,
+            color: btnTextColor ?? "#ffffff",
+            borderRadius: `${btnBorderRadius ?? 12}px`,
+          }}>
           {isPending
             ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</>
             : hasAddress ? <>Save changes</> : <>Continue to Shipping</>

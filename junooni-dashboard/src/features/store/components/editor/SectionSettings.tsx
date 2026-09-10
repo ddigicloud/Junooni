@@ -1410,8 +1410,6 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
       </>)}
 
       {/* ── COLLECTION / FEATURED ── */}
-      {/* ── COLLECTION / FEATURED ── */}
-            {/* ── COLLECTION / FEATURED ── */}
       {(section.type === "collection" || section.type === "featured") && (<>
 
         {/* ── Content ── */}
@@ -1455,12 +1453,14 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </Field>
         </div>
 
-        <Field label="View all link" faint={textFaint}>
-          <LinkInput value={(section as any).view_all_url ?? ""}
-            onChange={v => onChange({ view_all_url: v } as any)}
-            isDark={isDark} pages={pages} collections={collections} categories={categories} />
-          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Leave blank to hide</p>
-        </Field>
+        {currentLayoutKey !== "products" && (
+          <Field label="View all link (leave blank to hide)" faint={textFaint}>
+            <LinkInput value={(section as any).view_all_url ?? ""}
+              onChange={v => onChange({ view_all_url: v } as any)}
+              isDark={isDark} pages={pages} collections={collections} categories={categories} />
+            <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Leave blank to hide</p>
+          </Field>
+        )}
 
         {/* ── Layout ── */}
         <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
@@ -2963,6 +2963,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
       </>)}
 
       {/* ── CATEGORY GRID ── */}
+            {/* ── CATEGORY GRID ── */}
       {(section.type === "category_grid" || section.type === "collections_grid" || section.type === "category_products" || section.type === "collection_products") && (<>
         <Field label="Page heading" faint={textFaint}>
           <EditorInput value={section.title ?? ""}
@@ -2973,6 +2974,46 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             }
             isDark={isDark} />
         </Field>
+
+        {/* Subtitle — category_grid only */}
+        {section.type === "category_grid" && (
+          <Field label="Subtitle" faint={textFaint}>
+            <EditorInput value={(section as any).subtitle ?? ""}
+              onChange={v => onChange({ subtitle: v } as any)}
+              placeholder="Optional subtitle" isDark={isDark} />
+          </Field>
+        )}
+
+        {/* Title size + weight — category_grid only */}
+        {section.type === "category_grid" && (
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Title size" faint={textFaint}>
+              <div className="flex gap-1">
+                {(["sm","md","lg"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ title_size: s } as any)}
+                    className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                      ((section as any).title_size ?? "lg") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s === "sm" ? "Sm" : s === "md" ? "Md" : "Lg"}</button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Title weight" faint={textFaint}>
+              <div className="flex gap-1">
+                {(["normal","bold","black"] as const).map(w => (
+                  <button key={w} onClick={() => onChange({ title_weight: w } as any)}
+                    className={`flex-1 py-1.5 rounded-lg border text-[10px] font-semibold transition-all capitalize ${
+                      ((section as any).title_weight ?? "bold") === w
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{w}</button>
+                ))}
+              </div>
+            </Field>
+          </div>
+        )}
+
         <Field label="Columns" faint={textFaint}>
           <div className="grid grid-cols-4 gap-1">
             {([2,3,4,5] as const).map(n => (
@@ -2986,7 +3027,113 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </div>
         </Field>
 
-                {/* ── Collections grid specific settings ── */}
+        {/* Card style — category_grid only */}
+        {section.type === "category_grid" && (
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Card style</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className={`text-[10px] ${textFaint}`}>Border radius</span>
+                  <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).card_border_radius ?? 16}px</span>
+                </div>
+                <input type="range" min={0} max={40} step={2}
+                  value={(section as any).card_border_radius ?? 16}
+                  onChange={e => onChange({ card_border_radius: Number(e.target.value) } as any)}
+                  className="w-full accent-orange-500" />
+              </div>
+              <Field label="Card background" faint={textFaint}>
+                <div className="flex items-center gap-1.5">
+                  <input type="color"
+                    value={(section as any).card_bg_color ?? "#ffffff"}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text"
+                    value={(section as any).card_bg_color ?? ""}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    placeholder="Default"
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                    }`} />
+                  {(section as any).card_bg_color && (
+                    <button onClick={() => onChange({ card_bg_color: undefined } as any)} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {/* Category label style — category_grid only */}
+        {section.type === "category_grid" && (
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Category label</p>
+            <Field label="Position" faint={textFaint}>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { val: "below", label: "Below image" },
+                  { val: "over",  label: "Over image"  },
+                ] as const).map(opt => (
+                  <button key={opt.val}
+                    onClick={() => onChange({ name_position: opt.val } as any)}
+                    className={`py-2 rounded-lg border text-xs transition-all ${
+                      ((section as any).name_position ?? "below") === opt.val
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{opt.label}</button>
+                ))}
+              </div>
+            </Field>
+            <div className="mt-2.5">
+              <Field label="Alignment" faint={textFaint}>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["left","center","right"] as const).map(align => (
+                    <button key={align}
+                      onClick={() => onChange({ name_alignment: align } as any)}
+                      className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                        ((section as any).name_alignment ?? "left") === align
+                          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                      }`}>{align}</button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+            <div className="mt-2.5">
+              <Field label="Font size" faint={textFaint}>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { val: "sm", label: "Small"  },
+                    { val: "md", label: "Medium" },
+                    { val: "lg", label: "Large"  },
+                  ] as const).map(opt => (
+                    <button key={opt.val}
+                      onClick={() => onChange({ name_size: opt.val } as any)}
+                      className={`py-1.5 rounded-lg border text-xs transition-all ${
+                        ((section as any).name_size ?? "sm") === opt.val
+                          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                      }`}>{opt.label}</button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+            <div className="mt-2.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div className="relative"
+                  onClick={() => onChange({ show_product_count: !((section as any).show_product_count ?? true) } as any)}>
+                  <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).show_product_count !== false ? "bg-orange-500" : "bg-gray-600"}`} />
+                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).show_product_count !== false ? "translate-x-4" : ""}`} />
+                </div>
+                <span className={`text-xs ${textPrimary}`}>Show item count</span>
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* ── Collections grid specific settings ── */}
         {section.type === "collections_grid" && (<>
 
           {/* Card style */}
@@ -3104,6 +3251,70 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             </div>
             <span className={`text-xs ${textPrimary}`}>Show product count</span>
           </label>
+
+          {/* Spacing — both collection_products and category_products */}
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Spacing</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className={`text-[10px] ${textFaint}`}>Top padding</span>
+                  <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).padding_top ?? 40}px</span>
+                </div>
+                <input type="range" min={0} max={120} step={8}
+                  value={(section as any).padding_top ?? 40}
+                  onChange={e => onChange({ padding_top: Number(e.target.value) } as any)}
+                  className="w-full accent-orange-500" />
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className={`text-[10px] ${textFaint}`}>Bottom padding</span>
+                  <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).padding_bottom ?? 40}px</span>
+                </div>
+                <input type="range" min={0} max={120} step={8}
+                  value={(section as any).padding_bottom ?? 40}
+                  onChange={e => onChange({ padding_bottom: Number(e.target.value) } as any)}
+                  className="w-full accent-orange-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Card style — both */}
+          {/* <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Card style</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className={`text-[10px] ${textFaint}`}>Border radius</span>
+                  <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).card_border_radius ?? 16}px</span>
+                </div>
+                <input type="range" min={0} max={32} step={2}
+                  value={(section as any).card_border_radius ?? 16}
+                  onChange={e => onChange({ card_border_radius: Number(e.target.value) } as any)}
+                  className="w-full accent-orange-500" />
+              </div>
+              <Field label="Card background" faint={textFaint}>
+                <div className="flex items-center gap-1.5">
+                  <input type="color"
+                    value={(section as any).card_bg_color ?? "#f9fafb"}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text"
+                    value={(section as any).card_bg_color ?? ""}
+                    onChange={e => onChange({ card_bg_color: e.target.value } as any)}
+                    placeholder="Default"
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-gray-50 border border-gray-200 text-gray-800"
+                    }`} />
+                  {(section as any).card_bg_color && (
+                    <button onClick={() => onChange({ card_bg_color: undefined } as any)} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </div>
+          </div> */}
 
           {/* Banner image toggle — only for collection_products */}
           {section.type === "collection_products" && (

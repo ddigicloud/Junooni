@@ -47,11 +47,9 @@ interface EarningsCalculation {
   grossAmount: number          // rupees
   commissionAmount: number     // rupees
   taxAmount: number            // rupees
-  tdsAmount: number            // rupees
   paymentProcessingFee: number // rupees
   netAmount: number            // rupees
   commissionRate: number       // percentage (e.g. 90)
-  tdsPercentage: number        // percentage (e.g. 1)
 }
 
 interface VendorEarningsReport {
@@ -265,13 +263,11 @@ class PayoutModuleService extends MedusaService({
       amount: toPaise(params.earnings.netAmount),
       tax_amount: toPaise(params.earnings.taxAmount),
       tax_type: "igst",
-      tds_percentage: Math.round(params.earnings.tdsPercentage * 100),       // 1% → 100
-      tds_amount: toPaise(params.earnings.tdsAmount),
-      payment_processing_fee: toPaise(params.earnings.paymentProcessingFee), // ← NEW: paise
+      payment_processing_fee: toPaise(params.earnings.paymentProcessingFee),
       type: "earning",
       fulfillment_type: params.fulfillmentType,
       cost_price: toPaise(params.costPrice),
-      commission_rate: Math.round(params.earnings.commissionRate * 100),     // 90% → 9000
+      commission_rate: Math.round(params.earnings.commissionRate * 100), // 90% → 9000
       selling_price: toPaise(params.sellingPrice),
       status: "completed",
       reason: `Order earnings - ${params.orderId} - ${params.productId}`,
@@ -339,20 +335,19 @@ class PayoutModuleService extends MedusaService({
    * ─── Fee logic ────────────────────────────────────────────────────────────
    *
    * ONLINE (Razorpay):
-   *   creator_fulfillment  → (orderTotal - 2.36%) × 90% → - TDS 1%  = net
-   *   junooni_fulfillment  → (orderTotal - GST - 2.36%) - cost       = profit → - TDS 1% = net
+   *   creator_fulfillment  → (orderTotal - 2.36%) × 90% = net
+   *   junooni_fulfillment  → (orderTotal - GST - 2.36%) - cost = net
    *
    * COD:
-   *   creator_fulfillment  → (orderTotal × 90%) - codFeeShare        → - TDS 1% = net
-   *   junooni_fulfillment  → (orderTotal - GST - codFeeShare) - cost  → - TDS 1% = net
+   *   creator_fulfillment  → (orderTotal × 90%) - codFeeShare = net
+   *   junooni_fulfillment  → (orderTotal - GST - codFeeShare) - cost = net
    *   codFeeShare = ₹35 ÷ number of vendor's products in the order
    *                 (passed as overrideCodFee from processOrderEarnings)
    *
    * JUNOONI FULFILLMENT example (online, ₹2000 order, cost ₹800):
    *   GST (5/105)         = ₹95.24  → Net Revenue  = ₹1904.76
    *   Razorpay 2.36%      = ₹47.20  → After Gateway = ₹1857.56
-   *   Cost                = ₹800.00 → Profit        = ₹1057.56
-   *   TDS 1%              = ₹10.58  → Final payout  = ₹1046.98
+   *   Cost                = ₹800.00 → Net payout    = ₹1057.56
    * ─────────────────────────────────────────────────────────────────────────
    *
    * @param overrideCodFee  Pre-split COD fee per product (supplied by processOrderEarnings).
@@ -378,14 +373,13 @@ class PayoutModuleService extends MedusaService({
     const isCOD = paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery'
 
     // ── STEP 1: Determine payment processing fee ──────────────────────────
-    // This is ALWAYS deducted BEFORE commission and BEFORE TDS.
     // ONLINE → Razorpay 2.36% of gross order total
     // COD    → Flat ₹35 per order split across vendor's products (or full ₹35 for standalone calls)
     const paymentProcessingFee: number = isCOD
       ? 0 // COD fee is collected from customer as a line item, not deducted from vendor
       : orderTotalRupees * 0.0236
 
-    let vendorShare = 0
+    let netAmount = 0
     let commissionRate = 0
     let taxAmount = 0
 
@@ -393,8 +387,8 @@ class PayoutModuleService extends MedusaService({
 
       // ── CREATOR FULFILLMENT ─────────────────────────────────────────────
       // Deduction order:
-      //   ONLINE → STEP 1: Razorpay fee  STEP 2: 90% commission  STEP 3: TDS 1%
-      //   COD    → STEP 1: 90% commission  STEP 2: COD fee  STEP 3: TDS 1%
+      //   ONLINE → STEP 1: Razorpay fee  STEP 2: 90% commission
+      //   COD    → STEP 1: 90% commission  STEP 2: COD fee
       case "creator_fulfillment": {
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         console.log("🎨 CREATOR FULFILLMENT PAYOUT CALCULATION")
@@ -404,40 +398,30 @@ class PayoutModuleService extends MedusaService({
         console.log(`💳         Payment Method:            ${paymentMethod || "online"}`)
 
         if (isCOD) {
-          // COD: 90% first, then deduct flat fee, then TDS
-          // STEP 1 → 90% commission
+          // COD: 90% first, then deduct flat fee
           const grossVendorShare = orderTotalRupees * 0.90
-          // STEP 2 → COD fee deducted from vendor's share
           const afterCodFee = grossVendorShare - paymentProcessingFee
-          // STEP 3 → TDS (calculated below after switch, vendorShare set here)
-          vendorShare = afterCodFee
+          netAmount = afterCodFee
           commissionRate = 90
           taxAmount = 0
 
           console.log(`📊 [STEP 1] Commission (90%):         ₹${orderTotalRupees.toFixed(2)} × 0.90 = ₹${grossVendorShare.toFixed(2)}`)
           console.log(`💳 [STEP 2] COD Fee (this product):   ₹${grossVendorShare.toFixed(2)} - ₹${paymentProcessingFee.toFixed(2)} = ₹${afterCodFee.toFixed(2)}`)
         } else {
-          // ONLINE: Razorpay fee first, then 90%, then TDS
-          // STEP 1 → Razorpay fee deducted from gross
+          // ONLINE: Razorpay fee first, then 90%
           const afterGateway = orderTotalRupees - paymentProcessingFee
-          // STEP 2 → 90% commission on amount after fee
           const afterCommission = afterGateway * 0.90
-          // STEP 3 → TDS (calculated below after switch, vendorShare set here)
-          vendorShare = afterCommission
+          netAmount = afterCommission
           commissionRate = 90
           taxAmount = 0
 
           console.log(`💳 [STEP 1] Razorpay Fee (2.36%):     ₹${orderTotalRupees.toFixed(2)} × 0.0236 = ₹${paymentProcessingFee.toFixed(2)}`)
           console.log(`📉 [STEP 1] After Gateway Fee:         ₹${orderTotalRupees.toFixed(2)} - ₹${paymentProcessingFee.toFixed(2)} = ₹${afterGateway.toFixed(2)}`)
-          console.log(`📊 [STEP 2] Commission (90%):          ₹${afterGateway.toFixed(2)} × 0.90 = ₹${vendorShare.toFixed(2)}`)
+          console.log(`📊 [STEP 2] Commission (90%):          ₹${afterGateway.toFixed(2)} × 0.90 = ₹${netAmount.toFixed(2)}`)
         }
 
-        const tdsAmountCreator = vendorShare * 0.01
-        const netAmountCreator = vendorShare - tdsAmountCreator
         console.log(`🏛️          Tax Amount:                ₹0.00 (not applicable for creator fulfillment)`)
-        console.log("──────────────────────────────────────────────────")
-        console.log(`🧾 [STEP 3] TDS @ 1%:                  ₹${vendorShare.toFixed(2)} × 0.01 = ₹${tdsAmountCreator.toFixed(2)}`)
-        console.log(`✅ [FINAL]  Net Payout to Vendor:       ₹${vendorShare.toFixed(2)} - ₹${tdsAmountCreator.toFixed(2)} = ₹${netAmountCreator.toFixed(2)}`)
+        console.log(`✅ [FINAL]  Net Payout to Vendor:       ₹${netAmount.toFixed(2)}`)
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         break
       }
@@ -446,8 +430,7 @@ class PayoutModuleService extends MedusaService({
       // Deduction order (online):
       //   STEP 1: GST extracted (5/105 of gross)
       //   STEP 2: Razorpay 2.36% of gross (deducted from net revenue)
-      //   STEP 3: Manufacturing cost deducted → this is vendor profit
-      //   STEP 4: TDS 1% on profit
+      //   STEP 3: Manufacturing cost deducted → this is vendor profit = net payout
       case "junooni_fulfillment": {
         if (costPriceRupees === undefined || costPriceRupees === null) {
           throw new MedusaError(MedusaError.Types.INVALID_DATA, "Cost price is required for Junooni fulfillment")
@@ -489,17 +472,11 @@ class PayoutModuleService extends MedusaService({
           )
         }
 
-        // STEP 3 → Deduct cost → this is vendor profit (vendorShare)
-        vendorShare = netAfterGateway - totalCostPrice
-        commissionRate = orderTotalRupees > 0 ? (vendorShare / orderTotalRupees) * 100 : 0
+        // STEP 3 → Deduct cost → vendor profit = net payout
+        netAmount = netAfterGateway - totalCostPrice
+        commissionRate = orderTotalRupees > 0 ? (netAmount / orderTotalRupees) * 100 : 0
 
-        // STEP 4 → TDS (calculated below after switch)
-        const tdsAmountJunooni = vendorShare * 0.01
-        const netAmountJunooni = vendorShare - tdsAmountJunooni
-        console.log(`💰 [STEP 3] Vendor Profit:             ₹${netAfterGateway.toFixed(2)} - ₹${totalCostPrice} = ₹${vendorShare.toFixed(2)}`)
-        console.log("──────────────────────────────────────────────────")
-        console.log(`🧾 [STEP 4] TDS @ 1%:                  ₹${vendorShare.toFixed(2)} × 0.01 = ₹${tdsAmountJunooni.toFixed(2)}`)
-        console.log(`✅ [FINAL]  Net Payout to Vendor:       ₹${vendorShare.toFixed(2)} - ₹${tdsAmountJunooni.toFixed(2)} = ₹${netAmountJunooni.toFixed(2)}`)
+        console.log(`✅ [FINAL]  Net Payout to Vendor:       ₹${netAfterGateway.toFixed(2)} - ₹${totalCostPrice} = ₹${netAmount.toFixed(2)}`)
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         break
       }
@@ -508,22 +485,13 @@ class PayoutModuleService extends MedusaService({
         throw new MedusaError(MedusaError.Types.INVALID_DATA, `Invalid fulfillment type: ${fulfillmentType}`)
     }
 
-    // ── FINAL: TDS is always the LAST deduction ───────────────────────────
-    // vendorShare at this point is AFTER gateway fee and AFTER commission/cost.
-    // TDS is applied on what the vendor actually earns, not on gross.
-    const tdsPercentage = 1
-    const tdsAmount = vendorShare * 0.01
-    const netAmount = vendorShare - tdsAmount
-
     return {
       grossAmount: orderTotalRupees,
-      commissionAmount: vendorShare,
+      commissionAmount: netAmount,
       taxAmount,
-      tdsAmount,
       paymentProcessingFee,
       netAmount,
       commissionRate,
-      tdsPercentage,
     }
   }
 
@@ -680,7 +648,6 @@ class PayoutModuleService extends MedusaService({
         select: [
           "id", "order_id", "order_item_id", "product_id",
           "amount", "tax_amount", "tax_type",
-          "tds_percentage", "tds_amount",
           "payment_processing_fee",
           "type", "fulfillment_type",
           "cost_price", "commission_rate", "selling_price",
@@ -716,12 +683,11 @@ class PayoutModuleService extends MedusaService({
     transactions.forEach(transaction => {
       const key = transaction.product_id
       if (!productMap.has(key)) {
-        productMap.set(key, { productId: key, totalAmount: 0, totalTax: 0, totalTds: 0, orderCount: 0, lastEarningDate: transaction.created_at })
+        productMap.set(key, { productId: key, totalAmount: 0, totalTax: 0, orderCount: 0, lastEarningDate: transaction.created_at })
       }
       const product = productMap.get(key)
       product.totalAmount += transaction.amount
       product.totalTax += transaction.tax_amount
-      product.totalTds += transaction.tds_amount
       product.orderCount += 1
       if (transaction.created_at > product.lastEarningDate) product.lastEarningDate = transaction.created_at
     })
@@ -835,8 +801,6 @@ class PayoutModuleService extends MedusaService({
         amount: -earning.amount,          // already in paise
         tax_amount: -earning.tax_amount,
         tax_type: earning.tax_type,
-        tds_percentage: earning.tds_percentage,
-        tds_amount: -earning.tds_amount,
         type: "refund",
         fulfillment_type: earning.fulfillment_type,
         cost_price: earning.cost_price,

@@ -46,7 +46,7 @@ export default function CheckoutPageClient({
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<string>("")
-  const isCOD = selectedProvider === "pp_system_default"
+  // const isCOD = selectedProvider === "pp_system_default"
 
   const previewCart = previewProduct ? {
   ...MOCK_CART,
@@ -94,9 +94,16 @@ const activeCart = (cart?.items?.length > 0) ? cart : previewCart
   }, [handle])
 
   const checkoutSettings: any = store?.checkout_settings ?? {}
-  const brandPrimary   = checkoutSettings.accent_color || store?.primary_color || "#e65100"
-  const brandSecondary = store?.secondary_color ?? "#ac1900"
-  const isDark = store?.template === "bold"
+  const brandPrimary      = checkoutSettings.accent_color    || store?.primary_color || "#e65100"
+  const brandSecondary    = store?.secondary_color ?? "#ac1900"
+  const isDark            = store?.template === "bold"
+  const pageBgColor       = checkoutSettings.page_bg_color
+  const headerBgColor     = checkoutSettings.header_bg_color
+  const btnBgColor        = checkoutSettings.btn_bg_color
+  const btnTextColor      = checkoutSettings.btn_text_color   ?? "#ffffff"
+  const btnBorderRadius   = checkoutSettings.btn_border_radius ?? 50
+  const summaryBgColor    = checkoutSettings.summary_bg_color
+  const summaryRadius     = checkoutSettings.summary_border_radius ?? 16
 
   const logoSizePx = checkoutSettings.logo_size === "small" ? 24
     : checkoutSettings.logo_size === "large" ? 44
@@ -106,8 +113,11 @@ const activeCart = (cart?.items?.length > 0) ? cart : previewCart
   const trustNoteText = checkoutSettings.trust_note || "🔒 Secure checkout · SSL encrypted"
 
   const brandStyles = {
-    "--brand-primary":   brandPrimary,
-    "--brand-secondary": brandSecondary,
+    "--brand-primary":        brandPrimary,
+    "--brand-secondary":      brandSecondary,
+    "--checkout-btn-bg":      btnBgColor ?? brandPrimary,
+    "--checkout-btn-text":    btnTextColor,
+    "--checkout-btn-radius":  `${btnBorderRadius}px`,
   } as React.CSSProperties
 
   const fontClass =
@@ -174,8 +184,14 @@ const paymentComplete = isPreviewMode || (
 )
 
   return (
-    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"} ${fontClass}`}>
-      <header className={`${isDark ? "bg-black/80 border-white/10" : "bg-white/90 border-gray-100"} backdrop-blur-md border-b sticky top-0 z-30`}>
+    <div style={{ ...brandStyles, ...(pageBgColor ? { backgroundColor: pageBgColor } : {}) }}
+      className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"} ${fontClass}`}>
+      <header className="backdrop-blur-md border-b sticky top-0 z-30"
+        style={{
+          backgroundColor: headerBgColor ?? (isDark ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.9)"),
+          borderColor: isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6",
+          color: checkoutSettings.header_text_color ?? undefined,
+        }}>
         <div className="grid items-center h-16 max-w-6xl grid-cols-3 px-4 mx-auto sm:px-6">
           <div className="min-w-0 justify-self-start">
             {checkoutSettings.logo_position === "left" ? (
@@ -195,9 +211,8 @@ const paymentComplete = isPreviewMode || (
               <Link
                 href={`/`}
                 aria-label="Back to store"
-                className={`flex items-center gap-1.5 text-sm whitespace-nowrap transition-colors ${
-                  isDark ? "text-white/60 hover:text-white" : "text-gray-500 hover:text-gray-900"
-                }`}
+                 className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                style={{ color: checkoutSettings.header_text_color ?? (isDark ? "rgba(255,255,255,0.6)" : "#6b7280") }}
               >
                 <ArrowLeft className="w-4 h-4 shrink-0" />
                 {showBackLink && <span>Back to store</span>}
@@ -223,20 +238,22 @@ const paymentComplete = isPreviewMode || (
 
       <div className="max-w-6xl px-4 py-8 mx-auto sm:px-6">
         <div className="mb-8">
-          <StepIndicator currentStep={step} brandPrimary={brandPrimary} />
+          <StepIndicator currentStep={step} brandPrimary={checkoutSettings.accent_color || brandPrimary} />
         </div>
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
           <div className="min-w-0 space-y-4">
-           <AddressForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
+           <AddressForm cart={activeCart} handle={handle} brandPrimary={btnBgColor ?? brandPrimary} isDark={isDark} btnTextColor={btnTextColor} btnBorderRadius={btnBorderRadius} />
 
             {(step === "delivery" || step === "payment" || step === "review") && addressComplete && (
               <ShippingForm
                 cart={activeCart}
                 shippingMethods={shippingMethods ?? []}
                 handle={handle}
-                brandPrimary={brandPrimary}
+                brandPrimary={btnBgColor ?? brandPrimary}
                 isDark={isDark}
+                btnTextColor={btnTextColor}
+                btnBorderRadius={btnBorderRadius}
               />
             )}
 
@@ -245,14 +262,16 @@ const paymentComplete = isPreviewMode || (
                 cart={activeCart}
                 paymentMethods={paymentMethods ?? []}
                 handle={handle}
-                brandPrimary={brandPrimary}
+                brandPrimary={btnBgColor ?? brandPrimary}
                 isDark={isDark}
                 onProviderChange={setSelectedProvider}
+                btnTextColor={btnTextColor}
+                btnBorderRadius={btnBorderRadius}
               />
             )}
 
             {step === "review" && paymentComplete && (
-              <ReviewForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
+              <ReviewForm cart={activeCart} handle={handle} brandPrimary={btnBgColor ?? brandPrimary} isDark={isDark} btnTextColor={btnTextColor} btnBorderRadius={btnBorderRadius} />
             )}
 
             {/* ── Editor-added sections ── */}
@@ -287,7 +306,12 @@ const paymentComplete = isPreviewMode || (
           </div>
 
           {/* ── Order Summary ── */}
-          <div className={`rounded-2xl border ${isDark ? "border-white/10 bg-gray-900" : "border-gray-100 bg-white"} shadow-sm p-6 sticky top-24`}>
+          <div className="border shadow-sm p-6 sticky top-24"
+            style={{
+              borderRadius: `${summaryRadius}px`,
+              backgroundColor: summaryBgColor ?? (isDark ? "#111827" : "#ffffff"),
+              borderColor: isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6",
+            }}>
             <h3 className={`text-xs font-semibold uppercase tracking-widest mb-4 ${isDark ? "text-white/40" : "text-gray-400"}`}>
               Order Summary
             </h3>
@@ -308,7 +332,7 @@ const paymentComplete = isPreviewMode || (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow-hidden">
                       {item.metadata?.is_cod_fee ? (
-                        <Image src={codimage} alt="COD Fee" fill className="object-cover rounded-xl" />
+                        <Image src={codimage} alt="COD Fee" fill className="object-contain rounded-xl" />
                       ) : item.thumbnail && !item.thumbnail.includes("placehold") ? (
                         <Image src={item.thumbnail} alt={item.title} fill className="object-cover rounded-xl" />
                       ) : (
@@ -364,15 +388,15 @@ const paymentComplete = isPreviewMode || (
                   <span>{formatPrice(activeCart.tax_total)}</span>
                 </div>
               )}
-              {isCOD && (
+              {/* {isCOD && (
                 <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                   <span>Cash on Delivery fee</span>
                   <span>{formatPrice(40)}</span>
                 </div>
-              )}
+              )} */}
               <div className={`flex justify-between text-base font-bold pt-2 border-t ${isDark ? "border-white/10 text-white" : "border-gray-100 text-gray-900"}`}>
                 <span>Total</span>
-                <span style={{ color: brandPrimary }}>{formatPrice((activeCart.total ?? 0) + (isCOD ? 40 : 0))}</span>
+                <span style={{ color: brandPrimary }}>{formatPrice(activeCart.total ?? 0)}</span>
               </div>
             </div>
 
