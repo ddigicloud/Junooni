@@ -121,7 +121,7 @@ export default function ProductCarousel({
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {products.map((product) => (
-                    <div
+          <div
             key={product.id}
             className="shrink-0"
             style={{

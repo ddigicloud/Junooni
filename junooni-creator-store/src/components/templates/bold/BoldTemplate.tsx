@@ -285,6 +285,7 @@ function BoldSection({
                 src={section.background_image ?? store!.hero_image!}
                 alt="Hero"
                 fill
+                quality={90}
                 sizes="100vw"
                 className="object-cover"
                 style={{ opacity: overlayColor ? 1 : 0.4 }}
@@ -390,6 +391,7 @@ function BoldSection({
                       src={(section as any).hero_image_right ?? boldTemplateBanner}
                       alt={vendor.name}
                       fill
+                      quality={90}
                       sizes="(max-width: 768px) 100vw, 400px"
                       className="object-cover"
                       priority
@@ -432,7 +434,12 @@ function BoldSection({
 
     // ── All products collection ────────────────────────────────────────────────
     case "collection": {
-      const limited = products.slice(0, section.limit ?? 12)
+      const limited = (section.product_ids && section.product_ids.length > 0)
+        ? section.product_ids
+            .map((id: string) => products.find((p: any) => p.id === id))
+            .filter(Boolean)
+            .slice(0, section.limit ?? 12)
+        : products.slice(0, section.limit ?? 12)
       if (!limited.length && !isEditorMode) return null
       return (
           <section id="products" className="py-20"
@@ -533,7 +540,7 @@ function BoldSection({
                         }}>
                         <div className="relative w-full h-full">
                           {thumb
-                            ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                            ? <Image src={thumb} alt={col.title} fill quality={90} className="object-cover transition-transform duration-500 group-hover:scale-105" />
                             : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200">
                                 <span className="text-4xl">🛍️</span>
                               </div>
@@ -591,7 +598,7 @@ function BoldSection({
         <div className={`max-w-6xl mx-auto flex flex-col ${section.image_position === "right" ? "md:flex-row-reverse" : "md:flex-row"} gap-12 items-center`}>
           {(section.image ?? vendor.coverphoto ?? vendor.logo) && (
             <div className="relative w-full overflow-hidden md:w-1/2 aspect-square rounded-3xl">
-              <Image src={section.image ?? vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill className="object-cover" />
+              <Image src={section.image ?? vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill quality={90} className="object-cover" />
             </div>
           )}
           <div className="w-full md:w-1/2">
@@ -762,7 +769,7 @@ function BoldSection({
               <div className={`w-full ${imageWidthClass} shrink-0 relative`}
                 style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                 {section.image ? (
-                  <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
+                  <Image src={section.image} alt={section.title ?? "Section image"} fill quality={90} className="object-cover" />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-white/5" style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                     <span className="text-5xl opacity-20">🖼️</span>
@@ -943,22 +950,45 @@ function BoldSection({
     }
 
     // ── HTML ───────────────────────────────────────────────────────────────────
-    case "html": {
+        case "html": {
       const htmlContent = (section as any).html_content
       if (!htmlContent) return null
       const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
-      const srcDoc = isFullDoc ? htmlContent : `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:0;font-family:system-ui,sans-serif;background:transparent;color:white}</style></head><body>${htmlContent}</body></html>`
+      const srcDoc = isFullDoc
+        ? htmlContent
+        : `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>*{box-sizing:border-box}body{margin:0;padding:0;overflow:hidden}</style></head><body>${htmlContent}</body></html>`
+
+      const desktopH = (section as any).html_height ?? 300
+      const mobileH  = (section as any).html_height_mobile ?? desktopH
+      const widthVal  = (section as any).html_width === "lg" ? "80%"
+                      : (section as any).html_width === "md" ? "60%"
+                      : "100%"
+
       return (
         <section className="w-full" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <iframe srcDoc={srcDoc} className="w-full border-0" style={{ minHeight: "200px" }}
+          <style>{`
+            .html-section-frame {
+              height: ${mobileH}px;
+            }
+            @media (min-width: 768px) {
+              .html-section-frame {
+                height: ${desktopH}px;
+              }
+            }
+          `}</style>
+          <iframe
+            srcDoc={srcDoc}
+            className="html-section-frame border-0"
+            scrolling="no"
             sandbox="allow-scripts allow-same-origin allow-forms"
-            onLoad={e => {
-              try {
-                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
-                if (doc?.body) (e.currentTarget as HTMLIFrameElement).style.height = doc.body.scrollHeight + 32 + "px"
-              } catch {}
+            title="Custom HTML section"
+            style={{
+              width: widthVal,
+              display: "block",
+              margin: "0 auto",
+              overflow: "hidden",
             }}
-            title="Custom HTML section" />
+          />
         </section>
       )
     }
@@ -1044,7 +1074,7 @@ function BoldImageSlider({ slides, height, autoplay, interval, fit, showDots, sh
       {slides.map((s, i) => (
         <div key={i} className="absolute inset-0 transition-opacity duration-500"
           style={{ opacity: i === current ? 1 : 0, pointerEvents: i === current ? "auto" : "none" }}>
-          <Image src={s.image} alt={s.caption ?? `Slide ${i + 1}`} fill sizes="100vw"
+          <Image src={s.image} alt={s.caption ?? `Slide ${i + 1}`} fill quality={90} sizes="100vw"
             className="transition-opacity duration-500" style={{ objectFit: fit as any }} />
           {s.caption && (
             <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-gradient-to-t from-black/80 to-transparent">
@@ -1190,7 +1220,7 @@ function BoldFeaturedProduct({ section, product, handle, brandPrimary, sectionBg
       <div className="w-full md:w-[48%] shrink-0">
         <div className="relative overflow-hidden bg-white/5 rounded-3xl aspect-square ring-1 ring-white/10">
           {displayImage ? (
-            <Image key={displayImage} src={displayImage} alt={product.title ?? "Product"} fill
+            <Image key={displayImage} src={displayImage} alt={product.title ?? "Product"} fill quality={90}
               sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-opacity duration-300" />
           ) : (
             <div className="flex items-center justify-center w-full h-full">

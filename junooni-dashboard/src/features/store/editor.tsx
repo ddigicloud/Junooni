@@ -1063,86 +1063,86 @@ const previewUrl = (() => {
     : null
 
   // ── Loading screen ────────────────────────────────────────────────────────
-  if (isLoading) return (
+    if (isLoading) return (
     <div className="flex items-center justify-center h-screen bg-gray-950">
-      <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: store?.primary_color ?? "#e65100" }} />
     </div>
   )
 
   // ── Add section picker (reused in left panel) ─────────────────────────────
-  const AddSectionPicker = ({ afterIndex, zone }: { afterIndex: number; zone: string }) => {
-    const isOpen = addSectionOpen && insertAtIndex === afterIndex
-    return (
-      <div className="pt-1">
-        <button
-          onClick={() => {
-            if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) }
-            else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") }
-          }}
-          className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-            isOpen
-              ? isDark ? "bg-orange-500/10 text-orange-400" : "bg-orange-50 text-orange-500"
-              : isDark ? `${textFaint} ${hoverBg}` : `text-gray-400 ${hoverBg}`
-          }`}
-        >
-          <Plus className="w-3 h-3" /> Add section
-        </button>
-        {isOpen && (
-          <div className={`mt-1 rounded-xl border overflow-hidden shadow-xl ${
-            isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"
-          }`}>
-            <div className={`flex items-center justify-between px-2 py-1.5 border-b ${
-              isDark ? "border-gray-700" : "border-gray-200"
-            }`}>
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Add section</span>
-              <button onClick={() => { setAddSectionOpen(false); setInsertAtIndex(null) }}
-                className={`p-0.5 rounded ${textFaint} hover:text-red-400`}>
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-            <div className={`flex gap-1 p-1.5 overflow-x-auto border-b ${
-              isDark ? "border-gray-700" : "border-gray-200"
-            }`}>
-              {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
-                <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${
-                    addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`
-                  }`}>
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-            <div className="overflow-y-auto max-h-52">
-              {SECTION_BLOCKS_WITH_ICONS
-                .filter(b => {
-                  const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey]
-                    ?? (currentLayoutKey.startsWith("page_") ? PAGE_ALLOWED_SECTIONS["page_"] : null)
-                    ?? PAGE_ALLOWED_SECTIONS.home
-                  return allowed.includes(b.type) &&
-                    !["ticker", "announcement"].includes(b.type) &&
-                    (addSectionFilter === "all" || b.category === addSectionFilter)
-                })
-                .map(block => (
-                  <button key={block.type} onClick={() => addSection(block.type)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 transition-all text-left ${hoverBg} border-t ${
-                      isDark ? "border-gray-700/50" : "border-gray-100"
-                    }`}>
-                    <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0"
-                      style={{ background: `${block.color}20`, color: block.color }}>
-                      {block.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium ${textPrimary}`}>{block.label}</p>
-                      <p className={`text-[10px] ${textFaint}`}>{block.desc}</p>
-                    </div>
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
+  // const AddSectionPicker = ({ afterIndex, zone }: { afterIndex: number; zone: string }) => {
+  //   const isOpen = addSectionOpen && insertAtIndex === afterIndex
+  //   return (
+  //     <div className="pt-1">
+  //       <button
+  //         onClick={() => {
+  //           if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) }
+  //           else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") }
+  //         }}
+  //         className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+  //           isOpen
+  //             ? isDark ? "bg-orange-500/10 text-orange-400" : "bg-orange-50 text-orange-500"
+  //             : isDark ? `${textFaint} ${hoverBg}` : `text-gray-400 ${hoverBg}`
+  //         }`}
+  //       >
+  //         <Plus className="w-3 h-3" /> Add section
+  //       </button>
+  //       {isOpen && (
+  //         <div className={`mt-1 rounded-xl border overflow-hidden shadow-xl ${
+  //           isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"
+  //         }`}>
+  //           <div className={`flex items-center justify-between px-2 py-1.5 border-b ${
+  //             isDark ? "border-gray-700" : "border-gray-200"
+  //           }`}>
+  //             <span className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Add section</span>
+  //             <button onClick={() => { setAddSectionOpen(false); setInsertAtIndex(null) }}
+  //               className={`p-0.5 rounded ${textFaint} hover:text-red-400`}>
+  //               <X className="w-3 h-3" />
+  //             </button>
+  //           </div>
+  //           <div className={`flex gap-1 p-1.5 overflow-x-auto border-b ${
+  //             isDark ? "border-gray-700" : "border-gray-200"
+  //           }`}>
+  //             {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
+  //               <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
+  //                 className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${
+  //                   addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`
+  //                 }`}>
+  //                 {cat.label}
+  //               </button>
+  //             ))}
+  //           </div>
+  //           <div className="overflow-y-auto max-h-52">
+  //             {SECTION_BLOCKS_WITH_ICONS
+  //               .filter(b => {
+  //                 const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey]
+  //                   ?? (currentLayoutKey.startsWith("page_") ? PAGE_ALLOWED_SECTIONS["page_"] : null)
+  //                   ?? PAGE_ALLOWED_SECTIONS.home
+  //                 return allowed.includes(b.type) &&
+  //                   !["ticker", "announcement"].includes(b.type) &&
+  //                   (addSectionFilter === "all" || b.category === addSectionFilter)
+  //               })
+  //               .map(block => (
+  //                 <button key={block.type} onClick={() => addSection(block.type)}
+  //                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 transition-all text-left ${hoverBg} border-t ${
+  //                     isDark ? "border-gray-700/50" : "border-gray-100"
+  //                   }`}>
+  //                   <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0"
+  //                     style={{ background: `${block.color}20`, color: block.color }}>
+  //                     {block.icon}
+  //                   </div>
+  //                   <div className="flex-1 min-w-0">
+  //                     <p className={`text-xs font-medium ${textPrimary}`}>{block.label}</p>
+  //                     <p className={`text-[10px] ${textFaint}`}>{block.desc}</p>
+  //                   </div>
+  //                 </button>
+  //               ))}
+  //           </div>
+  //         </div>
+  //       )}
+  //     </div>
+  //   )
+  // }
 
   // ── Right panel content ───────────────────────────────────────────────────
   const RightPanelContent = (isVirtualPanel || selectedSection) ? (

@@ -411,6 +411,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   src={(section as any).background_image_mobile}
                   alt="Hero mobile"
                   fill
+                  quality={90}
                   sizes="100vw"
                   className="object-cover object-top md:hidden"
                   style={{ opacity: overlayColor ? 1 : 0.15 }}
@@ -421,6 +422,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 src={section.background_image ?? store!.hero_image!}
                 alt="Hero"
                 fill
+                quality={90}
                 sizes="100vw"
                 className={`object-cover object-top ${
                   (section as any).background_image_mobile ? "hidden md:block" : ""
@@ -558,6 +560,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                       src={(section as any).hero_image_right ?? "/minimal-template-banner.png"}
                       alt={vendor.name}
                       fill
+                      quality={90}
                       className="object-cover"
                       priority
                     />
@@ -601,7 +604,12 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
 
     // ── All products collection ────────────────────────────────────────────────
     case "collection": {
-      const limited = products.slice(0, section.limit ?? 12)
+      const limited = (section.product_ids && section.product_ids.length > 0)
+        ? section.product_ids
+            .map((id: string) => products.find((p: any) => p.id === id))
+            .filter(Boolean)
+            .slice(0, section.limit ?? 12)
+        : products.slice(0, section.limit ?? 12)
       
       if (!limited.length && !isEditorMode) return null  // ← change
 
@@ -727,7 +735,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                         }}>
                         <div className="relative w-full h-full">
                           {thumb
-                            ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                            ? <Image src={thumb} alt={col.title} fill quality={90} className="object-cover transition-transform duration-500 group-hover:scale-105" />
                             : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200">
                                 <span className="text-4xl">🛍️</span>
                               </div>
@@ -814,7 +822,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
             {(section.image ?? vendor.coverphoto ?? vendor.logo) && (
               <div className="w-full md:w-2/5 shrink-0">
                 <div className="relative overflow-hidden shadow-xl aspect-square rounded-3xl">
-                  <Image src={section.image ?? vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill className="object-cover" />
+                  <Image src={section.image ?? vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill quality={90} className="object-cover" />
                 </div>
               </div>
             )}
@@ -834,30 +842,110 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     )
 
     // ── Social ─────────────────────────────────────────────────────────────────
-    case "social": {
-      const socials = [
-        { key: "show_instagram", label: "", icon: Instagram, getUrl: (v: PublicVendor) => v.instagram ? `https://instagram.com/${v.instagram}` : null },
-        { key: "show_youtube",   label: "",   icon: Youtube,   getUrl: (v: PublicVendor) => v.youtube   ? `https://youtube.com/${v.youtube}`   : null },
-        { key: "show_twitter", label: "", icon: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, getUrl: (v: PublicVendor) => v.xtwitter ? `https://twitter.com/${v.xtwitter}` : null },
-        { key: "show_facebook",  label: "",  icon: Facebook,  getUrl: (v: PublicVendor) => v.facebook  ? `https://facebook.com/${v.facebook}` : null },
-      ].filter(s => (section as any)[s.key] && s.getUrl(vendor))
-      if (!socials.length) return null
+        case "social": {
+      const sec = section as any
+      const showInsta = sec.show_instagram !== false && vendor.instagram
+      const showYT    = sec.show_youtube   !== false && vendor.youtube
+      const showX     = sec.show_twitter   !== false && vendor.xtwitter
+      const showFB    = sec.show_facebook  !== false && vendor.facebook
+      if (!showInsta && !showYT && !showX && !showFB) return null
+
+      const style     = sec.social_style     ?? "icons"
+      const alignment = sec.social_alignment ?? "center"
+      const iconSize  = sec.icon_size        ?? 48
+      const colorMode = sec.icon_color_mode  ?? "brand"
+      const paddingTop    = sec.padding_top    ?? 48
+      const paddingBottom = sec.padding_bottom ?? 48
+
+      const alignClass = alignment === "left" ? "items-start" : alignment === "right" ? "items-end" : "items-center"
+      const textAlignClass = alignment === "left" ? "text-left" : alignment === "right" ? "text-right" : "text-center"
+
+      const PLATFORMS = [
+        { show: showInsta, url: vendor.instagram, label: "Instagram", brandColor: "#E1306C",
+          icon: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg> },
+        { show: showYT, url: vendor.youtube, label: "YouTube", brandColor: "#FF0000",
+          icon: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
+        { show: showX, url: vendor.xtwitter, label: "X", brandColor: "#000000",
+          icon: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> },
+        { show: showFB, url: vendor.facebook, label: "Facebook", brandColor: "#1877F2",
+          icon: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
+      ].filter(p => p.show)
+
+      const getColor = (brandColor: string) =>
+        colorMode === "brand"   ? brandColor :
+        colorMode === "primary" ? brandPrimary :
+        colorMode === "white"   ? "#ffffff" : "#000000"
+
       return (
-        <section className="px-6 py-12" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
-          <div className="max-w-4xl mx-auto text-center">
-            {section.title && <h2 className="mb-6 text-xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title}</h2>}
-            <div className="flex flex-wrap justify-center gap-3">
-              {socials.map(s => {
-                const Icon = s.icon
-                const btnColor = sectionText ?? brandPrimary
+        <section style={{
+          backgroundColor: sectionBg ?? "transparent",
+          paddingTop: `${paddingTop}px`,
+          paddingBottom: `${paddingBottom}px`,
+        }}>
+          <div className={`max-w-3xl mx-auto px-6 flex flex-col ${alignClass} gap-4`}>
+            {/* Heading */}
+            {(sec.social_heading || sec.social_subheading) && (
+              <div className={textAlignClass}>
+                {sec.social_heading && (
+                  <h2 className="text-2xl font-bold mb-1"
+                    style={{ color: sectionText ?? "#111827" }}>
+                    {sec.social_heading}
+                  </h2>
+                )}
+                {sec.social_subheading && (
+                  <p className="text-sm opacity-60"
+                    style={{ color: sectionText ?? "#6b7280" }}>
+                    {sec.social_subheading}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Icons */}
+            <div className={`flex flex-wrap gap-4 justify-${alignment === "left" ? "start" : alignment === "right" ? "end" : "center"}`}>
+              {PLATFORMS.map(({ url, label, brandColor, icon }) => {
+                const color = getColor(brandColor)
+                const size = iconSize
+
+                if (style === "cards") return (
+                  <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all hover:scale-105 hover:shadow-md"
+                    style={{
+                      borderColor: `${color}30`,
+                      backgroundColor: `${color}10`,
+                      color,
+                      minWidth: `${size + 32}px`,
+                    }}>
+                    <span style={{ width: size * 0.6, height: size * 0.6 }}>{icon}</span>
+                    <span className="text-xs font-semibold">{label}</span>
+                  </a>
+                )
+
+                if (style === "buttons") return (
+                  <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full border transition-all hover:scale-105"
+                    style={{
+                      borderColor: color,
+                      color,
+                      backgroundColor: `${color}10`,
+                    }}>
+                    <span style={{ width: 18, height: 18, display: "block" }}>{icon}</span>
+                    <span className="text-sm font-semibold">{label}</span>
+                  </a>
+                )
+
+                // default: icons only
                 return (
-                  <a key={s.key} href={s.getUrl(vendor)!} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border-2 transition-all hover:scale-105"
-                    style={{ borderColor: btnColor, color: btnColor, background: "transparent" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = btnColor; (e.currentTarget as HTMLElement).style.color = sectionBg ?? "#ffffff" }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = btnColor }}
-                  >
-                    <Icon className="w-4 h-4" />{s.label}
+                  <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center rounded-full border-2 transition-all hover:scale-110 hover:shadow-lg"
+                    style={{
+                      width: size,
+                      height: size,
+                      borderColor: `${color}40`,
+                      color,
+                      backgroundColor: `${color}10`,
+                    }}>
+                    <span style={{ width: size * 0.45, height: size * 0.45, display: "block" }}>{icon}</span>
                   </a>
                 )
               })}
@@ -867,22 +955,45 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       )
     }
 
-    case "html": {
+        case "html": {
       const htmlContent = (section as any).html_content
       if (!htmlContent) return null
       const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
-      const srcDoc = isFullDoc ? htmlContent : `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:0;font-family:system-ui,sans-serif}</style></head><body>${htmlContent}</body></html>`
+      const srcDoc = isFullDoc
+        ? htmlContent
+        : `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>*{box-sizing:border-box}body{margin:0;padding:0;overflow:hidden}</style></head><body>${htmlContent}</body></html>`
+
+      const desktopH = (section as any).html_height ?? 300
+      const mobileH  = (section as any).html_height_mobile ?? desktopH
+      const widthVal  = (section as any).html_width === "lg" ? "80%"
+                      : (section as any).html_width === "md" ? "60%"
+                      : "100%"
+
       return (
         <section className="w-full" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <iframe srcDoc={srcDoc} className="w-full border-0" style={{ minHeight: "200px" }}
+          <style>{`
+            .html-section-frame {
+              height: ${mobileH}px;
+            }
+            @media (min-width: 768px) {
+              .html-section-frame {
+                height: ${desktopH}px;
+              }
+            }
+          `}</style>
+          <iframe
+            srcDoc={srcDoc}
+            className="html-section-frame border-0"
+            scrolling="no"
             sandbox="allow-scripts allow-same-origin allow-forms"
-            onLoad={e => {
-              try {
-                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
-                if (doc?.body) (e.currentTarget as HTMLIFrameElement).style.height = doc.body.scrollHeight + 32 + "px"
-              } catch {}
+            title="Custom HTML section"
+            style={{
+              width: widthVal,
+              display: "block",
+              margin: "0 auto",
+              overflow: "hidden",
             }}
-            title="Custom HTML section" />
+          />
         </section>
       )
     }
@@ -1197,7 +1308,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               <div className={`w-full ${imageWidthClass} shrink-0 relative`}
                 style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                 {section.image ? (
-                  <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
+                  <Image src={section.image} alt={section.title ?? "Section image"} fill quality={90} className="object-cover" />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gray-100" style={{ minHeight: `${Math.min(minHeight, 400)}px` }}>
                     <span className="text-5xl opacity-20">🖼️</span>
@@ -1509,6 +1620,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
                   src={displayImage}
                   alt={product.title ?? "Product"}
                   fill
+                  quality={90}
                   className="object-cover transition-opacity duration-300"
                 />
               ) : (
@@ -1725,6 +1837,7 @@ function ImageSlider({ slides, height, autoplay, interval, fit, showDots, showAr
             src={s.image}
             alt={s.caption ?? `Slide ${i + 1}`}
             fill
+            quality={90}
             sizes="100vw"
             className="transition-opacity duration-500"
             style={{ objectFit: fit as any }}

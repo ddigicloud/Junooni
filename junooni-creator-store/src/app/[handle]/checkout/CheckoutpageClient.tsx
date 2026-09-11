@@ -139,12 +139,13 @@ const activeCart = (cart?.items?.length > 0) ? cart : previewCart
       alt={vendor.name}
       width={logoSizePx * 4}
       height={logoSizePx}
+      quality={90}
       className="object-contain w-auto"
       style={{ height: logoSizePx }}
     />
   ) : vendor.logo ? (
     <div className="overflow-hidden rounded-full" style={{ width: logoSizePx, height: logoSizePx }}>
-      <Image src={vendor.logo} alt={vendor.name} width={logoSizePx} height={logoSizePx} className="object-cover" />
+      <Image src={vendor.logo} alt={vendor.name} width={logoSizePx} height={logoSizePx} quality={90} className="object-cover" />
     </div>
   ) : (
     <div
@@ -332,9 +333,9 @@ const paymentComplete = isPreviewMode || (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow-hidden">
                       {item.metadata?.is_cod_fee ? (
-                        <Image src={codimage} alt="COD Fee" fill className="object-contain rounded-xl" />
+                        <Image src={codimage} alt="COD Fee" fill quality={90} className="object-contain rounded-xl" />
                       ) : item.thumbnail && !item.thumbnail.includes("placehold") ? (
-                        <Image src={item.thumbnail} alt={item.title} fill className="object-cover rounded-xl" />
+                        <Image src={item.thumbnail} alt={item.title} fill quality={90} className="object-cover rounded-xl" />
                       ) : (
                         <img
                           src="/minimaltee.jpeg"

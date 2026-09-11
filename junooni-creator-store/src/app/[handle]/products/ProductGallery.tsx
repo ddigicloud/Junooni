@@ -125,6 +125,7 @@ export default function ProductGallery({
                 src={img.url}
                 alt={`${productTitle} view ${i + 1}`}
                 fill
+                quality={90}
                 className="object-cover"
               />
             </button>
@@ -140,6 +141,7 @@ export default function ProductGallery({
               src={mainImage}
               alt={productTitle}
               fill
+              quality={90}
               className="object-cover transition-opacity duration-300"
               priority
             />
@@ -165,6 +167,7 @@ export default function ProductGallery({
             src={mainImage}
             alt={productTitle}
             fill
+            quality={90}
             className="object-cover transition-opacity duration-300"
             priority
           />
@@ -196,6 +199,7 @@ export default function ProductGallery({
                 src={img.url}
                 alt={`${productTitle} view ${i + 1}`}
                 fill
+                quality={90}
                 className="object-cover"
               />
             </button>

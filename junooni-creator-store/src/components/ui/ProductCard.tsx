@@ -240,6 +240,7 @@ export default function ProductCard({
                 src={displayImage}
                 alt={activeColor ?? product.title}
                 fill
+                quality={90}
                 className={`object-cover transition-opacity duration-300 ${
                   showHover ? "group-hover:scale-105 transition-transform duration-500" : ""
                 }`}

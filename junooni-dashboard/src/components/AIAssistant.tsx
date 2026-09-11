@@ -1206,12 +1206,13 @@ Does this look good?`,
                   )}
 
                   {/* Lock ALL card lists once any product is selected */}
-                  {msg.productCards && msg.productCards.length > 0 && (
+                  {msg.productCards && msg.productCards.length > 0 && 
+                    !productSelectedRef.current && (
                     <ProductCardList
                       products={msg.productCards}
-                      isLockedByParent={productSelectedRef.current}
+                      isLockedByParent={false}
                       onSelect={(index, product) => {
-                        productSelectedRef.current = true  // lock all card lists globally
+                        productSelectedRef.current = true
                         sendMessageWithCleanHistory(`I want option ${index}: ${product.name}`, product)
                       }}
                     />

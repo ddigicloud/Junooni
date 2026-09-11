@@ -116,7 +116,7 @@ export default function CategoryDetailPageClient({
             style={{ backgroundColor: secBg ?? (isDark ? "#111" : "#f9fafb") }}>
             {section.background_image && (
               <div className="absolute inset-0">
-                <Image src={section.background_image} alt="Hero" fill className="object-cover opacity-20" />
+                <Image src={section.background_image} alt="Hero" fill quality={90} className="object-cover opacity-20" />
               </div>
             )}
             <div className="relative z-10 max-w-4xl mx-auto text-center">
@@ -175,7 +175,7 @@ export default function CategoryDetailPageClient({
                 <div className="w-full md:w-1/2 shrink-0">
                   {section.image ? (
                     <div className="relative overflow-hidden rounded-2xl shadow-xl aspect-[4/3]">
-                      <Image src={section.image} alt={section.title ?? ""} fill className="object-cover" />
+                      <Image src={section.image} alt={section.title ?? ""} fill quality={90} className="object-cover" />
                     </div>
                   ) : (
                     <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-[4/3]">

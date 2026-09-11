@@ -336,7 +336,9 @@ export default function ProductGrid({
                   <label key={cat.id} className="flex items-center justify-between cursor-pointer group py-0.5">
                     <div className="flex items-center gap-2.5">
                       <input type="checkbox" checked={selectedCategories.includes(cat.handle)}
-                        onChange={() => toggleCat(cat.handle)} className="w-4 h-4 rounded accent-orange-500" />
+                          onChange={() => toggleCat(cat.handle)}
+                          className="w-4 h-4 rounded accent-white"
+                          style={{ outline: "1.5px solid black", outlineOffset: "-1px" }} />
                       <span className={`text-sm ${textColor} group-hover:opacity-70 transition-opacity`}>{cat.name}</span>
                     </div>
                     <span className={`text-xs ${subText}`}>{cat.product_count}</span>
@@ -361,7 +363,9 @@ export default function ProductGrid({
                   <label key={col.id} className="flex items-center justify-between cursor-pointer group py-0.5">
                     <div className="flex items-center gap-2.5">
                       <input type="checkbox" checked={selectedCollections.includes(col.handle)}
-                        onChange={() => toggleCol(col.handle)} className="w-4 h-4 rounded accent-orange-500" />
+                        onChange={() => toggleCol(col.handle)}
+                        className="w-4 h-4 rounded accent-white"
+                        style={{ outline: "1.5px solid black", outlineOffset: "-1px" }} />
                       <span className={`text-sm ${textColor} group-hover:opacity-70 transition-opacity`}>{col.title}</span>
                     </div>
                     <span className={`text-xs ${subText}`}>{col.product_count}</span>

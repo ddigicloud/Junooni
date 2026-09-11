@@ -1083,7 +1083,7 @@ useEffect(() => {
                         isDark ? "bg-white/5" : "bg-gray-50"
                       }`}>
                         {p.thumbnail && (
-                          <Image src={p.thumbnail} alt={p.title} fill
+                          <Image src={p.thumbnail} alt={p.title} fill quality={90}
                             className="object-cover transition-transform duration-500 group-hover:scale-105" />
                         )}
                       </div>
@@ -1113,7 +1113,7 @@ useEffect(() => {
                 <div className="w-full md:w-1/2 shrink-0">
                   {section.image ? (
                     <div className="relative overflow-hidden rounded-2xl shadow-xl aspect-[4/3]">
-                      <Image src={section.image} alt={section.title ?? "Image"} fill className="object-cover" />
+                      <Image src={section.image} alt={section.title ?? "Image"} fill quality={90} className="object-cover" />
                     </div>
                   ) : (
                     <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-[4/3]">
@@ -1493,7 +1493,7 @@ useEffect(() => {
                       <div className="aspect-square relative overflow-hidden"
                         style={{ borderRadius: `${relatedCardRadius}px ${relatedCardRadius}px 0 0` }}>
                         {p.thumbnail && (
-                          <Image src={p.thumbnail} alt={p.title} fill
+                          <Image src={p.thumbnail} alt={p.title} fill quality={90}
                             className="object-cover transition-transform duration-500 group-hover:scale-105" />
                         )}
                       </div>

@@ -17,6 +17,57 @@ import { ProductPickerButton } from "./ProductPicker"
 // ─── ProductDetailSettings ────────────────────────────────────────────────────
 // Flat expandable list. Each element row = reorder arrows + chevron to open settings.
 // No "Element Order" wrapper. No duplicate sections below.
+
+function ProductSearchAdder({ products, selectedIds, onAdd, isDark, textFaint, textPrimary, inputCls }: {
+  products: any[]; selectedIds: string[]; onAdd: (id: string) => void
+  isDark: boolean; textFaint: string; textPrimary: string; inputCls: string
+}) {
+  const [query, setQuery] = useState("")
+  const filtered = products
+    .filter(p => !selectedIds.includes(p.id))
+    .filter(p => !query || p.title?.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 8)
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Search to add a product..."
+        className={`w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-500 ${inputCls}`}
+      />
+      {query && filtered.length > 0 && (
+        <div className={`absolute z-50 left-0 right-0 mt-1 rounded-lg border shadow-lg overflow-hidden ${
+          isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
+        }`}>
+          {filtered.map(p => (
+            <button key={p.id}
+              onClick={() => { onAdd(p.id); setQuery("") }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${
+                isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+              }`}>
+              {p.thumbnail && (
+                <img src={p.thumbnail} alt={p.title} className="w-7 h-7 rounded object-cover shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-medium truncate ${textPrimary}`}>{p.title}</p>
+              </div>
+              <Plus className={`w-3.5 h-3.5 shrink-0 ${textFaint}`} />
+            </button>
+          ))}
+        </div>
+      )}
+      {query && filtered.length === 0 && (
+        <div className={`absolute z-50 left-0 right-0 mt-1 rounded-lg border px-3 py-2 text-xs ${
+          isDark ? "bg-gray-900 border-gray-700 text-gray-500" : "bg-white border-gray-200 text-gray-400"
+        }`}>
+          No products found
+        </div>
+      )}
+    </div>
+  )
+}
  
 export function ProductDetailSettings({ settings, onChange, isDark, products = [], previewProductHandle = "" }: {
   settings: any
@@ -1564,15 +1615,90 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </label>
         </div>
 
-        {section.type === "featured" && (
+        {(section.type === "featured" || section.type === "collection") && (
           <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
-            <Field label="Specific products (one ID per line)" faint={textFaint}>
-              <EditorTextarea value={section.product_ids?.join("\n") ?? ""}
-                onChange={v => onChange({ product_ids: v.split("\n").map(s => s.trim()).filter(Boolean) })}
-                placeholder={"prod_01...\nprod_02..."} rows={3} isDark={isDark}
-                pages={pages} collections={collections} categories={categories}/>
-              <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Leave empty to show latest products</p>
-            </Field>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>
+              Custom product order
+            </p>
+            <p className={`text-[10px] mb-3 ${textFaint} opacity-60`}>
+              Add products in the order you want them displayed. Leave empty to show latest.
+            </p>
+
+            {/* Ordered product list */}
+            <div className="space-y-1.5 mb-2">
+              {(section.product_ids ?? []).map((id: string, i: number) => {
+                const prod = products?.find((p: any) => p.id === id)
+                return (
+                  <div key={id} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border ${
+                    isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
+                  }`}>
+                    {/* Thumbnail */}
+                    {prod?.thumbnail ? (
+                      <img src={prod.thumbnail} alt={prod.title}
+                        className="w-8 h-8 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className={`w-8 h-8 rounded shrink-0 flex items-center justify-center text-xs ${
+                        isDark ? "bg-gray-700 text-gray-500" : "bg-gray-200 text-gray-400"
+                      }`}>?</div>
+                    )}
+                    {/* Name */}
+                    <span className={`flex-1 text-xs truncate ${isDark ? "text-gray-200" : "text-gray-700"}`}>
+                      {prod?.title ?? id}
+                    </span>
+                    {/* Move up/down */}
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button disabled={i === 0}
+                        onClick={() => {
+                          const arr = [...(section.product_ids ?? [])]
+                          ;[arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]
+                          onChange({ product_ids: arr })
+                        }}
+                        className={`p-0.5 rounded ${i === 0 ? "opacity-20" : isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}>
+                        <ChevronUp className={`w-3 h-3 ${textFaint}`} />
+                      </button>
+                      <button disabled={i === (section.product_ids ?? []).length - 1}
+                        onClick={() => {
+                          const arr = [...(section.product_ids ?? [])]
+                          ;[arr[i], arr[i + 1]] = [arr[i + 1], arr[i]]
+                          onChange({ product_ids: arr })
+                        }}
+                        className={`p-0.5 rounded ${i === (section.product_ids ?? []).length - 1 ? "opacity-20" : isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"}`}>
+                        <ChevronDown className={`w-3 h-3 ${textFaint}`} />
+                      </button>
+                    </div>
+                    {/* Remove */}
+                    <button
+                      onClick={() => onChange({ product_ids: (section.product_ids ?? []).filter((_: string, j: number) => j !== i) })}
+                      className="text-red-400 hover:text-red-500 shrink-0 p-0.5">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Product picker */}
+            <ProductPickerButton
+              products={(products ?? []).filter((p: any) => !(section.product_ids ?? []).includes(p.id))}
+              selectedProduct={null}
+              onSelect={(p: any) => {
+                const current = section.product_ids ?? []
+                if (!current.includes(p.id)) {
+                  onChange({ product_ids: [...current, p.id] })
+                }
+              }}
+              onClear={() => {}}
+              isDark={isDark}
+              textFaint={textFaint}
+            />
+
+            {(section.product_ids ?? []).length > 0 && (
+              <button
+                onClick={() => onChange({ product_ids: [] })}
+                className={`mt-2 text-[10px] ${textFaint} hover:text-red-400 transition-colors`}>
+                Clear all (show latest)
+              </button>
+            )}
           </div>
         )}
 
@@ -1681,29 +1807,144 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
       </>)}
 
       {/* ── SOCIAL ── */}
-      {section.type === "social" && (
-        <div className="space-y-2">
-          <p className={`text-[10px] ${textFaint} opacity-70 mb-1`}>Toggle which platforms to show</p>
-          {[
-            { key: "show_instagram", label: "Instagram", color: "#E1306C" },
-            { key: "show_youtube",   label: "YouTube",   color: "#FF0000" },
-            { key: "show_twitter",   label: "X",         color: "#1DA1F2" },
-            { key: "show_facebook",  label: "Facebook",  color: "#1877F2" },
-          ].map(({ key, label, color }) => (
-            <label key={key} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors border border-transparent ${
-              isDark ? "bg-gray-800/50 hover:bg-gray-800 hover:border-gray-700" : "bg-gray-50 hover:bg-gray-100"
-            }`}>
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-              <span className={`flex-1 text-sm ${textPrimary}`}>{label}</span>
-              <div className="relative w-8 h-4 shrink-0"
-                onClick={() => onChange({ [key]: !(section as any)[key] })}>
-                <div className={`w-8 h-4 rounded-full transition-colors ${(section as any)[key] ? "bg-orange-500" : "bg-gray-600"}`} />
-                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any)[key] ? "translate-x-4" : ""}`} />
+           {/* ── SOCIAL ── */}
+      {section.type === "social" && (<>
+
+        {/* Heading */}
+        <Field label="Section heading" faint={textFaint}>
+          <EditorInput value={(section as any).social_heading ?? ""}
+            onChange={v => onChange({ social_heading: v } as any)}
+            placeholder="Follow us" isDark={isDark} />
+        </Field>
+
+        <Field label="Subheading" faint={textFaint}>
+          <EditorInput value={(section as any).social_subheading ?? ""}
+            onChange={v => onChange({ social_subheading: v } as any)}
+            placeholder="Stay connected on social media" isDark={isDark} />
+        </Field>
+
+        {/* Layout */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Layout</p>
+          <Field label="Style" faint={textFaint}>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { val: "icons",   label: "Icons only" },
+                { val: "buttons", label: "With label"  },
+                { val: "cards",   label: "Cards"       },
+              ] as const).map(opt => (
+                <button key={opt.val}
+                  onClick={() => onChange({ social_style: opt.val } as any)}
+                  className={`py-2 rounded-lg border text-[10px] transition-all ${
+                    ((section as any).social_style ?? "icons") === opt.val
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{opt.label}</button>
+              ))}
+            </div>
+          </Field>
+
+          <div className="mt-2.5">
+            <Field label="Alignment" faint={textFaint}>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(["left","center","right"] as const).map(align => (
+                  <button key={align}
+                    onClick={() => onChange({ social_alignment: align } as any)}
+                    className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                      ((section as any).social_alignment ?? "center") === align
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{align}</button>
+                ))}
               </div>
-            </label>
-          ))}
+            </Field>
+          </div>
+
+          <div className="mt-2.5">
+            <div className="flex justify-between mb-1">
+              <span className={`text-[10px] ${textFaint}`}>Icon size</span>
+              <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).icon_size ?? 48}px</span>
+            </div>
+            <input type="range" min={32} max={80} step={4}
+              value={(section as any).icon_size ?? 48}
+              onChange={e => onChange({ icon_size: Number(e.target.value) } as any)}
+              className="w-full accent-orange-500" />
+          </div>
         </div>
-      )}
+
+        {/* Icon colors */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Icon color</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {([
+              { val: "brand",    label: "Each brand color" },
+              { val: "primary",  label: "Store primary"    },
+              { val: "white",    label: "White"            },
+              { val: "black",    label: "Black"            },
+            ] as const).map(opt => (
+              <button key={opt.val}
+                onClick={() => onChange({ icon_color_mode: opt.val } as any)}
+                className={`py-1.5 rounded-lg border text-[10px] transition-all ${
+                  ((section as any).icon_color_mode ?? "brand") === opt.val
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}>{opt.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Platforms */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Platforms</p>
+          <div className="space-y-1.5">
+            {[
+              { key: "show_instagram", label: "Instagram", color: "#E1306C" },
+              { key: "show_youtube",   label: "YouTube",   color: "#FF0000" },
+              { key: "show_twitter",   label: "X",         color: "#1DA1F2" },
+              { key: "show_facebook",  label: "Facebook",  color: "#1877F2" },
+            ].map(({ key, label, color }) => (
+              <label key={key} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors border border-transparent ${
+                isDark ? "bg-gray-800/50 hover:bg-gray-800 hover:border-gray-700" : "bg-gray-50 hover:bg-gray-100"
+              }`}>
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                <span className={`flex-1 text-sm ${textPrimary}`}>{label}</span>
+                <div className="relative w-8 h-4 shrink-0"
+                  onClick={() => onChange({ [key]: !(section as any)[key] })}>
+                  <div className={`w-8 h-4 rounded-full transition-colors ${(section as any)[key] ? "bg-orange-500" : "bg-gray-600"}`} />
+                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any)[key] ? "translate-x-4" : ""}`} />
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Spacing */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Spacing</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className={`text-[10px] ${textFaint}`}>Top padding</span>
+                <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).padding_top ?? 48}px</span>
+              </div>
+              <input type="range" min={0} max={120} step={8}
+                value={(section as any).padding_top ?? 48}
+                onChange={e => onChange({ padding_top: Number(e.target.value) } as any)}
+                className="w-full accent-orange-500" />
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className={`text-[10px] ${textFaint}`}>Bottom padding</span>
+                <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).padding_bottom ?? 48}px</span>
+              </div>
+              <input type="range" min={0} max={120} step={8}
+                value={(section as any).padding_bottom ?? 48}
+                onChange={e => onChange({ padding_bottom: Number(e.target.value) } as any)}
+                className="w-full accent-orange-500" />
+            </div>
+          </div>
+        </div>
+      </>)}
 
       {/* ── TEXT ── */}
       {section.type === "text" && (
@@ -2363,15 +2604,72 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
       </>)}
 
       {/* ── HTML ── */}
-      {section.type === "html" && (
+            {/* ── HTML ── */}
+      {section.type === "html" && (<>
         <Field label="Custom HTML / CSS / JS" faint={textFaint}>
-          <EditorTextarea value={section.html_content ?? ""}
-            onChange={v => onChange({ html_content: v })}
-            placeholder={"<div style=\"padding:40px;text-align:center\">\n  <h2>Custom content</h2>\n</div>"}
-            rows={12} isDark={isDark} mono  pages={pages} collections={collections} categories={categories}/>
-          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Rendered in an isolated iframe.</p>
+          <EditorTextarea value={(section as any).html_content ?? ""}
+            onChange={v => onChange({ html_content: v } as any)}
+            placeholder={"<div>Your custom HTML here</div>"} rows={10} isDark={isDark}
+            pages={pages} collections={collections} categories={categories} mono />
+          <p className={`text-[10px] mt-1.5 ${textFaint} opacity-60`}>Rendered in an isolated iframe.</p>
         </Field>
-      )}
+
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Frame size</p>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className={`text-[10px] ${textFaint}`}>Width</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { val: "full",  label: "Full",   desc: "100%" },
+                  { val: "lg",    label: "Large",  desc: "80%"  },
+                  { val: "md",    label: "Medium", desc: "60%"  },
+                ] as const).map(opt => (
+                  <button key={opt.val}
+                    onClick={() => onChange({ html_width: opt.val } as any)}
+                    className={`py-1.5 rounded-lg border text-[10px] transition-all ${
+                      ((section as any).html_width ?? "full") === opt.val
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>
+                    <div className="font-semibold">{opt.label}</div>
+                    <div className="opacity-60">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+                        <div>
+              <div className="flex justify-between mb-1">
+                <span className={`text-[10px] ${textFaint}`}>Desktop height</span>
+                <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).html_height ?? 300}px</span>
+              </div>
+              <input type="range" min={50} max={1000} step={10}
+                value={(section as any).html_height ?? 300}
+                onChange={e => onChange({ html_height: Number(e.target.value) } as any)}
+                className="w-full accent-orange-500" />
+              <div className={`flex justify-between text-[10px] ${textFaint} opacity-60 mt-0.5`}>
+                <span>50px</span><span>1000px</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className={`text-[10px] ${textFaint}`}>Mobile height</span>
+                <span className={`text-[10px] font-mono ${textFaint}`}>{(section as any).html_height_mobile ?? (section as any).html_height ?? 300}px</span>
+              </div>
+              <input type="range" min={50} max={1000} step={10}
+                value={(section as any).html_height_mobile ?? (section as any).html_height ?? 300}
+                onChange={e => onChange({ html_height_mobile: Number(e.target.value) } as any)}
+                className="w-full accent-orange-500" />
+              <div className={`flex justify-between text-[10px] ${textFaint} opacity-60 mt-0.5`}>
+                <span>50px</span><span>1000px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>)}
 
       {/* ── DIVIDER ── */}
       {section.type === "divider" && (
