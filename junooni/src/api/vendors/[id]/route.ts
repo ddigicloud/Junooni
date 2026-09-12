@@ -7,34 +7,6 @@ import MarketplaceModuleService from "../../../modules/marketplace/service"
 import { deleteVendorProductWorkflow } from "../../../workflows//marketplace/delete-vendor-product"
 import { z } from "zod"
 
-// ─── Helper: attach plan fields from raw SQL ──────────────────────────────────
-
-async function attachPlanFields(pgClient: any, vendor: any): Promise<void> {
-  try {
-    const result = await pgClient.raw(`
-      SELECT
-        COALESCE(plan, 'free')            AS plan,
-        plan_billing_cycle,
-        plan_activated_at,
-        razorpay_subscription_id,
-        razorpay_payment_id
-      FROM "vendor"
-      WHERE id = ?
-    `, [vendor.id])
-
-    const row = result.rows?.[0] ?? result[0]?.[0]
-    if (row) {
-      vendor.plan                     = row.plan ?? "free"
-      vendor.plan_billing_cycle       = row.plan_billing_cycle ?? null
-      vendor.plan_activated_at        = row.plan_activated_at ?? null
-      vendor.razorpay_subscription_id = row.razorpay_subscription_id ?? null
-      vendor.razorpay_payment_id      = row.razorpay_payment_id ?? null
-    }
-  } catch {
-    vendor.plan = vendor.plan ?? "free"
-  }
-}
-
 // ─── Update schema ────────────────────────────────────────────────────────────
 
 export const VendorUpdateSchema = z.object({
@@ -67,6 +39,11 @@ export const VendorUpdateSchema = z.object({
   sell_on_marketplace: z.boolean().optional(),
   sell_on_own_store: z.boolean().optional(),
   plan: z.enum(["free", "starter", "pro", "enterprise"]).optional(),
+  verified: z.enum(["Yes", "No"]).optional(),
+  gst_verification_status: z.enum(["pending", "verified", "failed"]).optional(),
+  login_email: z.string().optional(),
+  auth_enabled: z.boolean().optional(),
+  metadata: z.record(z.any()).optional(),
 }).strict()
 
 type RequestBody = z.infer<typeof VendorUpdateSchema>
@@ -97,7 +74,16 @@ export const PUT = async (
     const { plan, ...modelFields } = updateData as any
 
     if (Object.keys(modelFields).length > 0) {
-      await marketplaceModuleService.updateVendors({ id, ...modelFields })
+      if (modelFields.metadata !== undefined) {
+        await pgClient.raw(
+          `UPDATE "vendor" SET metadata = ? WHERE id = ?`,
+          [JSON.stringify(modelFields.metadata), id]
+        )
+        delete modelFields.metadata
+      }
+      if (Object.keys(modelFields).length > 0) {
+        await marketplaceModuleService.updateVendors({ id, ...modelFields })
+      }
     }
 
     if (plan !== undefined) {
@@ -110,7 +96,6 @@ export const PUT = async (
     const vendorWithAdmins = await marketplaceModuleService.retrieveVendor(id, {
       relations: ["admins"]
     })
-    await attachPlanFields(pgClient, vendorWithAdmins)
 
     return res.json({ vendor: vendorWithAdmins, message: "Vendor updated successfully" })
 
@@ -131,7 +116,6 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const { id } = req.params
-  const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
   try {
     const marketplaceModuleService: MarketplaceModuleService =
@@ -144,7 +128,6 @@ export const GET = async (
       return res.status(404).json({ message: `Vendor ${id} not found.` })
     }
 
-    await attachPlanFields(pgClient, vendor)
     return res.json({ vendor })
 
   } catch (error) {

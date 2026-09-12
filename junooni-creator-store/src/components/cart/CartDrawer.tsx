@@ -61,7 +61,8 @@ export default function CartDrawer({
     //router.push(`/${handle}/checkout?step=address`)
   }
 
-  const subtotal = cart?.subtotal ?? 0
+  const codFeeAmount = cart?.items?.find((i: any) => i.metadata?.is_cod_fee)?.unit_price ?? 0
+  const subtotal = (cart?.subtotal ?? 0) - codFeeAmount
 
   return (
     <AnimatePresence>
@@ -90,7 +91,8 @@ export default function CartDrawer({
                   Cart
                   {cartCount > 0 && (
                     <span className="ml-2 text-sm font-normal text-gray-400">
-                      ({cartCount} {cartCount === 1 ? "item" : "items"})
+                      ({cart?.items?.filter((i: any) => !i.metadata?.is_cod_fee).length ?? 0}{" "}
+                      {(cart?.items?.filter((i: any) => !i.metadata?.is_cod_fee).length ?? 0) === 1 ? "item" : "items"})
                     </span>
                   )}
                 </h2>
@@ -119,7 +121,7 @@ export default function CartDrawer({
               ) : (
                 <div className="space-y-4">
                   <AnimatePresence>
-                    {cart.items.map((item: any) => (
+                    {cart.items.filter((item: any) => !item.metadata?.is_cod_fee).map((item: any) => (
                       <motion.div
                         key={item.id}
                         layout

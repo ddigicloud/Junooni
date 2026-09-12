@@ -233,6 +233,7 @@ const CreatorEditPage = () => {
     const updated = [...metadataItems];
     updated.splice(index, 1);
     if (!updated.length) updated.push({ key: "", value: "" });
+    console.log("After remove, metadataItems:", JSON.stringify(updated));
     setMetadataItems(updated);
     const newMeta: Record<string, any> = {};
     updated.forEach(item => { if (item.key.trim()) newMeta[item.key] = item.value; });
@@ -298,21 +299,26 @@ const CreatorEditPage = () => {
           updateData = { sell_on_marketplace: formData.sell_on_marketplace, sell_on_own_store: formData.sell_on_own_store };
           break;
         case "metadata":
-          updateData = { metadata: formData.metadata };
+          const freshMeta: Record<string, any> = {};
+          metadataItems.forEach(item => { if (item.key.trim()) freshMeta[item.key] = item.value; });
+          updateData = { metadata: freshMeta };
+          console.log("freshMeta being saved:", JSON.stringify(freshMeta));
           break;
         default:
           updateData = { ...formData };
       }
 
-      const response = await fetch(`/vendors/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": adminToken ? `Bearer ${adminToken}` : "", "x-medusa-admin": "true" },
-        body: JSON.stringify(updateData), credentials: "include",
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || `Failed to update creator: ${response.status}`);
-      }
+      console.log("updateData sent to API:", JSON.stringify(updateData));
+        const response = await fetch(`/vendors/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": adminToken ? `Bearer ${adminToken}` : "", "x-medusa-admin": "true" },
+          body: JSON.stringify(updateData), credentials: "include",
+        });
+        const responseData = await response.json();
+        console.log("API response:", JSON.stringify(responseData));
+        if (!response.ok) {
+          throw new Error(responseData.message || `Failed to update creator: ${response.status}`);
+        }
       setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 3000);
       fetchVendorDetails();
     } catch (error) {
