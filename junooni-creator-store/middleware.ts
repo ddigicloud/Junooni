@@ -71,6 +71,14 @@ export async function middleware(req: NextRequest) {
   // No handle found (root junooni.com or localhost dev) → pass through
   if (!handle) return NextResponse.next()
 
+  // ── Redirect custom domain checkout to junooni subdomain ─────────────────
+  // Razorpay CORS only works on *.junooni.com — redirect checkout to subdomain
+  const isJunooniSubdomain = hostname.endsWith(`.${ROOT_DOMAIN}`)
+  if (!isJunooniSubdomain && pathname.startsWith("/checkout")) {
+    const junooniUrl = `https://${handle}.${ROOT_DOMAIN}${pathname}${url.search}`
+    return NextResponse.redirect(junooniUrl)
+  }
+
   // ── Rewrite browser URL path → internal Next.js path ─────────────────────
   //
   // Browser sees:   meenal.junooni.com/              (clean URL ✓)

@@ -50,13 +50,14 @@ type RequestBody = z.infer<typeof VendorUpdateSchema>
 
 // ─── PUT /vendors/:id ─────────────────────────────────────────────────────────
 
+// ─── PUT /vendors/:id ─────────────────────────────────────────────────────────
+
 export const PUT = async (
   req: AuthenticatedMedusaRequest<RequestBody>,
   res: MedusaResponse
 ) => {
   const { id } = req.params
   const updateData = req.validatedBody || req.body
-  const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
   try {
     if (!id?.trim()) {
@@ -71,26 +72,16 @@ export const PUT = async (
       return res.status(404).json({ message: `Vendor ${id} not found.` })
     }
 
-    const { plan, ...modelFields } = updateData as any
+    const { metadata, ...restFields } = updateData as any
 
-    if (Object.keys(modelFields).length > 0) {
-      if (modelFields.metadata !== undefined) {
-        await pgClient.raw(
-          `UPDATE "vendor" SET metadata = ? WHERE id = ?`,
-          [JSON.stringify(modelFields.metadata), id]
-        )
-        delete modelFields.metadata
-      }
-      if (Object.keys(modelFields).length > 0) {
-        await marketplaceModuleService.updateVendors({ id, ...modelFields })
-      }
+    // Handle metadata replace first (bypasses MikroORM merge behaviour)
+    if (metadata !== undefined) {
+      await marketplaceModuleService.replaceVendorMetadata(id, metadata)
     }
 
-    if (plan !== undefined) {
-      await pgClient.raw(
-        `UPDATE "vendor" SET plan = ? WHERE id = ?`,
-        [plan, id]
-      )
+    // Handle all other fields normally
+    if (Object.keys(restFields).length > 0) {
+      await marketplaceModuleService.updateVendors({ id, ...restFields })
     }
 
     const vendorWithAdmins = await marketplaceModuleService.retrieveVendor(id, {

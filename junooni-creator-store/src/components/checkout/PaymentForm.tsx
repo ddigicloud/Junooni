@@ -51,13 +51,13 @@ export default function PaymentForm({
   
   const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
   if (isPreview) {
-    router.push(`/${handle}/checkout?step=review&__preview=1`)
+    router.push(`/${handle}/checkout?step=review&__preview=1`, { scroll: false })
     return
   }
 
   startTransition(async () => {
     await initiatePaymentSession(cart, { provider_id: selected })
-    router.push(`/${handle}/checkout?step=review`)
+    router.push(`/${handle}/checkout?step=review`, { scroll: false })
   })
 }
 
@@ -81,7 +81,7 @@ export default function PaymentForm({
               }}>Done</span>
           </div>
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=payment${isPreview ? "&__preview=1" : ""}`)}
+            onClick={() => router.push(`/${handle}/checkout?step=payment${isPreview ? "&__preview=1" : ""}`, { scroll: false })}
             className="text-sm font-medium underline underline-offset-2"
             style={{ color: brandPrimary }}
           >
@@ -90,7 +90,7 @@ export default function PaymentForm({
         </div>
         <p className={`text-sm ${isDark ? "text-white/50" : "text-gray-600"} ml-11 mb-4`}>{info.icon} {info.label}</p>
         <button
-          onClick={() => router.push(`/${handle}/checkout?step=review${isPreview ? "&__preview=1" : ""}`)}
+          onClick={() => router.push(`/${handle}/checkout?step=review${isPreview ? "&__preview=1" : ""}`, { scroll: false })}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90"
           style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
         >
@@ -116,7 +116,7 @@ export default function PaymentForm({
         <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Payment</h2>
         {hasPayment && (
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=review`)}
+            onClick={() => router.push(`/${handle}/checkout?step=review`, { scroll: false })}
             className={`ml-auto text-sm ${isDark ? "text-white/50" : "text-gray-400"} hover:${isDark ? "text-white" : "text-gray-600"} transition-colors`}
           >
             Cancel

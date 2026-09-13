@@ -35,13 +35,13 @@ export default function ShippingForm({
   
   // In preview mode, skip cart mutation
   if (isPreview) {
-    router.push(`/${handle}/checkout?step=payment&__preview=1`)
+    router.push(`/${handle}/checkout?step=payment&__preview=1`, { scroll: false })
     return
   }
 
   startTransition(async () => {
     await setShippingMethod({ cartId: cart.id, shippingMethodId: selected })
-    router.push(`/${handle}/checkout?step=payment`)
+    router.push(`/${handle}/checkout?step=payment`, { scroll: false })
   })
 }
 
@@ -65,7 +65,7 @@ export default function ShippingForm({
               }}>Done</span>
           </div>
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
+            onClick={() => router.push(`/${handle}/checkout?step=delivery`, { scroll: false })}
             className="text-sm font-medium underline underline-offset-2"
             style={{ color: brandPrimary }}
           >
@@ -77,7 +77,7 @@ export default function ShippingForm({
           {method.amount ? formatPrice(method.amount) : "Free"}
         </p>
         <button
-          onClick={() => router.push(`/${handle}/checkout?step=payment`)}
+          onClick={() => router.push(`/${handle}/checkout?step=payment`, { scroll: false })}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90"
           style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
         >
@@ -103,7 +103,7 @@ export default function ShippingForm({
         <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Method</h2>
         {hasShipping && (
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=payment`)}
+            onClick={() => router.push(`/${handle}/checkout?step=payment`, { scroll: false })}
             className="ml-auto text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             Cancel

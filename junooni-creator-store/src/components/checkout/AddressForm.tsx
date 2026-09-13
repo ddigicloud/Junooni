@@ -55,13 +55,13 @@ export default function AddressForm({
     const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
 
     if (isPreview) {
-      router.push(`/${handle}/checkout?step=delivery&__preview=1`)
+      router.push(`/${handle}/checkout?step=delivery&__preview=1`, { scroll: false })
       return null
     }
 
     const err = await setAddresses(handle, state, formData)
     if (!err) {
-      router.push(`/${handle}/checkout?step=delivery`)
+      router.push(`/${handle}/checkout?step=delivery`, { scroll: false })
     }
     return err
     // router intentionally omitted — Next.js router reference is stable
@@ -100,7 +100,7 @@ export default function AddressForm({
             </span>
           </div>
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=address`)}
+            onClick={() => router.push(`/${handle}/checkout?step=address`, { scroll: false })}
             className="text-sm font-medium underline underline-offset-2"
             style={{ color: brandPrimary }}
           >
@@ -124,7 +124,7 @@ export default function AddressForm({
         </div>
 
         <button
-          onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
+          onClick={() => router.push(`/${handle}/checkout?step=delivery`, { scroll: false })}
           className="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold transition-all hover:opacity-90"
           style={{
             background: `linear-gradient(135deg, ${brandPrimary} 0%, var(--brand-secondary, #ac1900) 100%)`,
@@ -158,7 +158,7 @@ export default function AddressForm({
         </h2>
         {hasAddress && (
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
+            onClick={() => router.push(`/${handle}/checkout?step=delivery`, { scroll: false })}
             className="ml-auto text-sm text-gray-400 transition-colors hover:text-gray-600"
           >
             Cancel

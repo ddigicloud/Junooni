@@ -55,9 +55,10 @@ function getColorImage(
   colorOptionId: string,
   colorValue: string
 ): string | null {
-  const colorLower = colorValue.toLowerCase().trim()
-  const colorSlug  = colorLower.replace(/\s+/g, "_")
-  const colorSlug2 = colorLower.replace(/\s+/g, "")
+  const colorLower      = colorValue.toLowerCase().trim()
+  const colorSlug       = colorLower.replace(/\s+/g, "_")   // "golden_yellow"
+  const colorSlugHyphen = colorLower.replace(/\s+/g, "-")   // "golden-yellow"  ← KEY FIX
+  const colorSlugNoSep  = colorLower.replace(/\s+/g, "")    // "goldenyellow"
 
   const variant = product.variants?.find((v: any) =>
     v.options?.some((o: any) => {
@@ -91,14 +92,20 @@ function getColorImage(
     }
   }
 
+  // Slug-based fallback against product.images URLs
   const allImages: any[] = product.images ?? []
   const slugMatch = allImages.find((img: any) => {
     const filename = (img.url ?? "").toLowerCase()
     return (
-      filename.includes(`-${colorSlug}.`) ||
-      filename.includes(`-${colorSlug}-`) ||
-      filename.includes(`-${colorSlug2}.`) ||
-      filename.includes(`_${colorSlug}.`)
+      filename.includes(`-${colorSlugHyphen}.`) ||  // "golden-yellow" ← most common
+      filename.includes(`-${colorSlugHyphen}-`) ||
+      filename.includes(`_${colorSlugHyphen}.`) ||
+      filename.includes(`_${colorSlugHyphen}-`) ||
+      filename.includes(`-${colorSlug}.`)       ||  // "golden_yellow"
+      filename.includes(`-${colorSlug}-`)       ||
+      filename.includes(`_${colorSlug}.`)       ||
+      filename.includes(`-${colorSlugNoSep}.`)  ||  // "goldenyellow"
+      filename.includes(`-${colorSlugNoSep}-`)
     )
   })
   if (slugMatch?.url) return slugMatch.url
