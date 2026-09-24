@@ -11,6 +11,15 @@ import type {
   ColorSpecificMockupGroup,
 } from './types';
 
+// ── AOP mockup detector ───────────────────────────────────────────────────────
+// AOP mockups: transparent photoColor (#00000000) and empty area[].
+// The mockup photo is a transparent-background line-art overlay PNG; the
+// creator's design fills the entire garment canvas behind it.
+export const isAOPMockup = (mockup: DynamicMockupPhoto): boolean => {
+  const color = (mockup.photoColor || '').toLowerCase().replace('#', '').trim();
+  return color === '00000000' || color === 'transparent';
+};
+
 // ── Dynamic neutral colour detector ──────────────────────────────────────────
 export const createDynamicNeutralDetector = (productData: PayloadProductData) => {
   const neutralVariations = new Set<string>();
@@ -84,12 +93,19 @@ export const extractAllMockupsFromPayload = (productData: PayloadProductData): D
     productData.printT.forEach((tech: any) => {
       if (tech.mockupPhotos && Array.isArray(tech.mockupPhotos)) {
         tech.mockupPhotos.forEach((mockup: any) => {
-          if (mockup?.photo?.url && mockup?.area?.length) allMockups.push(mockup);
+          // AOP mockups have area:[] (empty) — include them; normal mockups need area[].length > 0
+          if (mockup?.photo?.url) allMockups.push(mockup);
         });
       }
     });
 
     allMockups.sort((a, b) => {
+      // AOP mockups (transparent overlay) first
+      const aIsAOP = isAOPMockup(a);
+      const bIsAOP = isAOPMockup(b);
+      if (aIsAOP && !bIsAOP) return -1;
+      if (!aIsAOP && bIsAOP) return 1;
+      // Then white/neutral, then by priority
       if (a.photoColor === '#ffffff' && b.photoColor !== '#ffffff') return -1;
       if (b.photoColor === '#ffffff' && a.photoColor !== '#ffffff') return 1;
       return (a.priority || 0) - (b.priority || 0);
@@ -115,7 +131,8 @@ export const getMockupsForColor = (
 
   if (activeTech.mockupPhotos && Array.isArray(activeTech.mockupPhotos)) {
     activeTech.mockupPhotos.forEach(m => {
-      if (m?.photo?.url && m?.area?.length) allMockups.push(m);
+      // Include AOP mockups (area:[]) and normal mockups (area[].length > 0)
+      if (m?.photo?.url) allMockups.push(m);
     });
   }
 
@@ -123,30 +140,53 @@ export const getMockupsForColor = (
 
   const neutralDetector = createDynamicNeutralDetector(productData);
   const colorMatcher = createCanvasColorMatcher(productData);
+
+  // ── AOP mockups: shared across all colours ────────────────────────────────
+  // AOP mockups have photoColor="#00000000" and area:[]. They are the only
+  // mockup type for AOP products and apply regardless of selected colour.
+  const aopMockups = allMockups.filter(m => isAOPMockup(m));
+  const nonAopMockups = allMockups.filter(m => !isAOPMockup(m));
+
+  // ── Colour-specific filtering for non-AOP mockups ─────────────────────────
   const targetColorInfo = colorMatcher.getColorInfo(colorHex);
-  if (!targetColorInfo) return allMockups;
+  let colorFiltered: DynamicMockupPhoto[] = [];
 
-  // Prefer exact colour-specific mockups; fall back to transparent/neutral
-  let colorSpecific = allMockups.filter(m => colorMatcher.areColorsSimilar(m.photoColor || '', colorHex));
-  let filtered: DynamicMockupPhoto[] = colorSpecific.length > 0
-    ? colorSpecific
-    : allMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+  if (nonAopMockups.length > 0) {
+    if (targetColorInfo) {
+      let colorSpecific = nonAopMockups.filter(m =>
+        colorMatcher.areColorsSimilar(m.photoColor || '', colorHex)
+      );
+      colorFiltered = colorSpecific.length > 0
+        ? colorSpecific
+        : nonAopMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+    } else {
+      // Unknown colour — fall back to neutral mockups
+      colorFiltered = nonAopMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+    }
+  }
 
-  // Filter by size when size_Images is set
+  // Merge: AOP mockups first, then colour-specific
+  const merged = [...aopMockups, ...colorFiltered];
+
+  // ── Size filtering ────────────────────────────────────────────────────────
   if (productData.size_Images && selectedSize) {
-    filtered = filtered.filter(m => {
+    const sizeFiltered = merged.filter(m => {
+      // AOP mockups have no photoSize — always include them
+      if (isAOPMockup(m)) return true;
       const mockupSize = (m as any).photoSize;
       return mockupSize?.toLowerCase().trim() === selectedSize.toLowerCase().trim();
     });
-    if (filtered.length === 0) return [];
+    // Always return at least the AOP mockups even if no size match
+    return sizeFiltered.length > 0 ? sizeFiltered : aopMockups;
   }
 
-  // Neutral fallback (only when size_Images is false)
-  if (filtered.length === 0 && !productData.size_Images) {
-    return allMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+  if (merged.length === 0 && !productData.size_Images) {
+    return allMockups.filter(m =>
+      isAOPMockup(m) || neutralDetector.isNeutral(m.photoColor?.toLowerCase() || '')
+    );
   }
 
-  return filtered;
+  return merged;
 };
 
 // ── Total mockup count calculator ─────────────────────────────────────────────
@@ -191,6 +231,7 @@ export const calculateTotalMockups = (
       }
     });
   } else {
+    // shared_across_all — covers AOP (color_Images:true but AOP mockup is shared)
     const mockups = getMockupsForColor(productData, selectedColors[0]?.value || '#ffffff', activeTechnology);
     totalMockups = mockups.length;
     calculationBreakdown.push({ color: 'All Colors', colorHex: 'shared', mockupsForColor: mockups.length, sizesCount: 1, subtotal: totalMockups, mockups });

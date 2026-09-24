@@ -9,6 +9,8 @@ import {
   Clock, Package, AlertCircle, ExternalLink, ShoppingBag
 } from "lucide-react"
 import codimage from "../../../../../public/cod_black_truck.png"
+import CancelOrderButton from "./CancelOrderButton"
+
 
 interface Props {
   params: { handle: string; orderId: string }
@@ -379,6 +381,13 @@ export default async function OrderPage({ params }: Props) {
         >
           Continue Shopping <ArrowRight className="w-4 h-4" />
         </Link>
+
+        {/* Cancel — only within 2 hours and order not already canceled/shipped/delivered */}
+        {status !== "canceled" && status !== "shipped" && status !== "delivered" &&
+          order.created_at &&
+          (Date.now() - new Date(order.created_at).getTime()) < 2 * 60 * 60 * 1000 && (
+          <CancelOrderButton orderId={orderId} />
+        )}
 
       </div>
     </div>

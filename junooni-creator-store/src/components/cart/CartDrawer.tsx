@@ -39,12 +39,21 @@ export default function CartDrawer({
   }, [isOpen])
 
   const handleDelete = (lineId: string) => {
-    startTransition(async () => {
-      // ✅ pass handle
-      await deleteLineItem(handle, lineId)
-      await refreshCart()
-    })
-  }
+  startTransition(async () => {
+    await deleteLineItem(handle, lineId)
+
+    // Check if this was the last real (non-COD) item
+    const realItems = cart?.items?.filter((i: any) => !i.metadata?.is_cod_fee) ?? []
+    const codItem = cart?.items?.find((i: any) => i.metadata?.is_cod_fee)
+
+    if (realItems.length === 1 && codItem) {
+      // The item we just deleted was the last real item — remove COD fee too
+      await deleteLineItem(handle, codItem.id)
+    }
+
+    await refreshCart()
+  })
+}
 
   const handleQuantity = (lineId: string, quantity: number) => {
     if (quantity < 1) return
@@ -182,7 +191,7 @@ export default function CartDrawer({
             </div>
 
             {/* Footer */}
-            {cart?.items?.length > 0 && (
+            {(cart?.items?.filter((i: any) => !i.metadata?.is_cod_fee).length ?? 0) > 0 && (
               <div className="px-6 py-5 space-y-4 bg-white border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Subtotal</span>

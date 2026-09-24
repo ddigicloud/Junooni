@@ -19,8 +19,8 @@ import {
   handleRemoveBackground,
   storeDesignFile,
   storeMockupPreview,
+  storeCanvasLayout,
   getMockupPreview,
-  // FIX: registry persists all color mockup sessions across POST requests
   getVendorMockupSessions,
   clearVendorMockupSessions,
   getMockupArea,
@@ -321,6 +321,15 @@ async function dispatchTool(
         createArgs.design_session_id = productSession.designSessionId
         console.log(`[create_product_from_chat] Using session design_session_id: ${productSession.designSessionId}`)
       }
+
+      // Pass edited design base64 from productSession — this is the rendered version
+      // with creator's edits (stretch/resize/reposition) applied.
+      // inline-product-handlers reads design from designFileStore which has original upload.
+      // productSession.designBase64 has the correct edited version from Canvas.tsx Save button.
+      if ((productSession as any)?.designBase64 && (productSession as any).designBase64.length > 100) {
+        createArgs.session_design_base64 = (productSession as any).designBase64
+        console.log(`[create_product_from_chat] Passing edited designBase64: ${(productSession as any).designBase64.length} chars`)
+      }
       const result = await handleCreateProductFromChat(createArgs, req, vendorId)
       // Clear registry so next product creation starts fresh
       if (result?.ok) {
@@ -360,12 +369,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         designSessionId?: string
         blankId?:         string
         technologyId?:    string
-        calculatedPrice?: number  // exact price from JuniMockupBridge.calculateJuniPricing
+        calculatedPrice?: number
         priceBreakdown?:  any
-        canvasLayoutBase64?: string  // kept for backward compat
+        canvasLayoutBase64?: string
         designsByArea?: Record<string, { sessionId: string; base64: string; filename: string }>
         allCanvasLayouts?: string[]
-        canvasLayoutSessionIds?: string[]  // server-side session IDs for canvas layouts
+        canvasLayoutSessionIds?: string[]
+        designBase64?: string   // ← ADD: edited rendered design from Canvas.tsx Save button
       }
     }
 
@@ -384,11 +394,22 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     // FIX E1+E3: Store approved mockup server-side, return session ID to frontend
     if (action === "store_mockup") {
       if (!base64) return res.status(400).json({ error: "base64 is required" })
-      // area is passed for multi-area mockups so catalog generation knows which area to skip
-      const area      = (req.body as any).area      as string | undefined
-      const colorName  = (req.body as any).colorName  as string | undefined
-      const mockupSessionId = storeMockupPreview(vendorId, base64, area, colorName)
-      console.log(`[AI assistant] Mockup stored: vendor=${vendorId}, session=${mockupSessionId}, area=${area ?? "none"}`)
+      const area        = (req.body as any).area        as string | undefined
+      const colorName   = (req.body as any).colorName   as string | undefined
+      const clearOld    = (req.body as any).clearOld    as boolean | undefined
+
+      // If clearOld is true — wipe previous mockup sessions before storing new ones
+      // This ensures only the latest approved mockups go into the product
+      if (clearOld && colorName !== "canvas-layout") {
+        clearVendorMockupSessions(vendorId)
+        console.log(`[AI assistant] Cleared old mockup sessions for vendor=${vendorId}`)
+      }
+
+      const mockupSessionId = colorName === "canvas-layout"
+        ? storeCanvasLayout(vendorId, base64, area)
+        : storeMockupPreview(vendorId, base64, area, colorName)
+
+      console.log(`[AI assistant] ${colorName === "canvas-layout" ? "Canvas layout" : "Mockup"} stored: vendor=${vendorId}, session=${mockupSessionId}, area=${area ?? "none"}`)
       return res.json({ mockupSessionId })
     }
 

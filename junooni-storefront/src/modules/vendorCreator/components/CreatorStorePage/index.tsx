@@ -383,35 +383,37 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
   // Fetch followers data
   useEffect(() => {
     const fetchFollowers = async () => {
+      if (Array.isArray(vendor)) return
+      console.log("VENDOR ID BEING SENT:", vendor.id, "HANDLE:", vendor.handle)
+
       try {
-        //console.log("🔍 Fetching followers for vendor ID:", vendor.id)
-        
-        //const { fetchVendorFollowersClient } = await import("@lib/data/vendors-client")
         const vendorFollowers = await fetchVendorFollowersClient(vendor.id)
-        //console.log("📊 Followers response:", vendorFollowers)
+
+        // DEBUG — paste this output here so we can verify the shape
+        console.log("RAW vendorFollowers:", JSON.stringify(vendorFollowers, null, 2))
+        console.log("First raw item:", JSON.stringify(vendorFollowers?.follow?.[0], null, 2))
         
         if (vendorFollowers && vendorFollowers.follow && Array.isArray(vendorFollowers.follow)) {
-          const validFollowers = vendorFollowers.follow.filter(f => 
+          const validFollowers = vendorFollowers.follow.filter((f: any) => 
             f && f.follow && f.follow.customer
           )
-          
-          //console.log(`✅ Found ${validFollowers.length} valid followers`)
+          console.log("Total before filter:", vendorFollowers.follow.length)
+          console.log("Valid after filter:", validFollowers.length)
           setFollowers(validFollowers)
         } else {
-          //console.log("📭 No followers in response")
           setFollowers([])
         }
         
       } catch (error) {
-        //console.error("❌ Error fetching followers:", error)
+        console.error("Followers fetch error:", error)
         setFollowers([])
       }
     }
 
-    if (vendor && vendor.id) {
+    if (vendor && !Array.isArray(vendor)) {
       fetchFollowers()
     }
-  }, [vendor?.id])
+  }, [vendor])
 
   // Fetch customer data separately from following status check
   useEffect(() => {
@@ -419,51 +421,36 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
       setIsLoadingAuth(true)
       try {
         const customer = await retrieveCustomer()
-        //console.log("Retrieved customer:", customer)
+        console.log("Retrieved customer:", customer)
         setCurrentCustomer(customer)
       } catch (error) {
-        //console.error("Error retrieving customer:", error)
+        console.error("Error retrieving customer:", error)
       } finally {
         setIsLoadingAuth(false)
       }
     }
 
-    if (vendor && vendor.id) {
+    if (vendor && !Array.isArray(vendor)) {
       fetchCustomer()
     }
-  }, [vendor?.id])
+  }, [vendor])
 
   useEffect(() => {
-  console.log("=== FOLLOW STATUS CHECK ===")
-  console.log("currentCustomer:", currentCustomer)
-  console.log("followers array:", followers)
-  console.log("followers length:", followers.length)
-  
-  if (followers.length > 0) {
-    console.log("First follower structure:", JSON.stringify(followers[0], null, 2))
-  }
-
+  if (Array.isArray(vendor)) return
   if (!currentCustomer || !followers) return
+  if (userHasToggled.current) return  // ← add this
 
   const isAlreadyFollowing = followers.some(
-    (item) => item?.follow?.customer_id === currentCustomer.id
+    (item: any) => item?.follow?.customer_id === currentCustomer.id
   )
-  console.log("isAlreadyFollowing result:", isAlreadyFollowing)
+  console.log("=== FOLLOW STATUS CHECK ===", { 
+    customerId: currentCustomer.id, 
+    followersCount: followers.length, 
+    isAlreadyFollowing 
+  })
   setIsFollowing(isAlreadyFollowing)
-}, [currentCustomer, followers])
+}, [currentCustomer, followers, vendor])
 
-  // Check following status when both customer and followers are available
-useEffect(() => {
-  if (!currentCustomer || !followers) return
-
-  // If user has manually toggled, don't overwrite their action
-  if (userHasToggled.current) return
-
-  const isAlreadyFollowing = followers.some(
-    (item) => item?.follow?.customer_id === currentCustomer.id
-  )
-  setIsFollowing(isAlreadyFollowing)
-}, [currentCustomer, followers])
 
   // Updated follow/unfollow handler
 const handleFollowToggle = async () => {
@@ -478,6 +465,7 @@ const handleFollowToggle = async () => {
   }
 
   try {
+    if (Array.isArray(vendor)) return
     if (isFollowing) {
       await deleteFollowerClient(vendor.id)
       userHasToggled.current = true
@@ -492,7 +480,11 @@ const handleFollowToggle = async () => {
     setTimeout(async () => {
       const updatedFollowers = await fetchVendorFollowersClient(vendor.id)
       if (updatedFollowers?.follow) {
-        setFollowers(updatedFollowers.follow.filter((f: any) => f?.follow))
+        setFollowers(
+          updatedFollowers.follow.filter(
+            (f: any) => f && f.follow && f.follow.customer
+          )
+        )
       }
     }, 1500)
 
@@ -1142,7 +1134,7 @@ const handleFollowToggle = async () => {
                     <div>{creator.role}</div>
                     <div className="flex items-center">
                       <Users size={16} className="mr-1" />
-                      <span>{formatNumber(creator.followers)} followers</span>
+                      <span>{formatNumber(followers.length)} followers</span>
                     </div>
                     <div className="flex items-center">
                       <Tag size={16} className="mr-1" />
@@ -1983,7 +1975,7 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
 
   const productTags = product?.tags || []
   const vendorName = product?.vendor?.name || "Junooni"
-  console.log("🛍️ Rendering product card for:", productName, "with tags:", productTags, "and vendor:", vendorName)
+  //console.log("🛍️ Rendering product card for:", productName, "with tags:", productTags, "and vendor:", vendorName)
 
   return (
     <motion.div
@@ -2034,57 +2026,56 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
           <span className="mr-1">{vendorName}</span>
           {product.vendor?.verified === "Yes" && (
             <span className="text-[#e65100]">
-              {/* <Check size={14} /> */}
-              
-                            <svg
-                              className="inline-block ml-2 align-middle"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 20 20"
-                              preserveAspectRatio="xMidYMid meet"
-                              aria-label="Verified"
-                            >
-                              {/* Verified badge shape (clean + symmetrical) */}
-                              <path
-                                fill="#e65100"
-                                d="
-                                  M10 0.8
-                                  L12.2 2.2
-                                  L14.9 1.9
-                                  L16.1 4.4
-                                  L18.6 5.6
-                                  L17.9 8.3
-                                  L19.2 10
-                                  L17.9 11.7
-                                  L18.6 14.4
-                                  L16.1 15.6
-                                  L14.9 18.1
-                                  L12.2 17.8
-                                  L10 19.2
-                                  L7.8 17.8
-                                  L5.1 18.1
-                                  L3.9 15.6
-                                  L1.4 14.4
-                                  L2.1 11.7
-                                  L0.8 10
-                                  L2.1 8.3
-                                  L1.4 5.6
-                                  L3.9 4.4
-                                  L5.1 1.9
-                                  L7.8 2.2
-                                  Z"
-                              />
+              {/* <Check size={14} /> */}      
+              <svg
+                className="inline-block ml-2 align-middle"
+                width="18"
+                height="18"
+                viewBox="0 0 20 20"
+                preserveAspectRatio="xMidYMid meet"
+                aria-label="Verified"
+              >
+                {/* Verified badge shape (clean + symmetrical) */}
+                <path
+                  fill="#e65100"
+                  d="
+                    M10 0.8
+                    L12.2 2.2
+                    L14.9 1.9
+                    L16.1 4.4
+                    L18.6 5.6
+                    L17.9 8.3
+                    L19.2 10
+                    L17.9 11.7
+                    L18.6 14.4
+                    L16.1 15.6
+                    L14.9 18.1
+                    L12.2 17.8
+                    L10 19.2
+                    L7.8 17.8
+                    L5.1 18.1
+                    L3.9 15.6
+                    L1.4 14.4
+                    L2.1 11.7
+                    L0.8 10
+                    L2.1 8.3
+                    L1.4 5.6
+                    L3.9 4.4
+                    L5.1 1.9
+                    L7.8 2.2
+                    Z"
+                />
 
-                              {/* Check */}
-                              <path
-                                d="M6.2 10.2l2.1 2.2 4.5-4.6"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="1.9"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                {/* Check */}
+                <path
+                  d="M6.2 10.2l2.1 2.2 4.5-4.6"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
                           
             </span>
           )}

@@ -392,12 +392,13 @@ export const useStoreImport = ({
         if (productData.size_Images && sizesToProcess.length === 0) continue;
 
         const mockupAreaNames = mockup.area?.map((a: any) => a.areaName?.toLowerCase()) || [];
-        const hasElements = mockupAreaNames.some((area: string) => areasWithElements.includes(area));
+        const hasElements = mockupAreaNames.length > 0
+          ? mockupAreaNames.some((area: string) => areasWithElements.includes(area))
+          : areasWithElements.length > 0;
 
-        const filteredElements: Record<string, DesignElement[]> = {};
-        mockupAreaNames.forEach((area: string) => {
-          if (designElements[area]) filteredElements[area] = designElements[area];
-        });
+        const filteredElements: Record<string, DesignElement[]> = mockupAreaNames.length > 0
+          ? (() => { const f: Record<string, DesignElement[]> = {}; mockupAreaNames.forEach((area: string) => { if (designElements[area]) f[area] = designElements[area]; }); return f; })()
+          : designElements;
 
         const colorCombinations: any[] = [{ color_name: mockup.target_color_name, color_hex: mockup.target_color, size_variants: [] }];
 

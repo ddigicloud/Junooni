@@ -44,11 +44,59 @@ import {
   StoreImportModal, MobileBottomTabBar, MobileBottomSheet,
 } from './designer-components';
 import EnhancedMockupEngine from '../engines/mockup/MockupEngine';
+import { 
+  generateJuniMockupsAllColors,
+  generateJuniMockupsAllAreasAllColors,
+  generateJuniCanvasLayout,
+} from './JuniMockupBridge'
+import { captureCanvasImageForArea } from './canvas-export-utils'
 
-const BRAND = '#ec5100';
+const BRAND = '#e65100';
 
 // ─────────────────────────────────────────────────────────────────────────────
-const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ productData }) => {
+interface EnhancedCanvasProps {
+  productData: PayloadProductData
+  juniEditMode?: {
+    initialDesignBase64?:   string
+    initialArea?:           string
+    initialColorHex?:       string
+    initialSelectedColors?: Array<{ name: string; value: string }>
+    initialSelectedSizes?:  string[]
+    initialLayout?:         {        // ← ADD: last edited position/size
+      x:        number
+      y:        number
+      width:    number
+      height:   number
+      rotation?: number
+    }
+    designsByArea?:         Record<string, { base64: string; filename: string }>
+    onSaveToJuni: (result: {
+      designBase64:        string
+      area:                string
+      colorHex:            string
+      designLayout?:       {          // ← ADD: pass layout back on save
+        x:        number
+        y:        number
+        width:    number
+        height:   number
+        rotation?: number
+      }
+      designsByArea?:      Record<string, { base64: string; filename: string }>
+      selectedColors?:     Array<{ name: string; value: string }>
+      selectedSizes?:      string[]
+      preGeneratedMockups?: Array<{
+        colorName: string
+        colorHex:  string
+        base64:    string
+        pricing?:  any
+      }>
+      canvasLayoutsByArea?: Record<string, string>
+    }) => void
+    onClose: () => void
+  }
+}
+
+const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMode }) => {
   const navigate = useNavigate();
 
   // ── View / tab ────────────────────────────────────────────────────────────
@@ -59,6 +107,7 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
   const [debugMode, setDebugMode]         = useState(false);
+  const [isSavingToJuni, setIsSavingToJuni] = useState(false)
 
   // ── Active selections ─────────────────────────────────────────────────────
   const [activeTechnology, setActiveTechnology] = useState<string>(() =>
@@ -66,20 +115,30 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   );
   const [activeArea, setActiveArea] = useState<string>('front');
   const [activeColor, setActiveColor] = useState<string>(() => {
-    const p = productData?.colorOptions?.find(c => c.isPrimary) ?? productData?.colorOptions?.[0];
-    return p?.colorHex ?? '#ffffff';
-  });
+  // JUNI edit mode: use the specific color from session
+  if (juniEditMode?.initialColorHex) return juniEditMode.initialColorHex
+  const p = productData?.colorOptions?.find(c => c.isPrimary) ?? productData?.colorOptions?.[0];
+  return p?.colorHex ?? '#ffffff';
+});
   const [highlightedColor, setHighlightedColor] = useState<string>(activeColor);
   const [activeSize, setActiveSize] = useState<string>(() =>
     productData?.sizeOptions?.[0]?.sizeName ?? ''
   );
   const [selectedColors, setSelectedColors] = useState<Array<{ name: string; value: string }>>(() => {
-    const p = productData?.colorOptions?.find(c => c.isPrimary) ?? productData?.colorOptions?.[0];
-    return p ? [{ name: p.colorName, value: p.colorHex }] : [{ name: 'Default', value: '#ffffff' }];
-  });
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(() =>
-    (productData?.sizeOptions ?? []).map(s => s.sizeName)
-  );
+  // JUNI edit mode: use only the colors the creator selected
+  if (juniEditMode?.initialSelectedColors?.length) {
+    return juniEditMode.initialSelectedColors
+  }
+  const p = productData?.colorOptions?.find(c => c.isPrimary) ?? productData?.colorOptions?.[0];
+  return p ? [{ name: p.colorName, value: p.colorHex }] : [{ name: 'Default', value: '#ffffff' }];
+});
+const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
+  // JUNI edit mode: use only the sizes the creator selected
+  if (juniEditMode?.initialSelectedSizes?.length) {
+    return juniEditMode.initialSelectedSizes
+  }
+  return (productData?.sizeOptions ?? []).map(s => s.sizeName)
+});
   const [selectedHeroMockup, setSelectedHeroMockup] = useState<DynamicMockupPhoto | null>(null);
   const [userSelectedMockupInPreview, setUserSelectedMockupInPreview] = useState(false);
   const [variantLimitWarning, setVariantLimitWarning] = useState<string | null>(null);
@@ -176,7 +235,7 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   const shouldSkipMockupGeneration = useCallback((): boolean => {
     if (productData?.surfConf?.No_Mockup_Compatible === true) return true;
     const tech = getCurrentTechnology();
-    return ['embroidery', 'vinyl/heat transfer'].includes(tech?.technologyName?.toLowerCase().trim() || '');
+    return ['vinyl/heat transfer'].includes(tech?.technologyName?.toLowerCase().trim() || '');
   }, [productData, getCurrentTechnology]);
 
   const isProductMockupCompatible = useCallback((): boolean =>
@@ -408,6 +467,7 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   }, [isDraggingPanel]);
 
   const handlePanelDragEnd = useCallback(() => setIsDraggingPanel(false), []);
+  
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -505,6 +565,84 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
     };
     loadAllAreaImages();
   }, [activeColor, activeSize, activeTechnology, availableAreas]);
+
+  // ── JUNI Edit Mode: load initial design after canvas images are ready ─────
+useEffect(() => {
+  if (!juniEditMode?.initialDesignBase64) return
+
+  const timer = setTimeout(async () => {
+    const targetArea = juniEditMode.initialArea ?? availableAreas[0] ?? 'front'
+    setActiveArea(targetArea)
+
+    if (juniEditMode.initialColorHex) {
+      setActiveColor(juniEditMode.initialColorHex)
+      setHighlightedColor(juniEditMode.initialColorHex)
+    }
+
+    const designsByArea = juniEditMode.designsByArea ?? {}
+    const hasMultiArea  = Object.keys(designsByArea).length > 1
+
+    if (hasMultiArea) {
+      // Load each area's design onto its respective canvas area
+      for (const [area, areaDesign] of Object.entries(designsByArea)) {
+        if (!areaDesign?.base64) continue
+        try {
+          await designHook.addImageToCanvas(
+            areaDesign.base64,
+            areaDesign.filename || `Design - ${area}`,
+            area,
+            areaDesign.base64,
+          )
+          console.log(`[JUNI Edit] Loaded design for area: ${area}`)
+        } catch (err) {
+          console.error(`[JUNI Edit] Failed to load design for area ${area}:`, err)
+        }
+      }
+    } else {
+      // Single area — load the primary design
+      try {
+          await designHook.addImageToCanvas(
+            juniEditMode.initialDesignBase64,
+            'JUNI Design',
+            targetArea,
+            juniEditMode.initialDesignBase64,
+          )
+
+          // If we have a saved layout from last edit — apply it after image loads
+          // If we have a saved layout from last edit — restore position/size
+          if (juniEditMode.initialLayout) {
+            const layout = juniEditMode.initialLayout
+            // Wait for addImageToCanvas to finish adding the element to state
+            setTimeout(() => {
+              designHook.setDesignElements((prev: any) => {
+                const updated = { ...prev }
+                if (updated[targetArea]?.length > 0) {
+                  updated[targetArea] = updated[targetArea].map((el: any, idx: number) =>
+                    idx === 0
+                      ? {
+                          ...el,
+                          x:        layout.x,
+                          y:        layout.y,
+                          width:    layout.width,
+                          height:   layout.height,
+                          rotation: layout.rotation ?? 0,
+                        }
+                      : el
+                  )
+                }
+                return updated
+              })
+            }, 500) // 500ms gives addImageToCanvas time to complete
+          }
+        console.log(`[JUNI Edit] Loaded single design for area: ${targetArea}`)
+      } catch (err) {
+        console.error('[JUNI Edit] Failed to load design:', err)
+      }
+    }
+  }, 800)
+
+  return () => clearTimeout(timer)
+}, [juniEditMode?.initialDesignBase64])
 
   // Auto-select hero mockup based on active color/area
   useEffect(() => {
@@ -681,14 +819,27 @@ useEffect(() => {
           className="bg-white border border-none rounded-lg shadow-sm touch-manipulation"
         >
           {isAOPProduct ? (
-            <>
-              <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill={activeColor} listening={false} /></Layer>
+          <>
+            {/* AOP: sublimation always prints on white, so base is always white */}
+            <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill="#ffffff" listening={false} /></Layer>
               <Layer ref={layerRef}>
                 <Group clipFunc={ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); }}>
                   {renderDesignElements(activeArea)}
                 </Group>
               </Layer>
-              {canvasImage && <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} listening={false} /></Layer>}
+              {canvasImage && (
+                <Layer>
+                  <KonvaImage
+                    image={canvasImage}
+                    x={0} y={0}
+                    width={canvasConfig.width}
+                    height={canvasConfig.height}
+                    // multiply: dark garment fold/seam lines show through; white areas are transparent
+                    globalCompositeOperation="multiply"
+                    listening={false}
+                  />
+                </Layer>
+              )}
               <Layer><Rect x={printableArea.x} y={printableArea.y} width={printableArea.width} height={printableArea.height} stroke={BRAND} strokeWidth={2} dash={[6, 4]} listening={false} /></Layer>
             </>
           ) : (
@@ -864,8 +1015,11 @@ useEffect(() => {
                 const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
                 const engineType = determineRequiredEngine(mockup);
                 const mockupAreaNames = mockup.area?.map((a: any) => a.areaName?.toLowerCase()) || [];
-                const filteredElements: Record<string, DesignElement[]> = {};
-                mockupAreaNames.forEach((a: string) => { if (designHook.designElements[a]) filteredElements[a] = designHook.designElements[a]; });
+                console.log('Mockup light overlays:', heroMockup?.light);
+                console.log('Full mockup:', heroMockup);
+                const filteredElements: Record<string, DesignElement[]> = mockupAreaNames.length > 0
+                  ? (() => { const f: Record<string, DesignElement[]> = {}; mockupAreaNames.forEach((a: string) => { if (designHook.designElements[a]) f[a] = designHook.designElements[a]; }); return f; })()
+                  : designHook.designElements;
                 return (
                   <button key={`${mockup.id}-${(mockup as any)._sizeLabel ?? ''}`} onClick={() => {
                       setUserSelectedMockupInPreview(true);
@@ -942,8 +1096,9 @@ useEffect(() => {
                     const dims = getMockupDimensions(heroMockup, 'mockup');
                     const engineType = determineRequiredEngine(heroMockup);
                     const mockupAreaNames = heroMockup.area?.map((a: any) => a.areaName?.toLowerCase()) || [];
-                    const filteredElements: Record<string, DesignElement[]> = {};
-                    mockupAreaNames.forEach((a: string) => { if (designHook.designElements[a]) filteredElements[a] = designHook.designElements[a]; });
+                    const filteredElements: Record<string, DesignElement[]> = mockupAreaNames.length > 0
+                      ? (() => { const f: Record<string, DesignElement[]> = {}; mockupAreaNames.forEach((a: string) => { if (designHook.designElements[a]) f[a] = designHook.designElements[a]; }); return f; })()
+                      : designHook.designElements;
                     return (
                       <ThumbnailPreview
                         key={engineType === 'pixi' ? `main-${heroMockup.id}-${activeColor}` : undefined}
@@ -1012,8 +1167,9 @@ useEffect(() => {
                       const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
                       const engineType = determineRequiredEngine(mockup);
                       const mockupAreaNames = mockup.area?.map((a: any) => a.areaName?.toLowerCase()) || [];
-                      const filteredElements: Record<string, DesignElement[]> = {};
-                      mockupAreaNames.forEach((a: string) => { if (designHook.designElements[a]) filteredElements[a] = designHook.designElements[a]; });
+                      const filteredElements: Record<string, DesignElement[]> = mockupAreaNames.length > 0
+                        ? (() => { const f: Record<string, DesignElement[]> = {}; mockupAreaNames.forEach((a: string) => { if (designHook.designElements[a]) f[a] = designHook.designElements[a]; }); return f; })()
+                        : designHook.designElements;
                       return (
                         <div key={mockup.id} className="flex-shrink-0">
                           <button onClick={() => {
@@ -1377,6 +1533,312 @@ useEffect(() => {
             ))}
           </div>
           <div className="flex items-center gap-0 sm:gap-3">
+            {juniEditMode ? (
+            // JUNI Edit Mode — "Save to JUNI" instead of "Import to Store"
+            <button
+              onClick={async () => {
+              if (!designHook.hasDesignElements) return
+
+              try {
+                // Use the same mockup generation that Preview tab uses
+                // This gives us the EXACT same mockups the creator saw in Preview
+                setIsSavingToJuni(true)
+
+                const areasWithDesigns = Object.entries(designHook.designElements)
+                  .filter(([_, elements]) => (elements as any[])?.length > 0)
+                  .map(([area]) => area)
+
+                if (areasWithDesigns.length === 0) return
+
+                // For multi-area designs use generateJuniMockupsAllAreasAllColors
+
+                // Debug: check what design base64 we're passing
+                const designToPass = (designHook.designElements as any)[areasWithDesigns[0]]?.[0]
+
+                console.log('[JUNI Save] designElement being used:', {
+                  hasImageBase64: !!designToPass?.imageBase64,
+                  base64Length:   designToPass?.imageBase64?.length,
+                  elementX:       designToPass?.x,
+                  elementY:       designToPass?.y,
+                  elementWidth:   designToPass?.width,
+                  elementHeight:  designToPass?.height,
+                  elementRotation: designToPass?.rotation,
+                })
+
+                // For single area use generateJuniMockupsAllColors
+                const isMultiArea = areasWithDesigns.length > 1
+
+                // Extract ALL element data including position/size from current canvas state
+                const getElementsForArea = (area: string) =>
+                  ((designHook.designElements as any)[area] ?? []) as any[]
+
+                // Build positioned design info per area
+                const positionedDesignsByArea = Object.fromEntries(
+                  areasWithDesigns.map(area => {
+                    const elements = getElementsForArea(area)
+                    return [area, elements.map((el: any) => ({
+                      imageBase64: el.imageBase64,
+                      x:           el.x,
+                      y:           el.y,
+                      width:       el.width,
+                      height:      el.height,
+                      rotation:    el.rotation ?? 0,
+                      opacity:     el.opacity ?? 1,
+                    }))]
+                  })
+                )
+
+                console.log('[JUNI Save] positionedDesignsByArea:', JSON.stringify(
+                  Object.fromEntries(
+                    Object.entries(positionedDesignsByArea).map(([area, els]) => [
+                      area,
+                      (els as any[]).map((el: any) => ({ x: el.x, y: el.y, w: el.width, h: el.height }))
+                    ])
+                  )
+                ))
+
+                    const primaryArea     = areasWithDesigns[0]
+                    const primaryElements = positionedDesignsByArea[primaryArea] as any[]
+                    const primaryEl       = primaryElements?.[0]
+
+                    // Get the actual Konva stage dimensions for coordinate scaling
+                    // stageSize is the DOM pixel size of the canvas stage
+                    // Get canvas config for the primary area using the existing function
+                    const activeCfg   = getCanvasConfig(primaryArea)
+                    const stageWidth  = activeCfg?.width  ?? 500
+                    const stageHeight = activeCfg?.height ?? 500
+
+                    console.log('[JUNI Save] stageWidth:', stageWidth, 'stageHeight:', stageHeight,
+                      'activeCfg:', activeCfg
+                    )
+
+                // ── DEBUG LOGS — remove after fixing ──
+                console.log('[JUNI Save] primaryArea:', primaryArea)
+                console.log('[JUNI Save] primaryEl layout:', {
+                  x:      primaryEl?.x,
+                  y:      primaryEl?.y,
+                  width:  primaryEl?.width,
+                  height: primaryEl?.height,
+                })
+                console.log('[JUNI Save] raw designElements keys:', Object.keys(designHook.designElements as any))
+                console.log('[JUNI Save] raw elements for area:', getElementsForArea(primaryArea).map((el: any) => ({
+                  x: el.x, y: el.y, width: el.width, height: el.height,
+                  hasImage: !!el.image, hasImageBase64: !!el.imageBase64,
+                })))
+
+                console.log('[JUNI Save] primaryEl at save time:', {
+                  x: primaryEl?.x, y: primaryEl?.y,
+                  width: primaryEl?.width, height: primaryEl?.height,
+                })
+                console.log('[JUNI Save] correctedPrintableArea:', {
+                  // This is what JuniMockupBridge will use as reference
+                  x: 0.2921 * 500, y: 0.1816 * 500,
+                  width: 0.3904 * 500, height: 0.5956 * 500,
+                })
+                // ── END DEBUG LOGS ──
+
+                const mockupResults = isMultiArea
+                  ? await generateJuniMockupsAllAreasAllColors({
+                      blankData:           productData,
+                      technologyId:        productData?.printT?.[0]?.id ?? productData?.printT?.[0]?.technologyName ?? '',
+                      selectedColors:      selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
+                            designsByArea: Object.fromEntries(
+                              areasWithDesigns.map(area => {
+                                const scaledElements = (positionedDesignsByArea[area] as any[] ?? []).map(
+                                  (el: any) => ({
+                                    x:        el.x,        // no scaling — already in canvas config space
+                                    y:        el.y,
+                                    width:    el.width,
+                                    height:   el.height,
+                                    rotation: el.rotation ?? 0,
+                                    opacity:  el.opacity  ?? 1,
+                                  })
+                                )
+                                return [
+                                  area,
+                                  {
+                                    sessionId: '',
+                                    base64:    getElementsForArea(area)?.[0]?.imageBase64 ?? '',
+                                    filename:  `design-${area}.png`,
+                                    elements:  scaledElements,
+                                  }
+                                ]
+                              })
+                            ),
+                      defaultDesignBase64: primaryEl?.imageBase64 ?? '',
+                      targetResolution:    1000,
+                    })
+                  : await generateJuniMockupsAllColors({
+                      blankData:      productData,
+                      technologyId:   productData?.printT?.[0]?.id ?? productData?.printT?.[0]?.technologyName ?? '',
+                      selectedColors: selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
+                      designBase64:   primaryEl?.imageBase64 ?? '',
+                      area:           primaryArea,
+                      position:       'center',
+                      targetResolution: 1000,
+                      designLayout: primaryEl ? {
+                        // Konva internal coordinates are already in canvas config space (500x500)
+                        // Stage scaleX/scaleY only affects display size, not coordinate values
+                        x:        primaryEl.x,
+                        y:        primaryEl.y,
+                        width:    primaryEl.width,
+                        height:   primaryEl.height,
+                        rotation: primaryEl.rotation ?? 0,
+                        opacity:  primaryEl.opacity  ?? 1,
+                      } : undefined,
+                    })
+
+                // Also export the clean design base64 for each area (for re-editing later)
+                const updatedDesignsByArea: Record<string, { base64: string; filename: string }> = {}
+                    for (const area of areasWithDesigns) {
+                      const elements = (designHook.designElements as any)[area] as any[]
+                      const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
+                      if (!firstImage) continue
+
+                      try {
+                        // Get printable area — same function renderCanvas uses for the dashed orange box
+                        const pa = getPrintableAreaFromPhoto(area, activeColor, activeSize)
+                        const paX = pa?.x      ?? 150
+                        const paY = pa?.y      ?? 150
+                        const paW = pa?.width  ?? 200
+                        const paH = pa?.height ?? 250
+
+                        // Element position and size on canvas (what creator set by dragging/resizing)
+                        const elX = firstImage.x
+                        const elY = firstImage.y
+                        const elW = firstImage.width  * (firstImage.scaleX ?? 1)
+                        const elH = firstImage.height * (firstImage.scaleY ?? 1)
+
+                        // Reload from base64 — Konva's HTMLImageElement is not reliable outside its context
+                        const img = await new Promise<HTMLImageElement>((res, rej) => {
+                          const i   = new Image()
+                          i.onload  = () => res(i)
+                          i.onerror = () => rej(new Error('Failed to load'))
+                          i.src     = firstImage.imageBase64
+                        })
+
+                        // Render at 2x — canvas is EXACTLY the printable area size
+                        // This captures what's visible inside the dashed orange box
+                        const scale     = 2
+                        const offscreen = document.createElement('canvas')
+                        offscreen.width  = Math.round(paW * scale)
+                        offscreen.height = Math.round(paH * scale)
+                        const ctx = offscreen.getContext('2d')!
+                        ctx.imageSmoothingEnabled = true
+                        ctx.imageSmoothingQuality = 'high'
+                        ctx.scale(scale, scale)
+
+                        // Clip to printable area so overflow is cut off — same as Konva Group clipFunc
+                        ctx.beginPath()
+                        ctx.rect(0, 0, paW, paH)
+                        ctx.clip()
+
+                        // Draw element offset relative to printable area origin
+                        // e.g. element at canvas x:200, printable area starts at x:150 → draws at x:50
+                        ctx.drawImage(img, elX - paX, elY - paY, elW, elH)
+
+                        const renderedBase64 = offscreen.toDataURL('image/png', 1.0)
+                        console.log(`[JUNI Save] Captured printable area for ${area}: pa=${Math.round(paW)}×${Math.round(paH)}, el at (${Math.round(elX-paX)},${Math.round(elY-paY)}) size=${Math.round(elW)}×${Math.round(elH)}`)
+
+                        updatedDesignsByArea[area] = {
+                          base64:   renderedBase64,
+                          filename: `edited-design-${area}.png`,
+                        }
+                      } catch (renderErr: any) {
+                        console.warn(`[JUNI Save] Render failed for ${area}:`, renderErr.message)
+                        updatedDesignsByArea[area] = {
+                          base64:   firstImage.imageBase64,
+                          filename: `edited-design-${area}.png`,
+                        }
+                      }
+                    }
+
+                    
+                      // ── Capture canvas layout using captureCanvasImageForArea ─────────────────
+                      // Same function manual canvas designer uses — produces exact split panel layout
+                      const canvasLayoutsByArea: Record<string, string> = {}
+                      for (const area of areasWithDesigns) {
+                        try {
+                          const elements = (designHook.designElements as any)[area] as any[]
+                          if (!elements?.length) continue
+                          const areaKey    = area.toLowerCase().trim()
+                          const cacheKey   = productData?.size_Images ? `${area}_${activeSize}` : productData?.color_Images ? `${area}_${activeColor}` : area
+                          const canvasImg  = designHook.canvasImages[cacheKey] || designHook.canvasImages[area]
+                          const canvasImages: Record<string, HTMLImageElement | null> = {
+                            [areaKey]:                     canvasImg ?? null,
+                            [`${areaKey}_${activeColor}`]: canvasImg ?? null,
+                          }
+                          const layoutBase64 = await captureCanvasImageForArea(
+                            areaKey,
+                            { [areaKey]: elements },
+                            activeColor,
+                            canvasImages,
+                            (areaId: string) => getCanvasConfig(areaId, activeColor),
+                            (areaId: string) => getPrintableAreaFromPhoto(areaId, activeColor, activeSize),
+                            (areaId: string) => getCustomizationAreaByName(areaId)
+                          )
+                          if (layoutBase64 && layoutBase64.length > 100) {
+                            canvasLayoutsByArea[area] = layoutBase64
+                            console.log(`[JUNI Save] Canvas layout captured for ${area}: ${layoutBase64.length} chars`)
+                          }
+                        } catch (err: any) {
+                          console.warn(`[JUNI Save] Canvas layout failed for ${area}:`, err.message)
+                        }
+                      }
+                  
+
+                  console.log('[JUNI Save] designBase64 being sent to onSaveToJuni:', 
+                    Object.values(updatedDesignsByArea)[0]?.base64?.length,
+                    'vs original:', (designHook.designElements as any)[areasWithDesigns[0]]?.[0]?.imageBase64?.length
+                  )
+
+
+                juniEditMode.onSaveToJuni({
+                  designBase64:   Object.values(updatedDesignsByArea)[0]?.base64 ?? '',
+                  area:           areasWithDesigns[0],
+                  colorHex:       activeColor,
+                  designsByArea:  updatedDesignsByArea,
+                  selectedColors,
+                  selectedSizes,
+                  // Pass the pre-generated mockup results directly
+                  preGeneratedMockups: mockupResults,
+                  // Pass last edited layout so reopening Edit restores same position
+                  designLayout: primaryEl ? {
+                    x:        primaryEl.x,
+                    y:        primaryEl.y,
+                    width:    primaryEl.width,
+                    height:   primaryEl.height,
+                    rotation: primaryEl.rotation ?? 0,
+                  } : undefined,
+                  canvasLayoutsByArea: Object.keys(canvasLayoutsByArea).length > 0
+                    ? canvasLayoutsByArea
+                    : undefined,
+                })
+
+                console.log('[JUNI Save] mockupResults sample:', mockupResults?.[0] ? {
+                  keys: Object.keys(mockupResults[0]),
+                  hasBase64: !!mockupResults[0].base64,
+                  base64Length: mockupResults[0].base64?.length,
+                  colorHex: mockupResults[0].colorHex,
+                  colorName: mockupResults[0].colorName,
+                } : 'EMPTY')
+
+              } catch (err) {
+                console.error('[JUNI Save] Failed:', err)
+              } finally {
+                setIsSavingToJuni(false)
+              }
+            }}
+              disabled={!designHook.hasDesignElements || isSavingToJuni}
+              className="flex items-center gap-1 px-2 py-2 text-xs font-medium text-white rounded-lg shadow-sm sm:gap-2 sm:px-4 sm:text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation ml-0.5"
+              style={{ backgroundColor: '#16a34a' }}>
+              {isSavingToJuni
+                ? <><div className="w-3 h-3 border-b-2 border-white rounded-full sm:w-4 sm:h-4 animate-spin" /><span className="hidden sm:inline">Saving...</span></>
+                : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><span className="hidden sm:inline">Save to JUNI</span></>
+              }
+            </button>
+          ) : (
+            // Normal mode — original Import to Store button
             <button
               onClick={storeImportHook.handleImportToStore}
               disabled={(!designHook.hasDesignElements && !shouldSkipMockupGeneration()) || storeImportHook.isGeneratingForStore || (!mockupCalculation && !shouldSkipMockupGeneration())}
@@ -1387,7 +1849,10 @@ useEffect(() => {
                 : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><span className="hidden sm:inline">Import to Store</span></>
               }
             </button>
-            <button onClick={() => window.history.back()} className="p-2 text-gray-500 rounded-lg hover:text-gray-700 hover:bg-gray-100 touch-manipulation">
+          )}
+            <button
+              onClick={() => juniEditMode ? juniEditMode.onClose() : window.history.back()}
+              className="p-2 text-gray-500 rounded-lg hover:text-gray-700 hover:bg-gray-100 touch-manipulation">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>

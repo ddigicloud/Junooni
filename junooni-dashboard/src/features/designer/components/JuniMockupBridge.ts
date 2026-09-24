@@ -1,18 +1,16 @@
 // ─── JuniMockupBridge.ts ──────────────────────────────────────────────────────
 // Bridges JUNI AI chat to the Canvas designer's existing functions.
 // Three responsibilities:
-//   1. buildDesignElement()     — same image processing as useDesignElements.ts addImageToCanvas()
-//   2. calculateJuniPricing()   — exact same pricing as usePricing.ts calculateTotalPricing()
-//   3. generateJuniMockup()     — calls renderMockupDirectly() from MockupGeneratorClass.ts
+//   1. buildDesignElementFromBase64() — same image processing as useDesignElements.ts addImageToCanvas()
+//   2. calculateJuniPricing()         — exact same pricing as usePricing.ts calculateTotalPricing()
+//   3. generateJuniMockup()           — calls renderMockupDirectly() from MockupGeneratorClass.ts
 //
 // ALL logic is ported directly from existing hooks — zero new logic.
-//
-// Place at: designer/components/JuniMockupBridge.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { renderMockupDirectly } from './MockupGeneratorClass'
 import type { DesignElement, TotalPricingBreakdown, AreaPricingInfo } from './types'
-import { resolveImageUrl, optimizeImage, cropTransparentPixels } from './utils'
+import { optimizeImage, cropTransparentPixels } from './utils'
 import { captureCanvasImageForArea } from './canvas-export-utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,11 +98,24 @@ function getAllConfigs(tech: any) {
 // SECTION 2: Design element creation
 // Ported directly from useDesignElements.ts → addImageToCanvas()
 // Same pipeline: load → optimize if large → crop transparent pixels → center in printable area
+//
+// Optional designLayout: when provided (from canvas editor edits), overrides
+// the default centering so the element appears at the creator's chosen position/size.
 // ─────────────────────────────────────────────────────────────────────────────
+
+interface DesignLayout {
+  x:         number
+  y:         number
+  width:     number
+  height:    number
+  rotation?: number
+  opacity?:  number
+}
 
 async function buildDesignElementFromBase64(
   designBase64: string,
-  printableArea: { x: number; y: number; width: number; height: number }
+  printableArea: { x: number; y: number; width: number; height: number },
+  designLayout?: DesignLayout  // optional: from canvas editor to preserve edits
 ): Promise<DesignElement> {
   // Load image (same as useDesignElements img.onload)
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -115,7 +126,7 @@ async function buildDesignElementFromBase64(
     i.src = designBase64
   })
 
-  let finalImage = img
+  let finalImage  = img
   let finalBase64 = designBase64
 
   // Optimize if large (same threshold as useDesignElements: 2_000_000 pixels)
@@ -148,30 +159,43 @@ async function buildDesignElementFromBase64(
     }
   } catch { /* keep original */ }
 
-  // Calculate size — fit within 80% of printable area preserving aspect ratio
-  // (same as useDesignElements: maxWidth = printableArea.width * 0.8)
-  const aspectRatio = (finalImage.naturalWidth || finalImage.width) / (finalImage.naturalHeight || finalImage.height)
-  const maxWidth    = printableArea.width  * 0.8
-  const maxHeight   = printableArea.height * 0.8
-  let w = maxWidth, h = maxWidth / aspectRatio
-  if (h > maxHeight) { h = maxHeight; w = maxHeight * aspectRatio }
+  let elX: number, elY: number, elW: number, elH: number, elRotation: number, elOpacity: number
 
-  // Center in printable area (same as useDesignElements)
-  const x = printableArea.x + (printableArea.width  - w) / 2
-  const y = printableArea.y + (printableArea.height - h) / 2
+  if (designLayout) {
+    // Use exact position/size from canvas editor — preserves creator's edits
+    elX        = designLayout.x
+    elY        = designLayout.y
+    elW        = designLayout.width
+    elH        = designLayout.height
+    elRotation = designLayout.rotation ?? 0
+    elOpacity  = designLayout.opacity  ?? 1
+  } else {
+    // Default: fit within 80% of printable area preserving aspect ratio
+    // (same as useDesignElements: maxWidth = printableArea.width * 0.8)
+    const aspectRatio = (finalImage.naturalWidth || finalImage.width) / (finalImage.naturalHeight || finalImage.height)
+    const maxWidth    = printableArea.width  * 0.8
+    const maxHeight   = printableArea.height * 0.8
+    elW = maxWidth; elH = maxWidth / aspectRatio
+    if (elH > maxHeight) { elH = maxHeight; elW = maxHeight * aspectRatio }
+    // Center in printable area (same as useDesignElements)
+    elX        = printableArea.x + (printableArea.width  - elW) / 2
+    elY        = printableArea.y + (printableArea.height - elH) / 2
+    elRotation = 0
+    elOpacity  = 1
+  }
 
   return {
     id:       `juni-${Date.now()}-${Math.random()}`,
     type:     'image',
-    x, y, width: w, height: h,
-    rotation: 0, scaleX: 1, scaleY: 1,
+    x: elX, y: elY, width: elW, height: elH,
+    rotation: elRotation, scaleX: 1, scaleY: 1,
     draggable: false, selected: false, zIndex: 1,
     image:     finalImage,
     imageName: 'JUNI Design',
     imageBase64: finalBase64,
     originalImageWidth:  finalImage.naturalWidth  || finalImage.width,
     originalImageHeight: finalImage.naturalHeight || finalImage.height,
-    opacity: 1, visible: true, locked: false,
+    opacity: elOpacity, visible: true, locked: false,
   }
 }
 
@@ -189,69 +213,60 @@ export interface JuniPricingResult {
   setupFee: number
   technologyFee: number
   shippingCharges: number
-  finalPrice: number   // basePrinting + GSTs + blank + setup + tech + shipping
-  suggestedSellingPrice: number  // finalPrice × 2 rounded to nearest 10
+  finalPrice: number
+  suggestedSellingPrice: number
   breakdown: TotalPricingBreakdown
 }
 
 export function calculateJuniPricing(
-  blankData:    any,    // full blank API response
-  tech:         any,    // the selected technology object (tech.custAreas etc.)
+  blankData:     any,
+  tech:          any,
   designElement: DesignElement,
-  area:         string, // e.g. "front"
-  colorHex:     string,
+  area:          string,
+  colorHex:      string,
 ): JuniPricingResult {
-  // Read custArea for this area
-  const custArea    = getCustArea(tech, area)
+  const custArea      = getCustArea(tech, area)
   const canvasConfig  = buildCanvasConfig(custArea)
   const printableArea = buildPrintableArea(custArea, canvasConfig)
 
-  // ── getPricingInfoForArea (same as usePricing.ts) ─────────────────────────
-  const minimumPrice     = parseFloat(custArea?.['Minimum printing price'] ?? '0')
-  const pricePerSqIn     = parseFloat(custArea?.['Per sq inch printing price'] ?? '0')
-  const isFixedPrice     = !!(minimumPrice && !pricePerSqIn)
+  const minimumPrice = parseFloat(custArea?.['Minimum printing price'] ?? '0')
+  const pricePerSqIn = parseFloat(custArea?.['Per sq inch printing price'] ?? '0')
+  const isFixedPrice = !!(minimumPrice && !pricePerSqIn)
 
-  // ── calculateAreaPricing AABB (same as usePricing.ts) ────────────────────
   const el = designElement
   const ew = el.width  * (el.scaleX || 1)
   const eh = el.height * (el.scaleY || 1)
 
-  // AABB for single element (no rotation needed for JUNI — always 0)
   let minX = el.x, minY = el.y, maxX = el.x + ew, maxY = el.y + eh
-
-  // Clamp to printable area
   minX = Math.max(minX, printableArea.x)
   minY = Math.max(minY, printableArea.y)
   maxX = Math.min(maxX, printableArea.x + printableArea.width)
   maxY = Math.min(maxY, printableArea.y + printableArea.height)
 
   let basePrintingCost = 0
-
   if (minX < maxX && minY < maxY) {
     const avgPPI = (
       (printableArea.width  / canvasConfig.realWorldWidth) +
       (printableArea.height / canvasConfig.realWorldHeight)
     ) / 2
-    const consumedW = Math.min((maxX - minX) / avgPPI, canvasConfig.realWorldWidth)
-    const consumedH = Math.min((maxY - minY) / avgPPI, canvasConfig.realWorldHeight)
-    const consumedSqIn = consumedW * consumedH
-
-    basePrintingCost = isFixedPrice
+    const consumedW     = Math.min((maxX - minX) / avgPPI, canvasConfig.realWorldWidth)
+    const consumedH     = Math.min((maxY - minY) / avgPPI, canvasConfig.realWorldHeight)
+    const consumedSqIn  = consumedW * consumedH
+    basePrintingCost    = isFixedPrice
       ? minimumPrice
       : Math.max(minimumPrice, consumedSqIn * pricePerSqIn)
   }
 
-  // ── calculateTotalPricing (same formula as usePricing.ts) ────────────────
-  const blankProductCost    = blankData?.cost ?? 0
-  const additionalCosts     = blankData?.additionalCosts ?? {}
-  const setupFee            = parseFloat(additionalCosts.setupFee        ?? '0')
-  const technologyFee       = parseFloat(additionalCosts.rushSurcharge   ?? '0')
-  const printingGSTPercent  = parseFloat(additionalCosts.printingGST     ?? '0')
-  const productGSTPercent   = parseFloat(blankData?.['GST Cost']         ?? '0')
-  const shippingCharges     = parseFloat(blankData?.shippingInfo?.shippingCharges ?? '0')
+  const blankProductCost   = blankData?.cost ?? 0
+  const additionalCosts    = blankData?.additionalCosts ?? {}
+  const setupFee           = parseFloat(additionalCosts.setupFee      ?? '0')
+  const technologyFee      = parseFloat(additionalCosts.rushSurcharge ?? '0')
+  const printingGSTPercent = parseFloat(additionalCosts.printingGST   ?? '0')
+  const productGSTPercent  = parseFloat(blankData?.['GST Cost']       ?? '0')
+  const shippingCharges    = parseFloat(blankData?.shippingInfo?.shippingCharges ?? '0')
 
-  const printingGSTAmount   = printingGSTPercent > 0 ? basePrintingCost * printingGSTPercent / 100 : 0
-  const productGSTAmount    = productGSTPercent  > 0 ? blankProductCost * productGSTPercent  / 100 : 0
+  const printingGSTAmount = printingGSTPercent > 0 ? basePrintingCost * printingGSTPercent / 100 : 0
+  const productGSTAmount  = productGSTPercent  > 0 ? blankProductCost * productGSTPercent  / 100 : 0
 
   const finalPrice = Number((
     basePrintingCost + printingGSTAmount +
@@ -259,11 +274,9 @@ export function calculateJuniPricing(
     setupFee + technologyFee + shippingCharges
   ).toFixed(2))
 
-  // Suggested selling = finalPrice × 2.2 rounded to nearest 10 (creator margin ~55%)
   const suggestedSellingPrice = Math.ceil(finalPrice * 2.2 / 10) * 10
 
-  // Build TotalPricingBreakdown matching usePricing.ts structure
-  const areaKey = area.toLowerCase()
+  const areaKey  = area.toLowerCase()
   const areaInfo: AreaPricingInfo = {
     areaId: areaKey,
     areaName: custArea?.areaName ?? area,
@@ -312,6 +325,7 @@ export function calculateJuniPricing(
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 4: Mockup generation
 // Calls renderMockupDirectly() — same function Canvas.tsx uses for store import
+// Optional designLayout: when provided, places design at creator's edited position
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface JuniMockupOptions {
@@ -322,6 +336,7 @@ export interface JuniMockupOptions {
   area:              string
   position:          string
   targetResolution?: number
+  designLayout?:     DesignLayout  // optional: from canvas editor edits
 }
 
 export interface JuniMockupResult {
@@ -331,43 +346,37 @@ export interface JuniMockupResult {
 }
 
 export async function generateJuniMockup(opts: JuniMockupOptions): Promise<JuniMockupResult> {
-  const { blankData, technologyId, selectedColorHex, designBase64, area, targetResolution = 1000 } = opts
+  const { blankData, technologyId, selectedColorHex, designBase64, area, targetResolution = 1000, designLayout } = opts
 
-  // Find technology
   const tech = blankData?.printT?.find((t: any) =>
     t.id === technologyId || t.technologyName === technologyId
   ) ?? blankData?.printT?.[0]
   if (!tech) throw new Error(`Technology "${technologyId}" not found`)
 
-  // Find custArea and build canvas/printable configs
-  const custArea    = getCustArea(tech, area)
+  const custArea = getCustArea(tech, area)
   if (!custArea) throw new Error(`Area "${area}" not found in custAreas`)
 
   const canvasConfig  = buildCanvasConfig(custArea)
   const printableArea = buildPrintableArea(custArea, canvasConfig)
 
-  // Find the right mockup photo for this area + color
   const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
   if (!mockupPhoto?.photo?.url && typeof mockupPhoto?.photo !== 'object') {
     throw new Error(`No mockup photo URL for area "${area}". Ensure blank fetched with depth=2.`)
   }
 
-  // Build design element using same logic as useDesignElements.addImageToCanvas
-  const designElement = await buildDesignElementFromBase64(designBase64, printableArea)
+  // Build design element — uses designLayout if provided (canvas editor edits)
+  // otherwise uses default centering (same as useDesignElements.addImageToCanvas)
+  const designElement = await buildDesignElementFromBase64(designBase64, printableArea, designLayout)
 
-  // Build all configs for renderMockupDirectly (it iterates ALL areas in mockup.area[])
   const { canvasConfigs, printableAreas } = getAllConfigs(tech)
 
-  // Place element in the correct area
   const areaKey = area.toLowerCase().trim()
   const designElements: Record<string, DesignElement[]> = { [areaKey]: [designElement] }
 
-  // Call renderMockupDirectly — same as Canvas.tsx store import
   const base64 = await renderMockupDirectly(
     mockupPhoto, designElements, canvasConfigs, printableAreas, selectedColorHex, targetResolution
   )
 
-  // Calculate exact pricing using same formula as usePricing.calculateTotalPricing
   const pricing = calculateJuniPricing(blankData, tech, designElement, area, selectedColorHex)
 
   return { base64, pricing, element: designElement }
@@ -386,6 +395,7 @@ export async function generateJuniMockupsAllColors(opts: {
   position:          string
   targetResolution?: number
   onProgress?:       (done: number, total: number, colorName: string) => void
+  designLayout?:     DesignLayout  // optional: from canvas editor edits
 }): Promise<Array<{ colorName: string; colorHex: string; base64: string; pricing: JuniPricingResult }>> {
   const results: Array<{ colorName: string; colorHex: string; base64: string; pricing: JuniPricingResult }> = []
 
@@ -402,6 +412,7 @@ export async function generateJuniMockupsAllColors(opts: {
         area:             opts.area,
         position:         opts.position,
         targetResolution: opts.targetResolution ?? 1000,
+        designLayout:     opts.designLayout,
       })
       results.push({ colorName: color.name, colorHex: color.hex, base64: result.base64, pricing: result.pricing })
     } catch (err: any) {
@@ -413,32 +424,40 @@ export async function generateJuniMockupsAllColors(opts: {
   return results
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 7: Generate mockups for multiple areas with per-area designs
 // Used when creator uploads different designs for front/back/sleeves
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AreaDesignMap {
-  [area: string]: { sessionId: string; base64: string; filename: string }
+  [area: string]: {
+    sessionId: string
+    base64:    string
+    filename:  string
+    elements?: DesignLayout[]  // optional: per-area layout from canvas editor
+  }
 }
 
 export async function generateJuniMockupsAllAreasAllColors(opts: {
-  blankData:         any
-  technologyId:      string
-  selectedColors:    Array<{ name: string; hex: string }>
-  designsByArea:     AreaDesignMap   // area → design data
-  defaultDesignBase64: string        // fallback if area not in map
-  targetResolution?: number
-  onProgress?:       (done: number, total: number, label: string) => void
+  blankData:           any
+  technologyId:        string
+  selectedColors:      Array<{ name: string; hex: string }>
+  designsByArea:       AreaDesignMap
+  defaultDesignBase64: string
+  targetResolution?:   number
+  onProgress?:         (done: number, total: number, label: string) => void
 }): Promise<Array<{ colorName: string; colorHex: string; area: string; base64: string; pricing?: JuniPricingResult }>> {
   const results: Array<{ colorName: string; colorHex: string; area: string; base64: string; pricing?: JuniPricingResult }> = []
-  const areas   = Object.keys(opts.designsByArea)
-  const total   = areas.length * opts.selectedColors.length
-  let   done    = 0
+  const areas = Object.keys(opts.designsByArea)
+  const total = areas.length * opts.selectedColors.length
+  let   done  = 0
 
   for (const area of areas) {
-    const areaDesign = opts.designsByArea[area]?.base64 ?? opts.defaultDesignBase64
+    const areaData   = opts.designsByArea[area]
+    const areaDesign = areaData?.base64 ?? opts.defaultDesignBase64
+    // Use first element's layout if provided
+    const areaLayout = areaData?.elements?.[0]
+
     for (const color of opts.selectedColors) {
       opts.onProgress?.(done, total, `${color.name} / ${area}`)
       try {
@@ -448,8 +467,9 @@ export async function generateJuniMockupsAllAreasAllColors(opts: {
           selectedColorHex: color.hex,
           designBase64:     areaDesign,
           area,
-          position:         "center",
+          position:         'center',
           targetResolution: opts.targetResolution ?? 1000,
+          designLayout:     areaLayout,
         })
         results.push({ colorName: color.name, colorHex: color.hex, area, base64: result.base64, pricing: result.pricing })
       } catch (err: any) {
@@ -468,6 +488,9 @@ export async function generateJuniMockupsAllAreasAllColors(opts: {
 // Calls captureCanvasImageForArea from canvas-export-utils.ts
 // Generates the same side-by-side "For Manufacturer / Internal Reference" PNG
 // that the Canvas designer creates when exporting artwork.
+//
+// When designLayout is provided (after canvas editor edits), the layout image
+// reflects the creator's final edited position/size — not the default centered one.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function generateJuniCanvasLayout(opts: {
@@ -476,8 +499,9 @@ export async function generateJuniCanvasLayout(opts: {
   selectedColorHex: string
   designBase64:     string
   area:             string
+  designLayout?:    DesignLayout  // optional: from canvas editor — shows final edited position
 }): Promise<string | null> {
-  const { blankData, technologyId, selectedColorHex, designBase64, area } = opts
+  const { blankData, technologyId, selectedColorHex, designBase64, area, designLayout } = opts
   console.log('[JuniLayout] ① function entered', { technologyId, area, selectedColorHex })
 
   const tech = blankData?.printT?.find((t: any) =>
@@ -495,7 +519,9 @@ export async function generateJuniCanvasLayout(opts: {
   console.log('[JuniLayout] ④ canvasConfig:', canvasConfig)
   console.log('[JuniLayout] ⑤ printableArea:', printableArea)
 
-  const designElement = await buildDesignElementFromBase64(designBase64, printableArea)
+  // Build design element — uses designLayout if provided so layout image shows
+  // the final edited position/size, not the default centered one
+  const designElement = await buildDesignElementFromBase64(designBase64, printableArea, designLayout)
     .then(el => { console.log('[JuniLayout] ⑥ designElement built OK'); return el })
     .catch(err => { console.error('[JuniLayout] ⑥ designElement FAILED:', err.message); return null })
   if (!designElement) return null

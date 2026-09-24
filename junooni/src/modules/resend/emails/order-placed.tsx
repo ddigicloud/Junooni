@@ -96,8 +96,8 @@ function OrderPlacedEmailComponent({ order, storeLogo, storeName, storePrimaryCo
                   <Img 
                     src={storeLogo}
                     alt={storeName || "Store"}
-                    height="40"
-                    style={{ margin: '0 auto', maxWidth: '200px', objectFit: 'contain' }}
+                    height="60"
+                    style={{ margin: '0 auto', maxWidth: '280px', objectFit: 'contain' }}
                   />
                 ) : (
                   <table cellPadding={0} cellSpacing={0} style={{ margin: '0 auto' }}>

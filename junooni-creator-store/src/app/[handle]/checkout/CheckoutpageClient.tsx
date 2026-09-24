@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
@@ -10,6 +10,7 @@ import ShippingForm from "@/components/checkout/ShippingForm"
 import PaymentForm from "@/components/checkout/PaymentForm"
 import ReviewForm from "@/components/checkout/ReviewForm"
 import codimage from "../../../../public/cod_black_truck.png"
+
 
 
 interface Props {
@@ -46,6 +47,9 @@ export default function CheckoutPageClient({
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<string>("")
+  const shippingRef = useRef<HTMLDivElement>(null)
+  const paymentRef = useRef<HTMLDivElement>(null)
+  const reviewRef = useRef<HTMLDivElement>(null)
 
   const previewCart = previewProduct ? {
     ...MOCK_CART,
@@ -90,6 +94,19 @@ export default function CheckoutPageClient({
     if (!isPreview) return
     document.cookie = `_creator_cart_id_${handle}=; max-age=0; path=/;`
   }, [handle])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (step === "delivery" && shippingRef.current) {
+        shippingRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+      } else if (step === "payment" && paymentRef.current) {
+        paymentRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+      } else if (step === "review" && reviewRef.current) {
+        reviewRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+      }
+    }, 100) // small delay so the DOM has rendered the new section
+    return () => clearTimeout(timer)
+  }, [step])
 
   const checkoutSettings: any = store?.checkout_settings ?? {}
   const brandPrimary    = checkoutSettings.accent_color    || store?.primary_color || "#e65100"
@@ -359,39 +376,45 @@ export default function CheckoutPageClient({
             />
 
             {(step === "delivery" || step === "payment" || step === "review") && addressComplete && (
-              <ShippingForm
-                cart={activeCart}
-                shippingMethods={shippingMethods ?? []}
-                handle={handle}
-                brandPrimary={btnBgColor ?? brandPrimary}
-                isDark={isDark}
-                btnTextColor={btnTextColor}
-                btnBorderRadius={btnBorderRadius}
-              />
+              <div ref={shippingRef}>         
+                <ShippingForm
+                  cart={activeCart}
+                  shippingMethods={shippingMethods ?? []}
+                  handle={handle}
+                  brandPrimary={btnBgColor ?? brandPrimary}
+                  isDark={isDark}
+                  btnTextColor={btnTextColor}
+                  btnBorderRadius={btnBorderRadius}
+                />
+              </div>                          
             )}
 
             {(step === "payment" || step === "review") && shippingComplete && (
-              <PaymentForm
-                cart={activeCart}
-                paymentMethods={paymentMethods ?? []}
-                handle={handle}
-                brandPrimary={btnBgColor ?? brandPrimary}
-                isDark={isDark}
-                onProviderChange={setSelectedProvider}
-                btnTextColor={btnTextColor}
-                btnBorderRadius={btnBorderRadius}
-              />
+              <div ref={paymentRef}>           
+                <PaymentForm
+                  cart={activeCart}
+                  paymentMethods={paymentMethods ?? []}
+                  handle={handle}
+                  brandPrimary={btnBgColor ?? brandPrimary}
+                  isDark={isDark}
+                  onProviderChange={setSelectedProvider}
+                  btnTextColor={btnTextColor}
+                  btnBorderRadius={btnBorderRadius}
+                />
+              </div>                          
             )}
 
             {step === "review" && paymentComplete && (
-              <ReviewForm
-                cart={activeCart}
-                handle={handle}
-                brandPrimary={btnBgColor ?? brandPrimary}
-                isDark={isDark}
-                btnTextColor={btnTextColor}
-                btnBorderRadius={btnBorderRadius}
-              />
+              <div ref={reviewRef}>           
+                <ReviewForm
+                  cart={activeCart}
+                  handle={handle}
+                  brandPrimary={btnBgColor ?? brandPrimary}
+                  isDark={isDark}
+                  btnTextColor={btnTextColor}
+                  btnBorderRadius={btnBorderRadius}
+                />
+              </div>                           
             )}
 
             {/* ── Editor-added sections ── */}

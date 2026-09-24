@@ -23,6 +23,7 @@ import {
   _getCacheKey,
   _hashDesignElements,
 } from './utils';
+import { isAOPMockup } from './mockup-engine-utils';
 
 // ── Standalone canvas render (no React, no state) ────────────────────────────
 
@@ -47,10 +48,8 @@ export const renderMockupDirectly = async (
   return new Promise(async (resolve, reject) => {
     try {
       // ─── QUALITY: Supersample at 2× then downsample ──────────────────────
-      // Rendering at 2× then downsampling gives sharper edges than rendering
-      // directly at targetResolution, especially for fine design artwork.
       const SUPERSAMPLE = 2;
-      const renderRes   = targetResolution * SUPERSAMPLE; // e.g. 6000 for 3000 output
+      const renderRes   = targetResolution * SUPERSAMPLE;
 
       const offscreen   = document.createElement('canvas');
       offscreen.width   = renderRes;
@@ -61,7 +60,7 @@ export const renderMockupDirectly = async (
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      // ─── Step 1: Draw base mockup photo (with optional colour masking) ───
+      // ─── Step 1: Load base mockup photo ──────────────────────────────────
       const requiresColorMasking =
         mockup.requiresColorMasking === true ||
         mockup.photoColor?.toLowerCase() === '#00000000';
@@ -69,8 +68,128 @@ export const renderMockupDirectly = async (
 
       const mockupBaseImg = await _loadImageCached(resolveImageUrl(mockup.photo.url));
 
+      // ─── AOP PATH ────────────────────────────────────────────────────────
+      // AOP products are identified by "AOP" in the product name
+      // photoColor #00000000 alone is not enough — embroidery mockups also use it
+      const isAOPProduct = /aop/i.test(mockup.title || '') || /aop/i.test(mockup.mockupType || '');
+      if (isAOPProduct && mockup.photoColor?.toLowerCase().replace('#', '').trim() === '00000000') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, renderRes, renderRes);
+
+        for (const [areaName, elements] of Object.entries(designElements)) {
+          const canvasConfig = canvasConfigs[areaName];
+          if (!canvasConfig) continue;
+          const visibleEls = (elements as DesignElement[])
+            .filter(el => el.visible !== false && el.type === 'image')
+            .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+          for (const el of visibleEls) {
+            if (!el.image) continue;
+            const scaleX = renderRes / canvasConfig.width;
+            const scaleY = renderRes / canvasConfig.height;
+            const dW = el.width * (el.scaleX || 1) * scaleX;
+            const dH = el.height * (el.scaleY || 1) * scaleY;
+            const cX = (el.x + el.width * (el.scaleX || 1) / 2) * scaleX;
+            const cY = (el.y + el.height * (el.scaleY || 1) / 2) * scaleY;
+            ctx.save();
+            ctx.translate(cX, cY);
+            if (el.rotation) ctx.rotate((el.rotation * Math.PI) / 180);
+            ctx.globalAlpha = el.opacity || 1;
+            ctx.drawImage(el.image as HTMLImageElement, -dW / 2, -dH / 2, dW, dH);
+            ctx.restore();
+          }
+        }
+
+                ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(mockupBaseImg, 0, 0, renderRes, renderRes);
+        ctx.globalCompositeOperation = 'source-over';
+
+        // ─── Lighting overlays for AOP/transparent mockups ────────────────
+        for (const lightOverlay of mockup.light || []) {
+          try {
+            const lightImg = await _loadImageCached(resolveImageUrl(lightOverlay.overImage.url));
+            const overlayArea = lightOverlay.overlayArea?.toLowerCase()?.trim();
+
+            ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
+            ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
+
+            if (overlayArea && overlayArea !== 'full' && overlayArea !== 'all') {
+              // Find design elements bounding box for this area
+              const areaElements = Object.entries(designElements)
+                .find(([key]) => key.toLowerCase() === overlayArea)?.[1] || [];
+              const canvasCfg = Object.entries(canvasConfigs)
+                .find(([key]) => key.toLowerCase() === overlayArea)?.[1];
+
+              if (canvasCfg && areaElements.length > 0) {
+                const scale = renderRes / canvasCfg.width;
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                (areaElements as DesignElement[]).forEach(el => {
+                  if (el.visible === false) return;
+                  const dW = el.width * (el.scaleX || 1);
+                  const dH = el.height * (el.scaleY || 1);
+                  minX = Math.min(minX, el.x);
+                  minY = Math.min(minY, el.y);
+                  maxX = Math.max(maxX, el.x + dW);
+                  maxY = Math.max(maxY, el.y + dH);
+                });
+
+              if (minX !== Infinity) {
+                // Draw texture only over non-transparent design pixels
+                const texCanvas = document.createElement('canvas');
+                texCanvas.width = renderRes;
+                texCanvas.height = renderRes;
+                const texCtx = texCanvas.getContext('2d', { alpha: true })!;
+                texCtx.imageSmoothingEnabled = true;
+                texCtx.imageSmoothingQuality = 'high';
+
+                // Draw texture clipped to bounding box
+                texCtx.save();
+                texCtx.beginPath();
+                texCtx.rect(minX * scale, minY * scale, (maxX - minX) * scale, (maxY - minY) * scale);
+                texCtx.clip();
+                texCtx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+                texCtx.restore();
+
+                // Mask texture to only show over design pixels (non-transparent)
+                texCtx.globalCompositeOperation = 'destination-in';
+                texCtx.drawImage(offscreen, 0, 0);
+                texCtx.globalCompositeOperation = 'source-over';
+
+                // Composite masked texture onto main canvas
+                ctx.save();
+                ctx.drawImage(texCanvas, 0, 0);
+                ctx.restore();
+                } else {
+                  ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+                }
+              } else {
+                ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+              }
+            } else {
+              ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+            }
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+          } catch { /* skip failed overlay */ }
+        }
+
+        const out = document.createElement('canvas');
+        out.width = targetResolution;
+        out.height = targetResolution;
+        const oCtx = out.getContext('2d', { alpha: true })!;
+        oCtx.imageSmoothingEnabled = true;
+        oCtx.imageSmoothingQuality = 'high';
+        oCtx.drawImage(offscreen, 0, 0, targetResolution, targetResolution);
+        const dataUrl = out.toDataURL('image/png');
+        _renderCache.set(cacheKey, dataUrl);
+        resolve(dataUrl);
+        return;
+      }
+      // ─── END AOP PATH ────────────────────────────────────────────────────
+
+      // ─── Normal path: draw base photo (with optional colour masking) ──────
       if (requiresColorMasking) {
-        ctx.fillStyle = maskColor;
+        ctx.fillStyle = productColor || '#ffffff';
         ctx.fillRect(0, 0, renderRes, renderRes);
         ctx.drawImage(mockupBaseImg, 0, 0, renderRes, renderRes);
       } else {
@@ -93,33 +212,14 @@ export const renderMockupDirectly = async (
 
         const design = mockupArea.design;
 
-        // Mockup area coordinates in renderRes (supersampled) space.
         const mockupAreaX     = design.coordinateX      * renderRes;
         const mockupAreaY     = design.coordinateY      * renderRes;
         const mockupAreaWidth = design.coordinateWidth  * renderRes;
 
-        // Uniform scale: printable-area pixel → mockup-area pixel (renderRes space)
         const uniformScale          = mockupAreaWidth / printableArea.width;
         const effectiveMockupHeight = printableArea.height * uniformScale;
 
-        // ─── DESIGN QUALITY: Native-resolution design canvas ─────────────
-        //
-        // Strategy:
-        //   a) For each element find how many SOURCE pixels it contributes.
-        //      nativeElemW = naturalWidth of source image, scaled so that
-        //      rendered width at the OUTPUT matches what the user placed.
-        //      We do NOT multiply naturalWidth into the scale twice.
-        //   b) Pick the largest native size needed across all elements
-        //      (capped at 8192 to avoid OOM) as the design canvas size.
-        //   c) Draw elements on that native canvas without any resampling
-        //      penalty — the browser sees the source at 1:1 density.
-        //   d) Composite the finished design canvas down onto the mockup
-        //      canvas with a single bicubic downsample via drawImage.
-        //
-        // FIXED: the old nW/nH formula applied naturalWidth/element.width
-        // a second time, double-counting the image's own pixel density.
-
-        let nativeWidth  = Math.round(mockupAreaWidth);   // fallback: match output
+        let nativeWidth  = Math.round(mockupAreaWidth);
         let nativeHeight = Math.round(effectiveMockupHeight);
 
         for (const element of visibleElements) {
@@ -127,40 +227,23 @@ export const renderMockupDirectly = async (
           const src = element.image as HTMLImageElement;
           if (!src.naturalWidth || src.naturalWidth === 0) continue;
 
-          // How much of the printable area does this element occupy?
           const renderedWidth  = element.width  * (element.scaleX || 1);
           const renderedHeight = element.height * (element.scaleY || 1);
-
-          // The element's rendered size in renderRes pixels
           const elemPixelW = renderedWidth  * uniformScale;
           const elemPixelH = renderedHeight * uniformScale;
-
-          // Scale factor: source pixels → renderRes pixels for this element.
-          // We want the design canvas large enough so that when we draw the
-          // element into it, each source pixel maps to ≥ 1 canvas pixel.
-          // FIX: ratio is simply src.naturalWidth / elemPixelW (not squared).
           const srcToOutputRatio = src.naturalWidth / elemPixelW;
 
           if (srcToOutputRatio > 1) {
-            // Source is denser than output: size canvas to hold all source pixels
             const nW = Math.min(8192, Math.round(nativeWidth  * srcToOutputRatio));
             const nH = Math.min(8192, Math.round(nativeHeight * srcToOutputRatio));
             nativeWidth  = Math.max(nativeWidth,  nW);
             nativeHeight = Math.max(nativeHeight, nH);
           }
-          // If srcToOutputRatio ≤ 1 the source is already below output density;
-          // no point enlarging the canvas beyond the output resolution.
         }
 
-        // Cap to avoid OOM on multi-element areas
         nativeWidth  = Math.min(8192, nativeWidth);
         nativeHeight = Math.min(8192, nativeHeight);
 
-        // ─── 2b: Render design elements onto isolated transparent canvas ───
-        //
-        // Coordinate mapping: printable-area → native design canvas.
-        // FIXED: toNativeX/Y must be consistent with how we sized the canvas,
-        // i.e. nativeWidth / printableArea.width (not divided by mockupAreaWidth).
         const designCanvas   = document.createElement('canvas');
         designCanvas.width   = nativeWidth;
         designCanvas.height  = nativeHeight;
@@ -171,7 +254,6 @@ export const renderMockupDirectly = async (
         dCtx.imageSmoothingQuality = 'high';
         dCtx.clearRect(0, 0, nativeWidth, nativeHeight);
 
-        // Printable-area coords → native design canvas coords
         const toNativeX = nativeWidth  / printableArea.width;
         const toNativeY = nativeHeight / printableArea.height;
 
@@ -186,7 +268,6 @@ export const renderMockupDirectly = async (
           const renderedWidth       = element.width  * (element.scaleX || 1);
           const renderedHeight      = element.height * (element.scaleY || 1);
 
-          // Map to native canvas coordinates
           const elemLeftInDesign   = elemLeftInPrintable * toNativeX;
           const elemTopInDesign    = elemTopInPrintable  * toNativeY;
           const elemWidthInDesign  = renderedWidth       * toNativeX;
@@ -199,51 +280,15 @@ export const renderMockupDirectly = async (
           if (element.rotation) dCtx.rotate((element.rotation * Math.PI) / 180);
           dCtx.globalAlpha = element.opacity || 1;
 
-          // ─── DESIGN QUALITY: Draw at native source resolution ──────────
-          //
-          // FIXED: The old code drew at elemWidthInDesign / elemHeightInDesign
-          // in BOTH branches — the naturalWidth branch was dead code.
-          //
-          // Now we draw the source image at a size that preserves its native
-          // pixel density on this design canvas:
-          //   • If the source is denser than the design canvas can represent
-          //     (srcToOutputRatio > 1), we sized the canvas to accommodate it,
-          //     so draw at elemWidthInDesign (already 1:1 with source pixels).
-          //   • If the source is sparser, drawing at elemWidthInDesign is still
-          //     correct — we never upscale beyond what the output needs.
-          //
-          // In both cases elemWidthInDesign / elemHeightInDesign is the right
-          // draw size because those values were derived from toNativeX/Y which
-          // accounts for the enlarged canvas.
           if (src.naturalWidth && src.naturalWidth > 0) {
-            dCtx.drawImage(
-              src,
-              -elemWidthInDesign  / 2,
-              -elemHeightInDesign / 2,
-              elemWidthInDesign,
-              elemHeightInDesign
-            );
+            dCtx.drawImage(src, -elemWidthInDesign / 2, -elemHeightInDesign / 2, elemWidthInDesign, elemHeightInDesign);
           } else {
-            dCtx.drawImage(
-              element.image,
-              -elemWidthInDesign  / 2,
-              -elemHeightInDesign / 2,
-              elemWidthInDesign,
-              elemHeightInDesign
-            );
+            dCtx.drawImage(element.image, -elemWidthInDesign / 2, -elemHeightInDesign / 2, elemWidthInDesign, elemHeightInDesign);
           }
 
           dCtx.restore();
         }
 
-        // ─── 2c: Apply area transforms + alpha masks on renderRes canvas ──
-        //
-        // FIXED coordinate space: mockupAreaX/Y/Width are in renderRes space.
-        // The design canvas (nativeWidth × nativeHeight) maps to exactly the
-        // printable-area region of the mockup, so we draw it at
-        // (mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight)
-        // which is its correct renderRes position. This is a single bicubic
-        // downsample from native → renderRes, preserving full quality.
         const maskedDesignCanvas   = document.createElement('canvas');
         maskedDesignCanvas.width   = renderRes;
         maskedDesignCanvas.height  = renderRes;
@@ -277,14 +322,12 @@ export const renderMockupDirectly = async (
               );
             }
             mCtx.translate(-areaCentreX, -areaCentreY);
-            // Single bicubic downsample: nativeDesignCanvas → renderRes position
             mCtx.drawImage(designCanvas, mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight);
             mCtx.restore();
           } else {
             mCtx.drawImage(designCanvas, mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight);
           }
 
-          // Alpha masks — clip design to garment silhouette
           const areaMasks = (mockup.alpMasks || []).filter(
             m => !m.alfarea || m.alfarea.toLowerCase() === areaName || m.alfarea === 'all'
           );
@@ -324,7 +367,6 @@ export const renderMockupDirectly = async (
           }
         }
 
-        // ─── 2d: Blend onto mockup ────────────────────────────────────────
         const areaBlendMode = (design.blend && design.blend !== 'normal')
           ? design.blend as GlobalCompositeOperation
           : null;
@@ -339,16 +381,97 @@ export const renderMockupDirectly = async (
         ctx.restore();
       }
 
-      // ─── Step 3: Lighting / shadow overlays ──────────────────────────────
+           // ─── Step 3: Lighting / shadow overlays ──────────────────────────────
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
       for (const lightOverlay of mockup.light || []) {
         try {
           const lightImg = await _loadImageCached(resolveImageUrl(lightOverlay.overImage.url));
-          ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
-          ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
-          ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+          const overlayArea = lightOverlay.overlayArea?.toLowerCase()?.trim();
+
+          if (overlayArea && overlayArea !== 'full' && overlayArea !== 'all') {
+            const targetMockupArea = mockup.area?.find((a: any) =>
+              a.areaName?.toLowerCase()?.trim() === overlayArea
+            );
+            const areaElements = Object.entries(designElements)
+              .find(([key]) => key.toLowerCase() === overlayArea)?.[1] || [];
+            const canvasCfg = Object.entries(canvasConfigs)
+              .find(([key]) => key.toLowerCase() === overlayArea)?.[1];
+            const printArea = Object.entries(printableAreas)
+              .find(([key]) => key.toLowerCase() === overlayArea)?.[1];
+
+            if (targetMockupArea && canvasCfg && areaElements.length > 0 && printArea) {
+              const mAX = targetMockupArea.design.coordinateX * renderRes;
+              const mAY = targetMockupArea.design.coordinateY * renderRes;
+              const mAW = targetMockupArea.design.coordinateWidth * renderRes;
+              const uniformScale = mAW / printArea.width;
+
+              // Step 1: Render design elements onto isolated transparent canvas
+              // using exact same coordinate system as Step 2 normal render
+              const designMaskCanvas = document.createElement('canvas');
+              designMaskCanvas.width = renderRes;
+              designMaskCanvas.height = renderRes;
+              const dmCtx = designMaskCanvas.getContext('2d', { alpha: true })!;
+              dmCtx.imageSmoothingEnabled = true;
+              dmCtx.imageSmoothingQuality = 'high';
+
+              (areaElements as DesignElement[]).forEach(el => {
+                if (el.visible === false || !el.image) return;
+                const elemLeft = (el.x - printArea.x) * uniformScale + mAX;
+                const elemTop  = (el.y - printArea.y) * uniformScale + mAY;
+                const dW = el.width  * (el.scaleX || 1) * uniformScale;
+                const dH = el.height * (el.scaleY || 1) * uniformScale;
+                const cX = elemLeft + dW / 2;
+                const cY = elemTop  + dH / 2;
+                dmCtx.save();
+                dmCtx.translate(cX, cY);
+                if (el.rotation) dmCtx.rotate((el.rotation * Math.PI) / 180);
+                dmCtx.globalAlpha = el.opacity || 1;
+                dmCtx.drawImage(el.image as HTMLImageElement, -dW / 2, -dH / 2, dW, dH);
+                dmCtx.restore();
+              });
+
+              // Step 2: Draw texture on isolated canvas at full size
+              const texCanvas = document.createElement('canvas');
+              texCanvas.width = renderRes;
+              texCanvas.height = renderRes;
+              const texCtx = texCanvas.getContext('2d', { alpha: true })!;
+              texCtx.imageSmoothingEnabled = true;
+              texCtx.imageSmoothingQuality = 'high';
+              const mAH = targetMockupArea.design.coordinateHeight * renderRes;
+              texCtx.drawImage(lightImg, mAX, mAY, mAW, mAH);
+
+              // Step 3: Use design mask — destination-in keeps texture
+              // only where design has non-transparent pixels
+              texCtx.globalCompositeOperation = 'destination-in';
+              texCtx.drawImage(designMaskCanvas, 0, 0);
+              texCtx.globalCompositeOperation = 'source-over';
+
+              // Step 4: Composite onto main canvas
+              ctx.save();
+              ctx.globalAlpha = lightOverlay.ovlayOpa || 0.7;
+              ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'multiply';
+              ctx.drawImage(texCanvas, 0, 0);
+              ctx.restore();
+            } else if (areaElements.length === 0) {
+              // No design elements in this area — skip overlay entirely
+              // This prevents thread texture showing when no design is uploaded
+            } else {
+              ctx.save();
+              ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
+              ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
+              ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+              ctx.restore();
+            }
+          } else {
+            ctx.save();
+            ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
+            ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
+            ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
+            ctx.restore();
+          }
+
           ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = 'source-over';
         } catch { /* skip failed overlay */ }
@@ -357,9 +480,7 @@ export const renderMockupDirectly = async (
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
-      // ─── Final step: Downsample supersampled canvas → targetResolution ───
-      // Single bicubic downsample 2× → 1× eliminates aliasing and produces
-      // a sharper result than rendering directly at targetResolution.
+      // ─── Final step: Downsample ───────────────────────────────────────────
       let finalDataUrl: string;
 
       if (SUPERSAMPLE > 1) {
@@ -401,16 +522,19 @@ export class EnhancedMockupGenerator {
 
   // ── Engine selector ──────────────────────────────────────────────────────
   private determineEngine(mockup: DynamicMockupPhoto): 'canvas_professional' | 'pixi_dynamic' {
-    // Priority 1: Respect explicit engine override from PayloadCMS
+    // AOP mockups always use canvas (transparent overlay, design fills behind)
+    if (isAOPMockup(mockup)) return 'canvas_professional';
+
+    // Respect explicit engine override from PayloadCMS
     if (mockup.render?.pfEngine === 'canvas') return 'canvas_professional';
     if (mockup.render?.pfEngine === 'pixi')   return 'pixi_dynamic';
 
-    // Priority 2: Product type check for apparel
+    // Product type check for apparel
     const productType = this.productData?.productType?.toLowerCase() || '';
     const isApparel = ['shirt','tee','apparel','hoodie','tank','clothing','tote','bag','accessories'].some(t => productType.includes(t));
     if (isApparel) return 'canvas_professional';
 
-    // Priority 3: Complex features check
+    // Complex features check
     const hasComplexFeatures = !!(
       mockup.dispMaps?.length ||
       mockup.alpMasks?.length ||
@@ -598,6 +722,7 @@ export class EnhancedMockupGenerator {
 
     const selectedEngine = this.determineEngine(mockup);
 
+    // AOP and canvas-engine mockups: use renderMockupDirectly (handles AOP path internally)
     if (isStoreImport && selectedEngine === 'canvas_professional') {
       try {
         return await renderMockupDirectly(mockup, designElements, canvasConfigs, printableAreas, productColor, targetResolution);
@@ -607,7 +732,11 @@ export class EnhancedMockupGenerator {
     }
 
     if (selectedEngine === 'canvas_professional') {
-      return await this.captureWithCanvasSimplified(mockup, designElements, canvasConfigs, printableAreas, productColor, productData, targetResolution, isStoreImport);
+      try {
+        return await renderMockupDirectly(mockup, designElements, canvasConfigs, printableAreas, productColor, targetResolution);
+      } catch {
+        return await this.captureWithCanvasSimplified(mockup, designElements, canvasConfigs, printableAreas, productColor, productData, targetResolution, isStoreImport);
+      }
     }
 
     return await this.captureWithPixiContainer(mockup, designElements, canvasConfigs, printableAreas, productColor, productData, targetResolution);

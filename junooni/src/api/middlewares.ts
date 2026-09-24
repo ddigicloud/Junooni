@@ -441,6 +441,19 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/store/orders/:id/cancel",
+      method: ["POST", "OPTIONS"],
+      middlewares: [
+        (req, res, next) => {
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          next()
+        },
+      ],
+    },
+    {
       matcher: "/admin/brand",
       method: "POST",
       middlewares: [validateAndTransformBody(PostAdminCreateBrand)],

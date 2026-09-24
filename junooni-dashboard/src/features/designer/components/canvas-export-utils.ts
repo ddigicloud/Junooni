@@ -294,12 +294,37 @@ export const captureCanvasImageForArea = async (
       layer.add(new Konva.Rect({ x: 0, y: 0, width: canvasConfig.width, height: canvasConfig.height, fill: 'transparent', listening: false }));
 
       if (isAOPProduct) {
-        layer.add(new Konva.Rect({ x: 0, y: 0, width: canvasConfig.width, height: canvasConfig.height, fill: activeColor, listening: false }));
-        const group = new Konva.Group({ clipFunc: ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); } });
+        // AOP layer order: white base → design elements → garment overlay (multiply)
+        layer.add(new Konva.Rect({
+          x: 0, y: 0,
+          width: canvasConfig.width, height: canvasConfig.height,
+          // Sublimation prints on white fabric regardless of selected colour
+          fill: '#ffffff',
+          listening: false,
+        }));
+        const group = new Konva.Group({
+          clipFunc: ctx => {
+            ctx.beginPath();
+            // AOP printable area is the full canvas (printAreaCoord 0,0,1,1)
+            ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+            ctx.closePath();
+          },
+        });
         layer.add(group);
         sortedElements.forEach(el => addElementToGroup(group, el));
-        if (canvasImage) layer.add(new Konva.Image({ image: canvasImage, x: 0, y: 0, width: canvasConfig.width, height: canvasConfig.height, listening: false }));
-      } else {
+        // Garment line-art overlay: multiply blend keeps dark fold/seam lines
+        // visible over the design while transparent areas show the design through.
+        if (canvasImage) {
+          layer.add(new Konva.Image({
+            image: canvasImage,
+            x: 0, y: 0,
+            width: canvasConfig.width,
+            height: canvasConfig.height,
+            globalCompositeOperation: 'multiply',
+            listening: false,
+          }));
+        }
+      }else {
         layer.add(new Konva.Rect({ x: 0, y: 0, width: canvasConfig.width, height: canvasConfig.height, fill: activeColor, listening: false }));
         if (canvasImage) {
           layer.add(new Konva.Image({ image: canvasImage, x: 0, y: 0, width: canvasConfig.width, height: canvasConfig.height, listening: false }));

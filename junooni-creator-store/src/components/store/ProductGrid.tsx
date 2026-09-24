@@ -21,21 +21,20 @@ interface Props {
   collections: CollectionMeta[]
   handle: string
   brandPrimary?: string
-  textColor?: string  // add this
+  textColor?: string
   showProductCount?: boolean
   isDark?: boolean
   filterOrder?: string[]
   activeCategoryHandle?: string
   activeCollectionHandle?: string
-  // ── Editor-controlled props ──
-  columns?: number        // 2 | 3 | 4  (default 3)
-  limit?: number          // max products to show (default 48)
-  showSoldOut?: boolean   // show sold-out products (default true)
-  showFilters?: boolean         // show entire filter sidebar (default true)
-  showSort?: boolean            // show sort dropdown (default true)
-  showPriceFilter?: boolean     // show price range filter (default true)
-  showCategoryFilter?: boolean  // show category checkboxes (default true)
-  showCollectionFilter?: boolean // show collection checkboxes (default true)
+  columns?: number
+  limit?: number
+  showSoldOut?: boolean
+  showFilters?: boolean
+  showSort?: boolean
+  showPriceFilter?: boolean
+  showCategoryFilter?: boolean
+  showCollectionFilter?: boolean
   cardAspectRatio?:  "square" | "portrait" | "landscape"
   cardAlignment?:    "left" | "center"
   cardShowPrice?:    boolean
@@ -47,9 +46,10 @@ interface Props {
 
 type SortOption = "newest" | "price_asc" | "price_desc" | "name_asc"
 
+// ── PriceRangeSlider — fully outside ProductGrid so it never remounts ────────
 function PriceRangeSlider({
   priceRange, globalMin, globalMax, brandPrimary, isDark,
-  textColor, labelColor, inputBg, onChange,
+  textColor, onChange,
 }: {
   priceRange: [number, number]
   globalMin: number
@@ -61,8 +61,55 @@ function PriceRangeSlider({
   inputBg: string
   onChange: (range: [number, number]) => void
 }) {
-  const minPct = globalMax === globalMin ? 0 : ((priceRange[0] - globalMin) / (globalMax - globalMin)) * 100
-  const maxPct = globalMax === globalMin ? 0 : ((priceRange[1] - globalMin) / (globalMax - globalMin)) * 100
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef<"min" | "max" | null>(null)
+  const priceRangeRef = useRef(priceRange)
+
+  useEffect(() => {
+    priceRangeRef.current = priceRange
+  }, [priceRange])
+
+  const pct = (val: number) =>
+    globalMax === globalMin
+      ? 0
+      : ((val - globalMin) / (globalMax - globalMin)) * 100
+
+  const valFromClientX = useCallback((clientX: number): number => {
+    const track = trackRef.current
+    if (!track) return globalMin
+    const { left, width } = track.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - left) / width))
+    // Step by 10 to keep re-renders minimal and drag smooth
+    return Math.round((globalMin + ratio * (globalMax - globalMin)) / 10) * 10
+  }, [globalMin, globalMax])
+
+  const onTrackPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    const raw = valFromClientX(e.clientX)
+    const [lo, hi] = priceRangeRef.current
+    dragging.current = Math.abs(raw - lo) <= Math.abs(raw - hi) ? "min" : "max"
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }, [valFromClientX])
+
+  const onTrackPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return
+    e.preventDefault()
+    const raw = valFromClientX(e.clientX)
+    const [lo, hi] = priceRangeRef.current
+    if (dragging.current === "min") {
+      onChange([Math.min(raw, hi - 10), hi])
+    } else {
+      onChange([lo, Math.max(raw, lo + 10)])
+    }
+  }, [valFromClientX, onChange])
+
+  const onTrackPointerUp = useCallback((e: React.PointerEvent) => {
+    dragging.current = null
+    ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+  }, [])
+
+  const minPct = pct(priceRange[0])
+  const maxPct = pct(priceRange[1])
 
   return (
     <div>
@@ -70,80 +117,81 @@ function PriceRangeSlider({
         <span className={`text-xs font-medium ${textColor}`}>{formatPrice(priceRange[0])}</span>
         <span className={`text-xs font-medium ${textColor}`}>{formatPrice(priceRange[1])}</span>
       </div>
-      <div className="relative flex items-center" style={{ height: "20px" }}>
-        <div className="absolute w-full rounded-full"
-          style={{ height: "6px", background: isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb" }} />
-        <div
-          className="absolute rounded-full"
-          style={{
-            height: "6px",
-            left: `${minPct}%`,
-            width: `${maxPct - minPct}%`,
-            background: brandPrimary,
-            pointerEvents: "none",
-          }}
-        />
-        <input
-          type="range" min={globalMin} max={globalMax} step={1} value={priceRange[0]}
-          onChange={e => {
-            const val = Math.min(Number(e.target.value), priceRange[1] - 1)
-            onChange([val, priceRange[1]])
-          }}
-          className="price-thumb"
-          style={{ position: "absolute", width: "100%", height: "6px", appearance: "none",
-            background: "transparent", pointerEvents: "none",
-            zIndex: priceRange[0] >= priceRange[1] - (globalMax - globalMin) * 0.05 ? 5 : 3 }}
-        />
-        <input
-          type="range" min={globalMin} max={globalMax} step={1} value={priceRange[1]}
-          onChange={e => {
-            const val = Math.max(Number(e.target.value), priceRange[0] + 1)
-            onChange([priceRange[0], val])
-          }}
-          className="price-thumb"
-          style={{ position: "absolute", width: "100%", height: "6px", appearance: "none",
-            background: "transparent", pointerEvents: "none", zIndex: 4 }}
-        />
+
+      <div
+        ref={trackRef}
+        onPointerDown={onTrackPointerDown}
+        onPointerMove={onTrackPointerMove}
+        onPointerUp={onTrackPointerUp}
+        onPointerCancel={onTrackPointerUp}
+        style={{
+          position: "relative",
+          height: 36,
+          cursor: "pointer",
+          touchAction: "none",
+          userSelect: "none",
+        }}
+      >
+        {/* Rail */}
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: "100%",
+          height: 6,
+          borderRadius: 999,
+          background: isDark ? "rgba(255,255,255,0.12)" : "#e5e7eb",
+          pointerEvents: "none",
+        }} />
+
+        {/* Filled range */}
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          transform: "translateY(-50%)",
+          left: `${minPct}%`,
+          width: `${maxPct - minPct}%`,
+          height: 6,
+          borderRadius: 999,
+          background: brandPrimary,
+          pointerEvents: "none",
+        }} />
+
+        {/* Min thumb — visual only */}
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: `${minPct}%`,
+          transform: "translate(-50%, -50%)",
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          background: brandPrimary,
+          border: "3px solid white",
+          boxShadow: "0 1px 6px rgba(0,0,0,0.3)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Max thumb — visual only */}
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: `${maxPct}%`,
+          transform: "translate(-50%, -50%)",
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          background: brandPrimary,
+          border: "3px solid white",
+          boxShadow: "0 1px 6px rgba(0,0,0,0.3)",
+          pointerEvents: "none",
+        }} />
       </div>
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <div>
-          <p className={`text-[10px] uppercase tracking-wider mb-1 ${labelColor}`}>Min</p>
-          <input
-            type="number"
-            value={Math.round(priceRange[0] / 100)}
-            onChange={e => {
-              const val = Number(e.target.value) * 100
-              if (val >= globalMin && val < priceRange[1]) onChange([val, priceRange[1]])
-            }}
-            className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${inputBg} focus:outline-none`}
-          />
-        </div>
-        <div>
-          <p className={`text-[10px] uppercase tracking-wider mb-1 ${labelColor}`}>Max</p>
-          <input
-            type="number"
-            value={Math.round(priceRange[1] / 100)}
-            onChange={e => {
-              const val = Number(e.target.value) * 100
-              if (val <= globalMax && val > priceRange[0]) onChange([priceRange[0], val])
-            }}
-            className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${inputBg} focus:outline-none`}
-          />
-        </div>
-      </div>
-      <style>{`
-        .price-thumb { pointer-events: none; }
-        .price-thumb::-webkit-slider-thumb { appearance: none; pointer-events: all; width: 18px; height: 18px;
-          border-radius: 50%; background: ${brandPrimary}; border: 2px solid white;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab; }
-        .price-thumb:active::-webkit-slider-thumb { cursor: grabbing; }
-        .price-thumb::-moz-range-thumb { pointer-events: all; width: 18px; height: 18px;
-          border-radius: 50%; background: ${brandPrimary}; border: 2px solid white; cursor: grab; }
-      `}</style>
     </div>
   )
 }
 
+// ── Main component ────────────────────────────────────────────────────────────
 export default function ProductGrid({
   products: allProducts,
   categories,
@@ -154,7 +202,6 @@ export default function ProductGrid({
   activeCategoryHandle,
   activeCollectionHandle,
   textColor: textColorProp,
-  // Editor-controlled — all have sensible defaults
   columns = 3,
   limit = 48,
   showSoldOut = true,
@@ -174,7 +221,6 @@ export default function ProductGrid({
   showProductCount = true,
 }: Props) {
 
-  // Apply limit and sold-out filter first (these come from the editor)
   const products = useMemo(() => {
     let result = showSoldOut
       ? allProducts
@@ -196,22 +242,20 @@ export default function ProductGrid({
   const [colExpanded, setColExpanded] = useState(true)
   const [priceExpanded, setPriceExpanded] = useState(true)
 
-  // ── Price range derived from products ──────────────────────────────────────
   const allPrices = useMemo(() =>
     products
       .map(p => p.variants?.[0]?.prices?.[0]?.amount ?? 0)
       .filter(v => v > 0),
     [products]
   )
-  const globalMin = allPrices.length ? Math.min(...allPrices) : 0
-  const globalMax = allPrices.length ? Math.max(...allPrices) : 100000
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000])
+  const globalMin = allPrices.length ? Math.floor(Math.min(...allPrices)) : 0
+  const globalMax = allPrices.length ? Math.ceil(Math.max(...allPrices)) : 10000
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
 
   useEffect(() => {
     setPriceRange([globalMin, globalMax])
   }, [globalMin, globalMax])
 
-  // ── Filter + sort ───────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let result = [...products]
 
@@ -247,30 +291,31 @@ export default function ProductGrid({
         result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
     return result
-  }, [products, selectedCategories, selectedCollections, sort, priceRange])
+  }, [products, selectedCategories, selectedCollections, sort, priceRange, collections])
 
-  const toggleCat = (h: string) =>
-    setSelectedCategories(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h])
-  const toggleCol = (h: string) =>
-    setSelectedCollections(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h])
+  const toggleCat = useCallback((h: string) =>
+    setSelectedCategories(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]),
+  [])
+  const toggleCol = useCallback((h: string) =>
+    setSelectedCollections(prev => prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]),
+  [])
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     setSelectedCategories([])
     setSelectedCollections([])
     setPriceRange([globalMin, globalMax])
-  }
+  }, [globalMin, globalMax])
 
   const activeFilters =
     selectedCategories.length +
     selectedCollections.length +
     (priceRange[0] !== globalMin || priceRange[1] !== globalMax ? 1 : 0)
 
-  // ── Grid column class based on editor setting ───────────────────────────────
   const gridColClass =
     columns === 2 ? "grid-cols-2" :
     columns === 4 ? "grid-cols-2 sm:grid-cols-4" :
     columns === 5 ? "grid-cols-2 sm:grid-cols-5" :
-    "grid-cols-2 sm:grid-cols-3"  // default 3
+    "grid-cols-2 sm:grid-cols-3"
 
   const inputBg    = isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-200 text-gray-900"
   const labelColor = isDark ? "text-white/50" : "text-gray-400"
@@ -279,8 +324,9 @@ export default function ProductGrid({
   const divider    = isDark ? "border-white/10" : "border-gray-100"
   const sidebarBg  = isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
 
-  // ── Sidebar content — respects showSort / showPriceFilter / etc. ────────────
-  const SidebarContent = () => (
+  // ── KEY FIX: useMemo instead of inline component so PriceRangeSlider
+  //    never unmounts on re-render (which killed pointer capture mid-drag) ──
+  const sidebarContent = useMemo(() => (
     <div className="space-y-5">
       {filterOrder.map((id, i) => {
         const isLast = i === filterOrder.length - 1
@@ -301,7 +347,7 @@ export default function ProductGrid({
 
         if (id === "price" && showPriceFilter && allPrices.length > 0) return (
           <div key="price">
-            <button onClick={() => setPriceExpanded(!priceExpanded)}
+            <button onClick={() => setPriceExpanded(v => !v)}
               className={`w-full flex items-center justify-between text-xs uppercase tracking-widest font-semibold mb-3 ${labelColor}`}>
               Price Range
               {priceExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -325,7 +371,7 @@ export default function ProductGrid({
 
         if (id === "category" && showCategoryFilter && categories.length > 0) return (
           <div key="category">
-            <button onClick={() => setCatExpanded(!catExpanded)}
+            <button onClick={() => setCatExpanded(v => !v)}
               className={`w-full flex items-center justify-between text-xs uppercase tracking-widest font-semibold mb-2.5 ${labelColor}`}>
               Categories
               {catExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -352,7 +398,7 @@ export default function ProductGrid({
 
         if (id === "collection" && showCollectionFilter && collections.length > 0) return (
           <div key="collection">
-            <button onClick={() => setColExpanded(!colExpanded)}
+            <button onClick={() => setColExpanded(v => !v)}
               className={`w-full flex items-center justify-between text-xs uppercase tracking-widest font-semibold mb-2.5 ${labelColor}`}>
               Collections
               {colExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -380,7 +426,6 @@ export default function ProductGrid({
         return null
       })}
 
-      {/* Clear all — always at bottom */}
       {activeFilters > 0 && (
         <>
           <div className={`border-t ${divider}`} />
@@ -392,14 +437,20 @@ export default function ProductGrid({
         </>
       )}
     </div>
-  )
+  ), [
+    filterOrder, showSort, showPriceFilter, showCategoryFilter, showCollectionFilter,
+    sort, priceRange, globalMin, globalMax, allPrices, brandPrimary, isDark,
+    textColor, labelColor, inputBg, subText, divider,
+    categories, collections, selectedCategories, selectedCollections,
+    catExpanded, colExpanded, priceExpanded, activeFilters,
+    toggleCat, toggleCol, clearAll,
+  ])
 
-  // If all filter options are disabled, hide sidebar entirely
   const sidebarVisible = showFilters && (showSort || showPriceFilter || showCategoryFilter || showCollectionFilter)
 
   return (
     <div>
-      {/* Mobile top bar — only if sidebar is enabled */}
+      {/* Mobile top bar */}
       {sidebarVisible && (
         <div className="flex items-center justify-between mb-5 md:hidden">
           <button
@@ -417,7 +468,7 @@ export default function ProductGrid({
       )}
 
       <div className="flex items-start gap-6">
-        {/* Desktop sidebar — only if enabled */}
+        {/* Desktop sidebar */}
         {sidebarVisible && (
           <aside className={`hidden md:block w-52 shrink-0 sticky top-24 rounded-2xl border p-5 ${sidebarBg} shadow-sm`}>
             <div className="flex items-center justify-between mb-5">
@@ -428,7 +479,7 @@ export default function ProductGrid({
                 </button>
               )}
             </div>
-            <SidebarContent />
+            {sidebarContent}
           </aside>
         )}
 
@@ -442,7 +493,6 @@ export default function ProductGrid({
             </div>
           )}
 
-          {/* No real products at all — show fake placeholder grid */}
           {allProducts.length === 0 ? (
             <div className={`grid ${gridColClass} gap-4`}>
               {FAKE_PRODUCTS_GRID.slice(0, columns * 2).map(p => (
@@ -507,7 +557,7 @@ export default function ProductGrid({
                   <X className={`w-5 h-5 ${isDark ? "text-white/60" : "text-gray-500"}`} />
                 </button>
               </div>
-              <SidebarContent />
+              {sidebarContent}
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="w-full mt-6 py-3.5 rounded-xl text-white font-semibold text-sm"
