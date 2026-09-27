@@ -23,7 +23,6 @@ import {
   _getCacheKey,
   _hashDesignElements,
 } from './utils';
-import { isAOPMockup } from './mockup-engine-utils';
 
 // ── Standalone canvas render (no React, no state) ────────────────────────────
 
@@ -68,124 +67,6 @@ export const renderMockupDirectly = async (
 
       const mockupBaseImg = await _loadImageCached(resolveImageUrl(mockup.photo.url));
 
-      // ─── AOP PATH ────────────────────────────────────────────────────────
-      // AOP products are identified by "AOP" in the product name
-      // photoColor #00000000 alone is not enough — embroidery mockups also use it
-      const isAOPProduct = /aop/i.test(mockup.title || '') || /aop/i.test(mockup.mockupType || '');
-      if (isAOPProduct && mockup.photoColor?.toLowerCase().replace('#', '').trim() === '00000000') {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, renderRes, renderRes);
-
-        for (const [areaName, elements] of Object.entries(designElements)) {
-          const canvasConfig = canvasConfigs[areaName];
-          if (!canvasConfig) continue;
-          const visibleEls = (elements as DesignElement[])
-            .filter(el => el.visible !== false && el.type === 'image')
-            .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-          for (const el of visibleEls) {
-            if (!el.image) continue;
-            const scaleX = renderRes / canvasConfig.width;
-            const scaleY = renderRes / canvasConfig.height;
-            const dW = el.width * (el.scaleX || 1) * scaleX;
-            const dH = el.height * (el.scaleY || 1) * scaleY;
-            const cX = (el.x + el.width * (el.scaleX || 1) / 2) * scaleX;
-            const cY = (el.y + el.height * (el.scaleY || 1) / 2) * scaleY;
-            ctx.save();
-            ctx.translate(cX, cY);
-            if (el.rotation) ctx.rotate((el.rotation * Math.PI) / 180);
-            ctx.globalAlpha = el.opacity || 1;
-            ctx.drawImage(el.image as HTMLImageElement, -dW / 2, -dH / 2, dW, dH);
-            ctx.restore();
-          }
-        }
-
-                ctx.globalCompositeOperation = 'multiply';
-        ctx.drawImage(mockupBaseImg, 0, 0, renderRes, renderRes);
-        ctx.globalCompositeOperation = 'source-over';
-
-        // ─── Lighting overlays for AOP/transparent mockups ────────────────
-        for (const lightOverlay of mockup.light || []) {
-          try {
-            const lightImg = await _loadImageCached(resolveImageUrl(lightOverlay.overImage.url));
-            const overlayArea = lightOverlay.overlayArea?.toLowerCase()?.trim();
-
-            ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
-            ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
-
-            if (overlayArea && overlayArea !== 'full' && overlayArea !== 'all') {
-              // Find design elements bounding box for this area
-              const areaElements = Object.entries(designElements)
-                .find(([key]) => key.toLowerCase() === overlayArea)?.[1] || [];
-              const canvasCfg = Object.entries(canvasConfigs)
-                .find(([key]) => key.toLowerCase() === overlayArea)?.[1];
-
-              if (canvasCfg && areaElements.length > 0) {
-                const scale = renderRes / canvasCfg.width;
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                (areaElements as DesignElement[]).forEach(el => {
-                  if (el.visible === false) return;
-                  const dW = el.width * (el.scaleX || 1);
-                  const dH = el.height * (el.scaleY || 1);
-                  minX = Math.min(minX, el.x);
-                  minY = Math.min(minY, el.y);
-                  maxX = Math.max(maxX, el.x + dW);
-                  maxY = Math.max(maxY, el.y + dH);
-                });
-
-              if (minX !== Infinity) {
-                // Draw texture only over non-transparent design pixels
-                const texCanvas = document.createElement('canvas');
-                texCanvas.width = renderRes;
-                texCanvas.height = renderRes;
-                const texCtx = texCanvas.getContext('2d', { alpha: true })!;
-                texCtx.imageSmoothingEnabled = true;
-                texCtx.imageSmoothingQuality = 'high';
-
-                // Draw texture clipped to bounding box
-                texCtx.save();
-                texCtx.beginPath();
-                texCtx.rect(minX * scale, minY * scale, (maxX - minX) * scale, (maxY - minY) * scale);
-                texCtx.clip();
-                texCtx.drawImage(lightImg, 0, 0, renderRes, renderRes);
-                texCtx.restore();
-
-                // Mask texture to only show over design pixels (non-transparent)
-                texCtx.globalCompositeOperation = 'destination-in';
-                texCtx.drawImage(offscreen, 0, 0);
-                texCtx.globalCompositeOperation = 'source-over';
-
-                // Composite masked texture onto main canvas
-                ctx.save();
-                ctx.drawImage(texCanvas, 0, 0);
-                ctx.restore();
-                } else {
-                  ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
-                }
-              } else {
-                ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
-              }
-            } else {
-              ctx.drawImage(lightImg, 0, 0, renderRes, renderRes);
-            }
-
-            ctx.globalAlpha = 1;
-            ctx.globalCompositeOperation = 'source-over';
-          } catch { /* skip failed overlay */ }
-        }
-
-        const out = document.createElement('canvas');
-        out.width = targetResolution;
-        out.height = targetResolution;
-        const oCtx = out.getContext('2d', { alpha: true })!;
-        oCtx.imageSmoothingEnabled = true;
-        oCtx.imageSmoothingQuality = 'high';
-        oCtx.drawImage(offscreen, 0, 0, targetResolution, targetResolution);
-        const dataUrl = out.toDataURL('image/png');
-        _renderCache.set(cacheKey, dataUrl);
-        resolve(dataUrl);
-        return;
-      }
-      // ─── END AOP PATH ────────────────────────────────────────────────────
 
       // ─── Normal path: draw base photo (with optional colour masking) ──────
       if (requiresColorMasking) {
@@ -523,7 +404,7 @@ export class EnhancedMockupGenerator {
   // ── Engine selector ──────────────────────────────────────────────────────
   private determineEngine(mockup: DynamicMockupPhoto): 'canvas_professional' | 'pixi_dynamic' {
     // AOP mockups always use canvas (transparent overlay, design fills behind)
-    if (isAOPMockup(mockup)) return 'canvas_professional';
+    //if (isAOPMockup(mockup)) return 'canvas_professional';
 
     // Respect explicit engine override from PayloadCMS
     if (mockup.render?.pfEngine === 'canvas') return 'canvas_professional';

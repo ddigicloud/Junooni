@@ -5,14 +5,18 @@ import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react"
 import ProductCard from "@/components/ui/ProductCard"
 import type { Product, CategoryMeta, CollectionMeta } from "@/lib/types"
 import { formatPrice } from "@/lib/api"
+import minimalcap from "../../../public/minimalcap.jpeg"
+import minimaltee from "../../../public/minimaltee.jpeg"
+import minimalhoodie from "../../../public/minimalhoodie.jpeg"
+import minimalmug from "../../../public/minimalmug.jpeg"
 
 const FAKE_PRODUCTS_GRID = [
-  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", emoji: "👕", color: "#f3f4f6" },
-  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", emoji: "👕", color: "#e5e7eb" },
-  { id: "fake_3", title: "Signature Cap", price: "₹499", emoji: "🧢", color: "#f9fafb" },
-  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", emoji: "☕", color: "#f3f4f6" },
-  { id: "fake_5", title: "Creator Hoodie", price: "₹999", emoji: "👕", color: "#e5e7eb" },
-  { id: "fake_6", title: "Exclusive Tote Bag", price: "₹349", emoji: "👜", color: "#f9fafb" },
+  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", emoji: "👕", color: "#f3f4f6", image: minimaltee },
+  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", emoji: "👕", color: "#e5e7eb", image: minimalhoodie },
+  { id: "fake_3", title: "Signature Cap", price: "₹499", emoji: "🧢", color: "#f9fafb", image: minimalcap },
+  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", emoji: "☕", color: "#f3f4f6", image: minimalmug },
+  { id: "fake_5", title: "Creator Hoodie", price: "₹999", emoji: "👕", color: "#e5e7eb", image: minimalhoodie },
+  { id: "fake_6", title: "Exclusive Tote Bag", price: "₹349", emoji: "👜", color: "#f9fafb", image: minimaltee },
 ]
 
 interface Props {
@@ -57,10 +61,8 @@ function PriceRangeSlider({
   brandPrimary: string
   isDark: boolean
   textColor: string
-  labelColor: string
-  inputBg: string
   onChange: (range: [number, number]) => void
-}) {
+}){
   const trackRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<"min" | "max" | null>(null)
   const priceRangeRef = useRef(priceRange)
@@ -79,8 +81,10 @@ function PriceRangeSlider({
     if (!track) return globalMin
     const { left, width } = track.getBoundingClientRect()
     const ratio = Math.max(0, Math.min(1, (clientX - left) / width))
-    // Step by 10 to keep re-renders minimal and drag smooth
-    return Math.round((globalMin + ratio * (globalMax - globalMin)) / 10) * 10
+    if (ratio <= 0.01) return globalMin
+    if (ratio >= 0.99) return globalMax
+    const raw = Math.round(globalMin + ratio * (globalMax - globalMin))
+    return Math.max(globalMin, Math.min(globalMax, raw))
   }, [globalMin, globalMax])
 
   const onTrackPointerDown = useCallback((e: React.PointerEvent) => {
@@ -89,7 +93,12 @@ function PriceRangeSlider({
     const [lo, hi] = priceRangeRef.current
     dragging.current = Math.abs(raw - lo) <= Math.abs(raw - hi) ? "min" : "max"
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  }, [valFromClientX])
+    if (dragging.current === "min") {
+      onChange([Math.min(raw, hi - 10), hi])
+    } else {
+      onChange([lo, Math.max(raw, lo + 10)])
+    }
+  }, [valFromClientX, onChange])
 
   const onTrackPointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging.current) return
@@ -360,8 +369,6 @@ export default function ProductGrid({
                 brandPrimary={brandPrimary}
                 isDark={isDark}
                 textColor={textColor}
-                labelColor={labelColor}
-                inputBg={inputBg}
                 onChange={setPriceRange}
               />
             )}

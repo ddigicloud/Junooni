@@ -383,11 +383,20 @@ export default async function OrderPage({ params }: Props) {
         </Link>
 
         {/* Cancel — only within 2 hours and order not already canceled/shipped/delivered */}
-        {status !== "canceled" && status !== "shipped" && status !== "delivered" &&
+        {(status === "pending" || status === "payment_confirmed") &&
           order.created_at &&
-          (Date.now() - new Date(order.created_at).getTime()) < 2 * 60 * 60 * 1000 && (
-          <CancelOrderButton orderId={orderId} />
-        )}
+          (() => {
+            const CANCEL_WINDOW_MS = 2 * 60 * 60 * 1000
+            const deadline = new Date(new Date(order.created_at).getTime() + CANCEL_WINDOW_MS)
+            return Date.now() < deadline.getTime() ? (
+              <CancelOrderButton
+                orderId={orderId}
+                orderEmail={order.email}
+                cancelDeadline={deadline.toISOString()}
+              />
+            ) : null
+          })()
+        }
 
       </div>
     </div>

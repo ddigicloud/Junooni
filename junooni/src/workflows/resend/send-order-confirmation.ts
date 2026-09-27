@@ -34,6 +34,7 @@ export const sendOrderConfirmationWorkflow = createWorkflow(
         "item_total",
         "item_tax_total",
         "sales_channel.id",
+        "sales_channel.name",
         "metadata",
       ],
       filters: {
@@ -45,6 +46,7 @@ export const sendOrderConfirmationWorkflow = createWorkflow(
 
     const brandingInput = transform({ order }, (data) => ({
       sales_channel_id: data.order.sales_channel?.id,
+      sales_channel_id_name: data.order.sales_channel?.name,
       vendor_id: (data.order.metadata as any)?.vendor_ids?.[0],
     }))
 

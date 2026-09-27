@@ -207,7 +207,7 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
         return p?.photoColor?.toLowerCase() === targetSize.toLowerCase();
       if (productData?.color_Images && targetColor) {
         const pc = p?.photoColor?.toLowerCase() || '';
-        return pc === targetColor.toLowerCase() || pc === `${targetColor.toLowerCase()}-aop`;
+        return pc === targetColor.toLowerCase();
       }
       return false;
     })
@@ -795,12 +795,6 @@ useEffect(() => {
     const canvasImage   = designHook.canvasImages[cacheKey] || designHook.canvasImages[activeArea];
     const surfaceConfig = getSurfaceConfiguration();
 
-    const isAOPProduct = (() => {
-      try {
-        const area = getCustomizationAreaByName(activeArea);
-        return area?.designCanvasPhotos?.some((p: any) => p?.photoColor?.toLowerCase().includes('-aop')) ?? false;
-      } catch { return false; }
-    })();
 
     const baseWidth   = canvasConfig.width;
     const baseHeight  = canvasConfig.height;
@@ -818,47 +812,21 @@ useEffect(() => {
           onTap={e => { if (e.target === e.target.getStage()) designHook.setSelectedId(null); }}
           className="bg-white border border-none rounded-lg shadow-sm touch-manipulation"
         >
-          {isAOPProduct ? (
-          <>
-            {/* AOP: sublimation always prints on white, so base is always white */}
-            <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill="#ffffff" listening={false} /></Layer>
-              <Layer ref={layerRef}>
-                <Group clipFunc={ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); }}>
-                  {renderDesignElements(activeArea)}
-                </Group>
-              </Layer>
-              {canvasImage && (
-                <Layer>
-                  <KonvaImage
-                    image={canvasImage}
-                    x={0} y={0}
-                    width={canvasConfig.width}
-                    height={canvasConfig.height}
-                    // multiply: dark garment fold/seam lines show through; white areas are transparent
-                    globalCompositeOperation="multiply"
-                    listening={false}
-                  />
-                </Layer>
-              )}
-              <Layer><Rect x={printableArea.x} y={printableArea.y} width={printableArea.width} height={printableArea.height} stroke={BRAND} strokeWidth={2} dash={[6, 4]} listening={false} /></Layer>
-            </>
-          ) : (
-            <>
-              <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill={activeColor} listening={false} /></Layer>
-              {canvasImage && (
-                <>
-                  <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} listening={false} /></Layer>
-                  <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} opacity={0.08} globalCompositeOperation="multiply" listening={false} /></Layer>
-                </>
-              )}
-              <Layer><Rect x={printableArea.x} y={printableArea.y} width={printableArea.width} height={printableArea.height} stroke={BRAND} strokeWidth={2} dash={[6, 4]} listening={false} /></Layer>
-              <Layer ref={layerRef}>
-                <Group clipFunc={ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); }}>
-                  {renderDesignElements(activeArea)}
-                </Group>
-              </Layer>
-            </>
-          )}
+          
+            <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill={activeColor} listening={false} /></Layer>
+            {canvasImage && (
+              <>
+                <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} listening={false} /></Layer>
+                <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} opacity={0.08} globalCompositeOperation="multiply" listening={false} /></Layer>
+              </>
+            )}
+            <Layer><Rect x={printableArea.x} y={printableArea.y} width={printableArea.width} height={printableArea.height} stroke={BRAND} strokeWidth={2} dash={[6, 4]} listening={false} /></Layer>
+            <Layer ref={layerRef}>
+              <Group clipFunc={ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); }}>
+                {renderDesignElements(activeArea)}
+              </Group>
+            </Layer>
+            
           <Layer listening={true}>
             <Transformer
               ref={transformerRef} anchorStroke={BRAND} anchorFill="#FFFFFF"

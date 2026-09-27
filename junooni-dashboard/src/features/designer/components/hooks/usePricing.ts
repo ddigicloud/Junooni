@@ -17,7 +17,6 @@ interface UsePricingOptions {
   availableAreas: string[];
   getCanvasConfig: (areaId: string, colorHex?: string) => { width: number; height: number; realWorldWidth: number; realWorldHeight: number };
   getPrintableAreaFromPhoto: (areaId: string, colorHex?: string, sizeId?: string) => { x: number; y: number; width: number; height: number };
-  getCustomizationAreaByName: (areaId: string) => any;
   getCurrentTechnology: () => any;
   calculateDPI: (element: DesignElement) => { dpi: number; quality: 'Poor' | 'Good' | 'Excellent'; color: string };
 }
@@ -31,7 +30,6 @@ export const usePricing = ({
   availableAreas,
   getCanvasConfig,
   getPrintableAreaFromPhoto,
-  getCustomizationAreaByName,
   getCurrentTechnology,
   calculateDPI,
 }: UsePricingOptions) => {
@@ -123,12 +121,6 @@ export const usePricing = ({
     const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
     if (!canvasConfig || !printableArea) return empty;
 
-    const isAOPProduct = (() => {
-      try {
-        const area = getCustomizationAreaByName(areaId);
-        return area?.designCanvasPhotos?.some((p: any) => p?.photoColor?.toLowerCase().includes('-aop')) ?? false;
-      } catch { return false; }
-    })();
 
     // AABB bounding box
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -160,9 +152,7 @@ export const usePricing = ({
     const consumedWidth = Math.min((maxX - minX) / avgPPI, canvasConfig.realWorldWidth);
     const consumedHeight = Math.min((maxY - minY) / avgPPI, canvasConfig.realWorldHeight);
 
-    const totalCurrentImageArea = isAOPProduct
-      ? canvasConfig.realWorldWidth * canvasConfig.realWorldHeight
-      : consumedWidth * consumedHeight;
+    const totalCurrentImageArea = consumedWidth * consumedHeight;
 
     const { minimumPrice, pricePerSquareInch, isFixedPrice } = getPricingInfoForArea(areaId);
     const totalCost = isFixedPrice ? minimumPrice : Math.max(minimumPrice, totalCurrentImageArea * pricePerSquareInch);
@@ -189,7 +179,7 @@ export const usePricing = ({
       consumedWidth: Number(consumedWidth.toFixed(2)), consumedHeight: Number(consumedHeight.toFixed(2)),
       elements: breakdown,
     };
-  }, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, activeColor, getCustomizationAreaByName, getPricingInfoForArea, calculateElementRealWorldDimensions]);
+  }, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, activeColor, getPricingInfoForArea, calculateElementRealWorldDimensions]);
 
   // ── Total pricing (all areas) ─────────────────────────────────────────────
   const calculateTotalPricing = useCallback((): TotalPricingBreakdown => {

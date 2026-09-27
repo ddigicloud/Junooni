@@ -15,10 +15,10 @@ import type {
 // AOP mockups: transparent photoColor (#00000000) and empty area[].
 // The mockup photo is a transparent-background line-art overlay PNG; the
 // creator's design fills the entire garment canvas behind it.
-export const isAOPMockup = (mockup: DynamicMockupPhoto): boolean => {
-  const color = (mockup.photoColor || '').toLowerCase().replace('#', '').trim();
-  return color === '00000000' || color === 'transparent';
-};
+// export const isAOPMockup = (mockup: DynamicMockupPhoto): boolean => {
+//   const color = (mockup.photoColor || '').toLowerCase().replace('#', '').trim();
+//   return color === '00000000' || color === 'transparent';
+// };
 
 // ── Dynamic neutral colour detector ──────────────────────────────────────────
 export const createDynamicNeutralDetector = (productData: PayloadProductData) => {
@@ -26,7 +26,7 @@ export const createDynamicNeutralDetector = (productData: PayloadProductData) =>
 
   const baseNeutrals = [
     '#ffffff', '#f5f5f5', '#fafafa', '#f0f0f0', '#e5e5e5',
-    '#00000000', '00000000', 'transparent',
+    // '#00000000', '00000000', 'transparent',
   ];
   baseNeutrals.forEach(c => {
     neutralVariations.add(c.toLowerCase());
@@ -100,11 +100,11 @@ export const extractAllMockupsFromPayload = (productData: PayloadProductData): D
     });
 
     allMockups.sort((a, b) => {
-      // AOP mockups (transparent overlay) first
-      const aIsAOP = isAOPMockup(a);
-      const bIsAOP = isAOPMockup(b);
-      if (aIsAOP && !bIsAOP) return -1;
-      if (!aIsAOP && bIsAOP) return 1;
+      // Overlay mockups (#00000000) go last — they composite on top
+      const aIsOverlay = (a.photoColor || '').toLowerCase().replace('#', '').trim() === '00000000';
+      const bIsOverlay = (b.photoColor || '').toLowerCase().replace('#', '').trim() === '00000000';
+      if (aIsOverlay && !bIsOverlay) return 1;
+      if (!aIsOverlay && bIsOverlay) return -1;
       // Then white/neutral, then by priority
       if (a.photoColor === '#ffffff' && b.photoColor !== '#ffffff') return -1;
       if (b.photoColor === '#ffffff' && a.photoColor !== '#ffffff') return 1;
@@ -144,46 +144,52 @@ export const getMockupsForColor = (
   // ── AOP mockups: shared across all colours ────────────────────────────────
   // AOP mockups have photoColor="#00000000" and area:[]. They are the only
   // mockup type for AOP products and apply regardless of selected colour.
-  const aopMockups = allMockups.filter(m => isAOPMockup(m));
-  const nonAopMockups = allMockups.filter(m => !isAOPMockup(m));
+    const overlayMockups = allMockups.filter(m => 
+    (m.photoColor || '').toLowerCase().replace('#', '').trim() === '00000000'
+  );
+  const nonOverlayMockups = allMockups.filter(m => 
+    (m.photoColor || '').toLowerCase().replace('#', '').trim() !== '00000000'
+  );
 
   // ── Colour-specific filtering for non-AOP mockups ─────────────────────────
   const targetColorInfo = colorMatcher.getColorInfo(colorHex);
   let colorFiltered: DynamicMockupPhoto[] = [];
 
-  if (nonAopMockups.length > 0) {
+ if (nonOverlayMockups.length > 0) {
     if (targetColorInfo) {
-      let colorSpecific = nonAopMockups.filter(m =>
+      let colorSpecific = nonOverlayMockups.filter(m =>
         colorMatcher.areColorsSimilar(m.photoColor || '', colorHex)
       );
       colorFiltered = colorSpecific.length > 0
         ? colorSpecific
-        : nonAopMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+        : nonOverlayMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
     } else {
       // Unknown colour — fall back to neutral mockups
-      colorFiltered = nonAopMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+      colorFiltered = nonOverlayMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
     }
   }
 
   // Merge: AOP mockups first, then colour-specific
-  const merged = [...aopMockups, ...colorFiltered];
+  const merged = [...overlayMockups, ...colorFiltered];
 
   // ── Size filtering ────────────────────────────────────────────────────────
   if (productData.size_Images && selectedSize) {
     const sizeFiltered = merged.filter(m => {
       // AOP mockups have no photoSize — always include them
-      if (isAOPMockup(m)) return true;
+      const isOverlay = (m.photoColor || '').toLowerCase().replace('#', '').trim() === '00000000';
+      if (isOverlay) return true;
+
       const mockupSize = (m as any).photoSize;
       return mockupSize?.toLowerCase().trim() === selectedSize.toLowerCase().trim();
     });
     // Always return at least the AOP mockups even if no size match
-    return sizeFiltered.length > 0 ? sizeFiltered : aopMockups;
-  }
+    return sizeFiltered.length > 0 ? sizeFiltered : overlayMockups;  }
 
   if (merged.length === 0 && !productData.size_Images) {
-    return allMockups.filter(m =>
-      isAOPMockup(m) || neutralDetector.isNeutral(m.photoColor?.toLowerCase() || '')
-    );
+    return allMockups.filter(m => {
+      const isOverlay = (m.photoColor || '').toLowerCase().replace('#', '').trim() === '00000000';
+      return isOverlay || neutralDetector.isNeutral(m.photoColor?.toLowerCase() || '');
+    });
   }
 
   return merged;

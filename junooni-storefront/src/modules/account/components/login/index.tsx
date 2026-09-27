@@ -43,7 +43,7 @@ const EnhancedInput = ({
   <div className="space-y-2">
     <label htmlFor={id} className="block text-sm font-medium text-gray-700 md:text-gray-200">
       {label}
-      {required && <span className="text-[#e65100] ml-1 md:text-gray-200">*</span>}
+      {required && <span className="ml-1 text-[#e65100] md:text-white/70">*</span>}
     </label>
     <div className="relative">
       {Icon && (
@@ -60,6 +60,8 @@ const EnhancedInput = ({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        pattern={type === "email" ? "[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}" : undefined}
+        title={type === "email" ? "Please enter a valid email address (e.g. name@example.com)" : undefined}
         className={`
           w-full h-12 px-4 ${Icon ? 'pl-11' : ''} ${rightElement ? 'pr-11' : ''} 
           bg-white border ${error ? 'border-red-300' : 'border-gray-300'} rounded-lg 

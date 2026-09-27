@@ -2,16 +2,17 @@ import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 
 type StepInput = {
   sales_channel_id?: string | null
+  sales_channel_id_name?: string | null
   vendor_id?: string | null
 }
 
 export const getOrderEmailBrandingStep = createStep(
   "get-order-email-branding",
-  async ({ sales_channel_id, vendor_id }: StepInput, { container }) => {
+  async ({ sales_channel_id, sales_channel_id_name, vendor_id }: StepInput, { container }) => {
     const defaultChannelId = process.env.DEFAULT_SALES_CHANNEL_ID
 
     // Default marketplace channel (or missing info) → use Junooni branding
-    if (!sales_channel_id || sales_channel_id === defaultChannelId || !vendor_id) {
+    if (!vendor_id || sales_channel_id_name === "Default Sales Channel") {
       return new StepResponse({
         storeLogo: null,
         storeName: null,

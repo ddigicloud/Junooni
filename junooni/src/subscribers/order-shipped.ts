@@ -35,6 +35,8 @@ export default async function orderShippedHandler({
       "order.shipping_total",
       "order.tax_total",
       "order.metadata",           // ← ADD: vendor_orders lives here
+      "order.sales_channel.id",
+      "order.sales_channel.name",
       "order.items.*",
       "order.items.variant.*",
       "order.items.variant.metadata",
@@ -62,8 +64,10 @@ export default async function orderShippedHandler({
   // vendor_orders[0].vendor_name   is the display name (e.g. "Junocreator2")
   // The Resend provider uses these to build: "Name <handle@junooni.com>"
   const vendorOrders = (order as any).metadata?.vendor_orders ?? []
-  const vendorHandle = vendorOrders[0]?.vendor_handle ?? null
-  const vendorName   = vendorOrders[0]?.vendor_name   ?? null
+  const isJunooniMarketplace = (order as any).sales_channel?.name === "Default Sales Channel"
+
+  const vendorHandle = isJunooniMarketplace ? null : (vendorOrders[0]?.vendor_handle ?? null)
+  const vendorName   = isJunooniMarketplace ? null : (vendorOrders[0]?.vendor_name   ?? null)
 
   const label = fulfillment.labels?.[0]
 

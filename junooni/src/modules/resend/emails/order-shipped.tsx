@@ -242,63 +242,25 @@ function OrderShippedEmailComponent({
 
               {/* Tracking card */}
               {resolvedTrackingUrl && (
-                <Section style={{ padding: "0 24px 16px 24px" }}>
-                    <Section
+                <Section style={{ padding: "0 24px 16px 24px", textAlign: "center" }}>
+                  <Link
+                    href={resolvedTrackingUrl}
                     style={{
-                        padding: "20px 24px",
-                        backgroundColor: "#fff8f5",
-                        border: `2px solid ${brandColor}30`,
-                        borderRadius: "12px",
+                      display: "inline-block",
+                      backgroundColor: brandColor,
+                      color: "#ffffff",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      textDecoration: "none",
+                      padding: "12px 32px",
+                      borderRadius: "8px",
+                      letterSpacing: "0.2px",
                     }}
-                    >
-                    <Row>
-                        <Column style={{ verticalAlign: "middle" }}>
-                        <Text
-                            style={{
-                            fontSize: "12px",
-                            color: "#888888",
-                            fontWeight: "600",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                            margin: "0 0 4px 0",
-                            }}
-                        >
-                            Tracking Number
-                        </Text>
-                        <Text
-                            style={{
-                            fontSize: "15px",
-                            fontWeight: "700",
-                            color: "#1a1a1a",
-                            margin: 0,
-                            fontFamily: "monospace",
-                            }}
-                        >
-                            {str(resolvedTrackingNumber) || "Available soon"}
-                        </Text>
-                        </Column>
-                        <Column style={{ textAlign: "right", verticalAlign: "middle" }}>
-                        <Link
-                            href={resolvedTrackingUrl}
-                            style={{
-                            display: "inline-block",
-                            backgroundColor: brandColor,
-                            color: "#ffffff",
-                            fontSize: "13px",
-                            fontWeight: "700",
-                            textDecoration: "none",
-                            padding: "10px 20px",
-                            borderRadius: "8px",
-                            letterSpacing: "0.2px",
-                            }}
-                        >
-                            Track Package →
-                        </Link>
-                        </Column>
-                    </Row>
-                    </Section>
+                  >
+                    Track Package →
+                  </Link>
                 </Section>
-                )}
+              )}
 
               {/* Dates */}
               <Section style={{ padding: "20px 32px", borderBottom: "1px solid #f0f0f0" }}>

@@ -96,15 +96,19 @@ export default function CheckoutPageClient({
   }, [handle])
 
   useEffect(() => {
+    const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
+    if (isPreview) return
+
+    const target =
+      step === "delivery" ? shippingRef.current :
+      step === "payment"  ? paymentRef.current  :
+      step === "review"   ? reviewRef.current   : null
+    if (!target) return
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     const timer = setTimeout(() => {
-      if (step === "delivery" && shippingRef.current) {
-        shippingRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
-      } else if (step === "payment" && paymentRef.current) {
-        paymentRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
-      } else if (step === "review" && reviewRef.current) {
-        reviewRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
-      }
-    }, 100) // small delay so the DOM has rendered the new section
+      target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
+    }, 100)
     return () => clearTimeout(timer)
   }, [step])
 
@@ -376,7 +380,7 @@ export default function CheckoutPageClient({
             />
 
             {(step === "delivery" || step === "payment" || step === "review") && addressComplete && (
-              <div ref={shippingRef}>         
+              <div ref={shippingRef} className="scroll-mt-24">         
                 <ShippingForm
                   cart={activeCart}
                   shippingMethods={shippingMethods ?? []}
@@ -390,7 +394,7 @@ export default function CheckoutPageClient({
             )}
 
             {(step === "payment" || step === "review") && shippingComplete && (
-              <div ref={paymentRef}>           
+              <div ref={paymentRef} className="scroll-mt-24">           
                 <PaymentForm
                   cart={activeCart}
                   paymentMethods={paymentMethods ?? []}
@@ -405,7 +409,7 @@ export default function CheckoutPageClient({
             )}
 
             {step === "review" && paymentComplete && (
-              <div ref={reviewRef}>           
+              <div ref={reviewRef} className="scroll-mt-24">           
                 <ReviewForm
                   cart={activeCart}
                   handle={handle}
