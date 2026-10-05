@@ -46,6 +46,7 @@ interface Props {
   cardShowSoldOut?:  boolean
   cardBorderRadius?: number
   cardBgColor?:      string
+  priceDisplay?:     "first" | "lowest" | "range"
 }
 
 type SortOption = "newest" | "price_asc" | "price_desc" | "name_asc"
@@ -227,6 +228,7 @@ export default function ProductGrid({
   cardShowSoldOut = true,
   cardBorderRadius,
   cardBgColor,
+  priceDisplay = "lowest",
   showProductCount = true,
 }: Props) {
 
@@ -251,10 +253,15 @@ export default function ProductGrid({
   const [colExpanded, setColExpanded] = useState(true)
   const [priceExpanded, setPriceExpanded] = useState(true)
 
+  const getLowestPrice = (p: Product): number => {
+    const prices = (p.variants ?? [])
+      .map((v: any) => v.calculated_price?.calculated_amount ?? v.prices?.[0]?.amount ?? 0)
+      .filter((n: number) => n > 0)
+    return prices.length ? Math.min(...prices) : 0
+  }
+
   const allPrices = useMemo(() =>
-    products
-      .map(p => p.variants?.[0]?.prices?.[0]?.amount ?? 0)
-      .filter(v => v > 0),
+    products.map(getLowestPrice).filter(v => v > 0),
     [products]
   )
   const globalMin = allPrices.length ? Math.floor(Math.min(...allPrices)) : 0
@@ -282,16 +289,16 @@ export default function ProductGrid({
       result = result.filter(p => selectedProductIds.has(p.id))
     }
     result = result.filter(p => {
-      const price = p.variants?.[0]?.prices?.[0]?.amount ?? 0
+      const price = getLowestPrice(p)
       return price >= priceRange[0] && price <= priceRange[1]
     })
 
     switch (sort) {
       case "price_asc":
-        result.sort((a, b) => (a.variants?.[0]?.prices?.[0]?.amount ?? 0) - (b.variants?.[0]?.prices?.[0]?.amount ?? 0))
+        result.sort((a, b) => getLowestPrice(a) - getLowestPrice(b))
         break
       case "price_desc":
-        result.sort((a, b) => (b.variants?.[0]?.prices?.[0]?.amount ?? 0) - (a.variants?.[0]?.prices?.[0]?.amount ?? 0))
+        result.sort((a, b) => getLowestPrice(b) - getLowestPrice(a))
         break
       case "name_asc":
         result.sort((a, b) => a.title.localeCompare(b.title))
@@ -545,6 +552,7 @@ export default function ProductGrid({
                   showSoldOutBadge={cardShowSoldOut}
                   cardBorderRadius={cardBorderRadius}
                   cardBgColor={cardBgColor}
+                  priceDisplay={priceDisplay}
                 />
               ))}
             </div>

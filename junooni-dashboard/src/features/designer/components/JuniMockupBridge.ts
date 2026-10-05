@@ -277,13 +277,26 @@ export function calculateJuniPricing(
   const suggestedSellingPrice = Math.ceil(finalPrice * 2.2 / 10) * 10
 
   const areaKey  = area.toLowerCase()
+  // Calculate actual consumed dimensions in inches
+  // Same logic as usePricing.ts — clamp element to printable area then convert to inches
+  const avgPPI      = ((printableArea.width / canvasConfig.realWorldWidth) +
+                       (printableArea.height / canvasConfig.realWorldHeight)) / 2
+  const clampedMinX = Math.max(el.x, printableArea.x)
+  const clampedMinY = Math.max(el.y, printableArea.y)
+  const clampedMaxX = Math.min(el.x + el.width  * (el.scaleX || 1), printableArea.x + printableArea.width)
+  const clampedMaxY = Math.min(el.y + el.height * (el.scaleY || 1), printableArea.y + printableArea.height)
+  const consumedPxW = Math.max(0, clampedMaxX - clampedMinX)
+  const consumedPxH = Math.max(0, clampedMaxY - clampedMinY)
+  const consumedInW = Number((consumedPxW / avgPPI).toFixed(2))
+  const consumedInH = Number((consumedPxH / avgPPI).toFixed(2))
+
   const areaInfo: AreaPricingInfo = {
     areaId: areaKey,
     areaName: custArea?.areaName ?? area,
     minimumPrice, pricePerSquareInch: pricePerSqIn,
     designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
-    currentImageArea: 0, calculatedPrice: basePrintingCost, finalPrice: basePrintingCost,
-    consumedWidth: 0, consumedHeight: 0, elements: [],
+    currentImageArea: consumedPxW * consumedPxH, calculatedPrice: basePrintingCost, finalPrice: basePrintingCost,
+    consumedWidth: consumedInW, consumedHeight: consumedInH, elements: [designElement],
   }
 
   const breakdown: TotalPricingBreakdown = {

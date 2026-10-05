@@ -18,6 +18,7 @@ interface Props {
   columns?: number
   cardBorderRadius?: number
   cardBgColor?: string
+  priceDisplay?: "first" | "lowest" | "range"
 }
 
 export default function ProductCarousel({
@@ -34,6 +35,7 @@ export default function ProductCarousel({
   columns = 3,
   cardBorderRadius,
   cardBgColor,
+  priceDisplay = "lowest",
 }: Props) {
   const isDark = variant === "dark"
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -141,6 +143,7 @@ export default function ProductCarousel({
               showSoldOutBadge={showSoldOutBadge}
               cardBorderRadius={cardBorderRadius}
               cardBgColor={cardBgColor}
+              priceDisplay={priceDisplay}
             />
           </div>
         ))}

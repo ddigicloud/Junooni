@@ -69,19 +69,19 @@ interface EnhancedCanvasProps {
       height:   number
       rotation?: number
     }
-    designsByArea?:         Record<string, { base64: string; filename: string }>
+    designsByArea?:         Record<string, { base64: string; filename: string; layout?: { x: number; y: number; width: number; height: number; rotation?: number } }>
     onSaveToJuni: (result: {
       designBase64:        string
       area:                string
       colorHex:            string
-      designLayout?:       {          // ← ADD: pass layout back on save
+      designLayout?:       {
         x:        number
         y:        number
         width:    number
         height:   number
         rotation?: number
       }
-      designsByArea?:      Record<string, { base64: string; filename: string }>
+      designsByArea?:      Record<string, { base64: string; filename: string; layout?: { x: number; y: number; width: number; height: number; rotation?: number } }>
       selectedColors?:     Array<{ name: string; value: string }>
       selectedSizes?:      string[]
       preGeneratedMockups?: Array<{
@@ -91,6 +91,8 @@ interface EnhancedCanvasProps {
         pricing?:  any
       }>
       canvasLayoutsByArea?: Record<string, string>
+      designInchWidth?:    number
+      designInchHeight?:   number
     }) => void
     onClose: () => void
   }
@@ -566,7 +568,7 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
     loadAllAreaImages();
   }, [activeColor, activeSize, activeTechnology, availableAreas]);
 
-  // ── JUNI Edit Mode: load initial design after canvas images are ready ─────
+// ── JUNI Edit Mode: load initial design after canvas images are ready ─────
 useEffect(() => {
   if (!juniEditMode?.initialDesignBase64) return
 
@@ -580,12 +582,42 @@ useEffect(() => {
     }
 
     const designsByArea = juniEditMode.designsByArea ?? {}
-    const hasMultiArea  = Object.keys(designsByArea).length > 1
+    const hasMultiArea  = Object.keys(designsByArea).length > 0
+
+    console.log('🔵 [JUNI Edit] START', {
+      targetArea,
+      hasMultiArea,
+      designsByAreaKeys: Object.keys(designsByArea),
+      designsByAreaLayouts: Object.fromEntries(
+        Object.entries(designsByArea).map(([area, d]) => [
+          area,
+          {
+            hasBase64:  !!( d as any)?.base64,
+            hasLayout:  !!(d as any)?.layout,
+            layout:     (d as any)?.layout,
+          }
+        ])
+      ),
+      initialLayout: juniEditMode.initialLayout,
+    })
 
     if (hasMultiArea) {
-      // Load each area's design onto its respective canvas area
+      const loadedLayouts: Record<string, {
+        x: number; y: number; width: number; height: number; rotation?: number
+      }> = {}
+
       for (const [area, areaDesign] of Object.entries(designsByArea)) {
-        if (!areaDesign?.base64) continue
+        console.log(`🟡 [JUNI Edit] About to load area: ${area}`, {
+          hasBase64: !!(areaDesign as any)?.base64,
+          base64Length: (areaDesign as any)?.base64?.length,
+          layout: (areaDesign as any)?.layout,
+        })
+
+        if (!areaDesign?.base64) {
+          console.warn(`🔴 [JUNI Edit] SKIPPING area ${area} — no base64`)
+          continue
+        }
+
         try {
           await designHook.addImageToCanvas(
             areaDesign.base64,
@@ -593,56 +625,149 @@ useEffect(() => {
             area,
             areaDesign.base64,
           )
-          console.log(`[JUNI Edit] Loaded design for area: ${area}`)
+          console.log(`🟢 [JUNI Edit] addImageToCanvas DONE for area: ${area}`)
+
+          // Check state immediately after addImageToCanvas
+          designHook.setDesignElements((prev: any) => {
+            console.log(`🔍 [JUNI Edit] State check right after load — area: ${area}`, {
+              elementsInArea: (prev[area] ?? []).length,
+              allAreaKeys: Object.keys(prev),
+              allAreaCounts: Object.fromEntries(
+                Object.entries(prev).map(([a, els]) => [a, (els as any[]).length])
+              ),
+            })
+            return prev // no change — just inspecting
+          })
+
+          const layoutForArea = (areaDesign as any).layout
+            ?? (area === targetArea ? juniEditMode.initialLayout : undefined)
+
+          console.log(`🟡 [JUNI Edit] Layout for area ${area}:`, layoutForArea)
+
+          if (layoutForArea) {
+            loadedLayouts[area] = layoutForArea
+          } else {
+            console.warn(`🔴 [JUNI Edit] NO layout for area ${area} — will load at default size`)
+          }
         } catch (err) {
-          console.error(`[JUNI Edit] Failed to load design for area ${area}:`, err)
+          console.error(`🔴 [JUNI Edit] addImageToCanvas FAILED for area ${area}:`, err)
         }
       }
-    } else {
-      // Single area — load the primary design
-      try {
-          await designHook.addImageToCanvas(
-            juniEditMode.initialDesignBase64,
-            'JUNI Design',
-            targetArea,
-            juniEditMode.initialDesignBase64,
+
+      console.log('🔵 [JUNI Edit] Loop done. loadedLayouts:', loadedLayouts)
+      console.log('🔵 [JUNI Edit] Areas with layouts:', Object.keys(loadedLayouts))
+
+      if (Object.keys(loadedLayouts).length === 0) {
+        console.warn('🔴 [JUNI Edit] No layouts to apply — exiting')
+        return
+      }
+
+      const areasNeedingLayout = Object.keys(loadedLayouts)
+      let pollAttempts = 0
+      const MAX_POLL = 40
+      const POLL_MS  = 200
+
+      const applyWhenReady = () => {
+        pollAttempts++
+        console.log(`🟡 [JUNI Edit] Poll attempt ${pollAttempts} — checking areas: ${areasNeedingLayout.join(', ')}`)
+
+        designHook.setDesignElements((prev: any) => {
+          const stateSummary = Object.fromEntries(
+            Object.entries(prev).map(([a, els]) => [a, (els as any[]).length])
+          )
+          console.log(`🔍 [JUNI Edit] Poll ${pollAttempts} state:`, stateSummary)
+
+          const allReady = areasNeedingLayout.every(
+            area => (prev[area] ?? []).length > 0
+          )
+          const missing = areasNeedingLayout.filter(
+            area => (prev[area] ?? []).length === 0
           )
 
-          // If we have a saved layout from last edit — apply it after image loads
-          // If we have a saved layout from last edit — restore position/size
-          if (juniEditMode.initialLayout) {
-            const layout = juniEditMode.initialLayout
-            // Wait for addImageToCanvas to finish adding the element to state
-            setTimeout(() => {
-              designHook.setDesignElements((prev: any) => {
-                const updated = { ...prev }
-                if (updated[targetArea]?.length > 0) {
-                  updated[targetArea] = updated[targetArea].map((el: any, idx: number) =>
-                    idx === 0
-                      ? {
-                          ...el,
-                          x:        layout.x,
-                          y:        layout.y,
-                          width:    layout.width,
-                          height:   layout.height,
-                          rotation: layout.rotation ?? 0,
-                        }
-                      : el
-                  )
+          console.log(`🔍 [JUNI Edit] Poll ${pollAttempts} — allReady: ${allReady}, missing: ${missing.join(', ')}`)
+
+          if (!allReady) {
+            if (pollAttempts < MAX_POLL) {
+              setTimeout(applyWhenReady, POLL_MS)
+            } else {
+              console.warn('🔴 [JUNI Edit] MAX POLL reached — applying to ready areas only')
+              const updated = { ...prev }
+              for (const [area, layout] of Object.entries(loadedLayouts)) {
+                const els = updated[area] ?? []
+                if (els.length === 0) {
+                  console.warn(`🔴 [JUNI Edit] Skipping ${area} — still no elements`)
+                  continue
                 }
-                return updated
-              })
-            }, 500) // 500ms gives addImageToCanvas time to complete
+                updated[area] = els.map((el: any, idx: number) =>
+                  idx === 0
+                    ? { ...el, x: layout.x, y: layout.y, width: layout.width, height: layout.height, rotation: layout.rotation ?? 0, scaleX: 1, scaleY: 1 }
+                    : el
+                )
+              }
+              return updated
+            }
+            return prev
           }
-        console.log(`[JUNI Edit] Loaded single design for area: ${targetArea}`)
+
+          console.log('✅ [JUNI Edit] ALL areas ready — applying all layouts atomically')
+          const updated = { ...prev }
+          for (const [area, layout] of Object.entries(loadedLayouts)) {
+            const els = updated[area] ?? []
+            if (els.length === 0) continue
+            const before = els[0]
+            console.log(`✅ [JUNI Edit] Applying ${area}:`, {
+              before: { x: before.x, y: before.y, w: before.width, h: before.height },
+              after:  { x: layout.x, y: layout.y, w: layout.width, h: layout.height },
+            })
+            updated[area] = els.map((el: any, idx: number) =>
+              idx === 0
+                ? { ...el, x: layout.x, y: layout.y, width: layout.width, height: layout.height, rotation: layout.rotation ?? 0, scaleX: 1, scaleY: 1 }
+                : el
+            )
+          }
+          return updated
+        })
+      }
+
+      setTimeout(applyWhenReady, 300)
+
+    } else {
+      // Single area fallback
+      const areaDesign   = designsByArea[targetArea]
+      const base64ToLoad = areaDesign?.base64 ?? juniEditMode.initialDesignBase64
+      console.log('🔵 [JUNI Edit] Single area path', { targetArea, hasAreaDesign: !!areaDesign })
+      try {
+        await designHook.addImageToCanvas(
+          base64ToLoad,
+          areaDesign?.filename ?? 'JUNI Design',
+          targetArea,
+          base64ToLoad,
+        )
+        const layoutForArea = (areaDesign as any)?.layout ?? juniEditMode.initialLayout
+        console.log('🟢 [JUNI Edit] Single area loaded, layout:', layoutForArea)
+        if (layoutForArea) {
+          setTimeout(() => {
+            designHook.setDesignElements((prev: any) => {
+              const els = prev[targetArea] ?? []
+              if (els.length === 0) return prev
+              const updated = { ...prev }
+              updated[targetArea] = els.map((el: any, idx: number) =>
+                idx === 0
+                  ? { ...el, x: layoutForArea.x, y: layoutForArea.y, width: layoutForArea.width, height: layoutForArea.height, rotation: layoutForArea.rotation ?? 0, scaleX: 1, scaleY: 1 }
+                  : el
+              )
+              return updated
+            })
+          }, 600)
+        }
       } catch (err) {
-        console.error('[JUNI Edit] Failed to load design:', err)
+        console.error('🔴 [JUNI Edit] Single area failed:', err)
       }
     }
   }, 800)
 
   return () => clearTimeout(timer)
-}, [juniEditMode?.initialDesignBase64])
+}, [juniEditMode?.initialDesignBase64, juniEditMode?.designsByArea])
 
   // Auto-select hero mockup based on active color/area
   useEffect(() => {
@@ -1657,74 +1782,127 @@ useEffect(() => {
                     })
 
                 // Also export the clean design base64 for each area (for re-editing later)
+                // ── Capture updatedDesignsByArea — render design at EDITED size + rotation ──
+                // ── Capture updatedDesignsByArea — design clipped strictly to printable area ──
                 const updatedDesignsByArea: Record<string, { base64: string; filename: string }> = {}
-                    for (const area of areasWithDesigns) {
-                      const elements = (designHook.designElements as any)[area] as any[]
-                      const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
-                      if (!firstImage) continue
+                for (const area of areasWithDesigns) {
+                  const elements = (designHook.designElements as any)[area] as any[]
+                  const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
+                  if (!firstImage) continue
 
-                      try {
-                        // Get printable area — same function renderCanvas uses for the dashed orange box
-                        const pa = getPrintableAreaFromPhoto(area, activeColor, activeSize)
-                        const paX = pa?.x      ?? 150
-                        const paY = pa?.y      ?? 150
-                        const paW = pa?.width  ?? 200
-                        const paH = pa?.height ?? 250
+                  try {
+                    const img = await new Promise<HTMLImageElement>((res, rej) => {
+                      const i   = new Image()
+                      i.onload  = () => res(i)
+                      i.onerror = () => rej(new Error('Failed to load design image'))
+                      i.src     = firstImage.imageBase64
+                    })
 
-                        // Element position and size on canvas (what creator set by dragging/resizing)
-                        const elX = firstImage.x
-                        const elY = firstImage.y
-                        const elW = firstImage.width  * (firstImage.scaleX ?? 1)
-                        const elH = firstImage.height * (firstImage.scaleY ?? 1)
+                    // Get printable area boundary (the orange dashed box in canvas coords)
+                    const printableArea = getPrintableAreaFromPhoto(area, activeColor, activeSize)
 
-                        // Reload from base64 — Konva's HTMLImageElement is not reliable outside its context
-                        const img = await new Promise<HTMLImageElement>((res, rej) => {
-                          const i   = new Image()
-                          i.onload  = () => res(i)
-                          i.onerror = () => rej(new Error('Failed to load'))
-                          i.src     = firstImage.imageBase64
-                        })
+                    // Element as rendered on canvas (after user resize)
+                    const elW      = Math.round(firstImage.width  * (firstImage.scaleX ?? 1))
+                    const elH      = Math.round(firstImage.height * (firstImage.scaleY ?? 1))
+                    const elX      = firstImage.x   // top-left x in canvas space
+                    const elY      = firstImage.y   // top-left y in canvas space
+                    const rotation = firstImage.rotation ?? 0
+                    const rad      = (rotation * Math.PI) / 180
 
-                        // Render at 2x — canvas is EXACTLY the printable area size
-                        // This captures what's visible inside the dashed orange box
-                        const scale     = 2
-                        const offscreen = document.createElement('canvas')
-                        offscreen.width  = Math.round(paW * scale)
-                        offscreen.height = Math.round(paH * scale)
-                        const ctx = offscreen.getContext('2d')!
-                        ctx.imageSmoothingEnabled = true
-                        ctx.imageSmoothingQuality = 'high'
-                        ctx.scale(scale, scale)
+                    // ── Output canvas = exactly the printable area size ──
+                    // This means anything drawn outside (0,0,pW,pH) is automatically invisible
+                    const pW = Math.round(printableArea.width)
+                    const pH = Math.round(printableArea.height)
+                    const pX = Math.round(printableArea.x)      // printable area origin in canvas space
+                    const pY = Math.round(printableArea.y)
 
-                        // Clip to printable area so overflow is cut off — same as Konva Group clipFunc
-                        ctx.beginPath()
-                        ctx.rect(0, 0, paW, paH)
-                        ctx.clip()
+                    const scale     = 2
+                    const offscreen = document.createElement('canvas')
+                    offscreen.width  = pW * scale
+                    offscreen.height = pH * scale
+                    const ctx        = offscreen.getContext('2d')!
+                    ctx.imageSmoothingEnabled = true
+                    ctx.imageSmoothingQuality = 'high'
+                    ctx.clearRect(0, 0, offscreen.width, offscreen.height)
 
-                        // Draw element offset relative to printable area origin
-                        // e.g. element at canvas x:200, printable area starts at x:150 → draws at x:50
-                        ctx.drawImage(img, elX - paX, elY - paY, elW, elH)
+                    ctx.save()
+                    ctx.scale(scale, scale)
 
-                        const renderedBase64 = offscreen.toDataURL('image/png', 1.0)
-                        console.log(`[JUNI Save] Captured printable area for ${area}: pa=${Math.round(paW)}×${Math.round(paH)}, el at (${Math.round(elX-paX)},${Math.round(elY-paY)}) size=${Math.round(elW)}×${Math.round(elH)}`)
+                    // ── Hard clip: nothing outside printable area is drawn ──
+                    ctx.beginPath()
+                    ctx.rect(0, 0, pW, pH)
+                    ctx.clip()
 
-                        updatedDesignsByArea[area] = {
-                          base64:   renderedBase64,
-                          filename: `edited-design-${area}.png`,
-                        }
-                      } catch (renderErr: any) {
-                        console.warn(`[JUNI Save] Render failed for ${area}:`, renderErr.message)
-                        updatedDesignsByArea[area] = {
-                          base64:   firstImage.imageBase64,
-                          filename: `edited-design-${area}.png`,
+                    // ── Position: element centre relative to printable area origin ──
+                    // elX/elY are in canvas coords; subtract printable origin to get local coords
+                    const elCentreX = (elX + elW / 2) - pX
+                    const elCentreY = (elY + elH / 2) - pY
+
+                    // Move to element centre in printable-area-local space, rotate, draw
+                    ctx.translate(elCentreX, elCentreY)
+                    ctx.rotate(rad)
+                    ctx.drawImage(img, -elW / 2, -elH / 2, elW, elH)
+
+                    ctx.restore()
+
+                    // ── Trim transparent edges so output is tight around visible pixels ──
+                    // Scan pixel data to find actual content bounding box
+                    const imageData = ctx.getImageData(0, 0, offscreen.width, offscreen.height)
+                    const pixels    = imageData.data
+                    let minX = offscreen.width, minY = offscreen.height, maxX = 0, maxY = 0
+                    for (let y = 0; y < offscreen.height; y++) {
+                      for (let x = 0; x < offscreen.width; x++) {
+                        const alpha = pixels[(y * offscreen.width + x) * 4 + 3]
+                        if (alpha > 0) {
+                          if (x < minX) minX = x
+                          if (x > maxX) maxX = x
+                          if (y < minY) minY = y
+                          if (y > maxY) maxY = y
                         }
                       }
                     }
+
+                    let renderedBase64: string
+                    if (maxX >= minX && maxY >= minY) {
+                      // Crop to tight content bounds
+                      const trimW   = maxX - minX + 1
+                      const trimH   = maxY - minY + 1
+                      const trimmed = document.createElement('canvas')
+                      trimmed.width  = trimW
+                      trimmed.height = trimH
+                      const tCtx    = trimmed.getContext('2d')!
+                      tCtx.drawImage(offscreen, minX, minY, trimW, trimH, 0, 0, trimW, trimH)
+                      renderedBase64 = trimmed.toDataURL('image/png', 1.0)
+                      console.log(
+                        `[JUNI Save] Design captured & trimmed:`,
+                        `printable=${pW}×${pH}, element=${elW}×${elH} at (${elX},${elY}),`,
+                        `rotation=${rotation}°, trimmed=${trimW}×${trimH}`
+                      )
+                    } else {
+                      // Fallback: nothing visible — use full printable canvas
+                      renderedBase64 = offscreen.toDataURL('image/png', 1.0)
+                      console.warn(`[JUNI Save] No visible pixels found for ${area}, using full printable area`)
+                    }
+
+                    updatedDesignsByArea[area] = {
+                      base64:   renderedBase64,
+                      filename: `edited-design-${area}.png`,
+                    }
+                  } catch (renderErr: any) {
+                    console.warn(`[JUNI Save] Render failed for ${area}:`, renderErr.message)
+                    updatedDesignsByArea[area] = {
+                      base64:   firstImage.imageBase64,
+                      filename: `edited-design-${area}.png`,
+                    }
+                  }
+                }
 
                     
                       // ── Capture canvas layout using captureCanvasImageForArea ─────────────────
                       // Same function manual canvas designer uses — produces exact split panel layout
                       const canvasLayoutsByArea: Record<string, string> = {}
+                      let capturedDesignInchWidth  = 0
+                      let capturedDesignInchHeight = 0
                       for (const area of areasWithDesigns) {
                         try {
                           const elements = (designHook.designElements as any)[area] as any[]
@@ -1736,7 +1914,7 @@ useEffect(() => {
                             [areaKey]:                     canvasImg ?? null,
                             [`${areaKey}_${activeColor}`]: canvasImg ?? null,
                           }
-                          const layoutBase64 = await captureCanvasImageForArea(
+                          const captureResult = await captureCanvasImageForArea(
                             areaKey,
                             { [areaKey]: elements },
                             activeColor,
@@ -1745,9 +1923,29 @@ useEffect(() => {
                             (areaId: string) => getPrintableAreaFromPhoto(areaId, activeColor, activeSize),
                             (areaId: string) => getCustomizationAreaByName(areaId)
                           )
+                          console.log('[JUNI Debug] captureResult type:', typeof captureResult)
+                          console.log('[JUNI Debug] captureResult:', captureResult === null ? 'NULL' : typeof captureResult === 'string' ? `STRING len=${captureResult.length}` : JSON.stringify({ hasBase64: !!(captureResult as any)?.base64, base64Len: (captureResult as any)?.base64?.length, widthInch: (captureResult as any)?.widthInch, heightInch: (captureResult as any)?.heightInch }))
+                          console.log('[JUNI Debug] areaKey:', areaKey, 'area:', area, 'areasWithDesigns[0]:', areasWithDesigns[0])
+                          console.log('[JUNI Debug] elements count:', elements?.length, 'visible:', elements?.filter((el: any) => el.visible !== false).length)
+                          console.log('[JUNI Debug] canvasImg:', !!canvasImg, 'cacheKey:', cacheKey)
+                          // Handle both old return type (string) and new ({ base64, widthInch, heightInch })
+                          const layoutBase64 = typeof captureResult === 'string'
+                            ? captureResult
+                            : captureResult?.base64 ?? null
+                          const layoutW = typeof captureResult === 'object' && captureResult !== null
+                            ? captureResult.widthInch  ?? 0
+                            : 0
+                          const layoutH = typeof captureResult === 'object' && captureResult !== null
+                            ? captureResult.heightInch ?? 0
+                            : 0
+
                           if (layoutBase64 && layoutBase64.length > 100) {
                             canvasLayoutsByArea[area] = layoutBase64
-                            console.log(`[JUNI Save] Canvas layout captured for ${area}: ${layoutBase64.length} chars`)
+                            if (area === areasWithDesigns[0] && layoutW > 0 && layoutH > 0) {
+                              capturedDesignInchWidth  = layoutW
+                              capturedDesignInchHeight = layoutH
+                            }
+                            console.log(`[JUNI Save] Canvas layout captured for ${area}: ${layoutW}" × ${layoutH}"`)
                           }
                         } catch (err: any) {
                           console.warn(`[JUNI Save] Canvas layout failed for ${area}:`, err.message)
@@ -1761,16 +1959,62 @@ useEffect(() => {
                   )
 
 
+                  // ── DEBUG: check what's being saved ──
+                  console.log('🔵 [JUNI Save] designsByArea being saved:', 
+                    Object.fromEntries(
+                      areasWithDesigns.map(area => {
+                        const elements   = (designHook.designElements as any)[area] as any[]
+                        const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
+                        return [area, {
+                          hasFirstImage: !!firstImage,
+                          firstImageX:   firstImage?.x,
+                          firstImageY:   firstImage?.y,
+                          firstImageW:   firstImage?.width,
+                          firstImageH:   firstImage?.height,
+                          layoutBeingSaved: firstImage ? {
+                            x: firstImage.x, y: firstImage.y,
+                            width: firstImage.width, height: firstImage.height,
+                            rotation: firstImage.rotation ?? 0,
+                          } : undefined,
+                        }]
+                      })
+                    )
+                  )
+                  
                 juniEditMode.onSaveToJuni({
-                  designBase64:   Object.values(updatedDesignsByArea)[0]?.base64 ?? '',
+                  designBase64:   Object.values(updatedDesignsByArea)[0]?.base64 ?? '',  // clipped — for artwork ✅ keep as is
                   area:           areasWithDesigns[0],
                   colorHex:       activeColor,
-                  designsByArea:  updatedDesignsByArea,
+
+                  // ── FIX: store ORIGINAL imageBase64 here, not the clipped artwork ──
+                  // This is what loads back when creator clicks Edit again
+                  designsByArea: Object.fromEntries(
+                    areasWithDesigns.map(area => {
+                      const elements   = (designHook.designElements as any)[area] as any[]
+                      const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
+                      return [
+                        area,
+                        {
+                          base64:    firstImage?.imageBase64 ?? '',
+                          filename: `original-design-${area}.png`,
+                          // ── Save per-area layout so re-edit restores each area's position ──
+                          layout: firstImage ? {
+                            x:        firstImage.x,
+                            y:        firstImage.y,
+                            width:    firstImage.width,
+                            height:   firstImage.height,
+                            rotation: firstImage.rotation ?? 0,
+                          } : undefined,
+                        }
+                      ]
+                    })
+                  ),
+
                   selectedColors,
                   selectedSizes,
-                  // Pass the pre-generated mockup results directly
                   preGeneratedMockups: mockupResults,
-                  // Pass last edited layout so reopening Edit restores same position
+
+                  // Layout is already correct — restores position/size/rotation on re-edit
                   designLayout: primaryEl ? {
                     x:        primaryEl.x,
                     y:        primaryEl.y,
@@ -1778,9 +2022,16 @@ useEffect(() => {
                     height:   primaryEl.height,
                     rotation: primaryEl.rotation ?? 0,
                   } : undefined,
+
                   canvasLayoutsByArea: Object.keys(canvasLayoutsByArea).length > 0
                     ? canvasLayoutsByArea
                     : undefined,
+                  designInchWidth:  capturedDesignInchWidth  || (primaryEl
+                    ? Number((primaryEl.width  / activeCfg.width  * activeCfg.realWorldWidth).toFixed(2))
+                    : 0),
+                  designInchHeight: capturedDesignInchHeight || (primaryEl
+                    ? Number((primaryEl.height / activeCfg.height * activeCfg.realWorldHeight).toFixed(2))
+                    : 0),
                 })
 
                 console.log('[JUNI Save] mockupResults sample:', mockupResults?.[0] ? {

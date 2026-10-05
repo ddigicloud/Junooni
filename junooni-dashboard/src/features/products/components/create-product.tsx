@@ -513,9 +513,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
         else if (hasOwnStore) form.setValue('status', 'published');
         else form.setValue('status', 'draft');
       } catch {
-        setVendorSalesChannels([]);
-        setSelectedSalesChannels([]);
-        form.setValue('status', 'draft');
+        setVendorSalesChannels([SALES_CHANNEL_OWN_STORE]);
+        setSelectedSalesChannels([SALES_CHANNEL_OWN_STORE]);
+        form.setValue('status', 'published');
       } finally {
         setIsLoadingChannels(false);
       }
@@ -595,6 +595,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   // ── Form submission ──────────────────────────────────────────────────
   const onSubmit = async (values: ProductFormValues) => {
     if (!values.title.trim()) { setError('Product title is required'); return; }
+    const validStatuses = ['draft', 'proposed', 'published', 'rejected'];
+    if (!validStatuses.includes(values.status)) values.status = 'draft';
     setIsSubmitting(true);
     setError(null);
 
@@ -1561,22 +1563,19 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
                     <Select onValueChange={field.onChange} value={field.value || 'draft'}>
                       <FormControl>
                         <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                          <SelectValue placeholder="Select status">
-                            {field.value === 'draft' && <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>Draft</div>}
-                            {field.value === 'proposed' && <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>Proposed</div>}
-                            {field.value === 'published' && <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>Published</div>}
-                            {!field.value && <span className="text-gray-400">Select status</span>}
-                          </SelectValue>
+                          <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="draft"><div className="flex items-center"><span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>Draft</div></SelectItem>
-                        {selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
-                          <SelectItem value="proposed"><div className="flex items-center"><span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>Proposed</div></SelectItem>
-                        )}
-                        {selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE) && !selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
-                          <SelectItem value="published"><div className="flex items-center"><span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>Published</div></SelectItem>
-                        )}
+                        <SelectItem value="draft">
+                          <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>Draft</div>
+                        </SelectItem>
+                        <SelectItem value="proposed">
+                          <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>Proposed</div>
+                        </SelectItem>
+                        <SelectItem value="published">
+                          <div className="flex items-center"><span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>Published</div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription className="text-sm text-gray-500">Draft products are not visible to customers</FormDescription>

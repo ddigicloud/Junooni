@@ -88,7 +88,7 @@ export default async function SinglePostPage({
 
   const related = await getRelatedPosts(audience, slug)
 
-  const accentColor = audience === "fans" ? "text-orange-500" : "text-purple-500"
+  const accentColor = audience === "fans" ? "text-orange-500" : "text-orange-500"
   const audienceLabel = audience === "fans" ? "For Fans" : "For Creators"
   const audiencePath = `/blog/${audience}`
 
@@ -128,7 +128,7 @@ export default async function SinglePostPage({
 
         {/* Excerpt */}
         {post.excerpt && (
-          <p className={`text-xl text-gray-500 leading-relaxed mb-8 border-l-4 pl-5 ${audience === "fans" ? "border-orange-400" : "border-purple-400"}`}>
+          <p className={`text-xl text-gray-500 leading-relaxed mb-8 border-l-4 pl-5 ${audience === "fans" ? "border-orange-400" : "border-orange-400"}`}>
             {post.excerpt}
           </p>
         )}
@@ -138,7 +138,7 @@ export default async function SinglePostPage({
           {post.author_avatar ? (
             <Image src={post.author_avatar} alt={post.author_name || "Author"} width={40} height={40} className="rounded-full" />
           ) : (
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${audience === "fans" ? "bg-gradient-to-br from-orange-400 to-orange-600" : "bg-gradient-to-br from-purple-400 to-purple-600"}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${audience === "fans" ? "bg-gradient-to-br from-orange-400 to-orange-600" : "bg-gradient-to-br from-orange-400 to-orange-600"}`}>
               {(post.author_name || "J")[0].toUpperCase()}
             </div>
           )}
@@ -230,7 +230,7 @@ export default async function SinglePostPage({
                     <div className="flex items-center justify-center w-full h-full text-3xl">✍️</div>
                   )}
                 </div>
-                <h3 className={`font-bold text-gray-900 transition-colors line-clamp-2 ${audience === "fans" ? "group-hover:text-orange-500" : "group-hover:text-purple-500"}`}>
+                <h3 className={`font-bold text-gray-900 transition-colors line-clamp-2 ${audience === "fans" ? "group-hover:text-orange-500" : "group-hover:text-orange-500"}`}>
                   {rp.title}
                 </h3>
                 {rp.published_at && (

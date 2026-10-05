@@ -375,7 +375,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         designsByArea?: Record<string, { sessionId: string; base64: string; filename: string }>
         allCanvasLayouts?: string[]
         canvasLayoutSessionIds?: string[]
-        designBase64?: string   // ← ADD: edited rendered design from Canvas.tsx Save button
+        designBase64?: string
+        designInchWidth?:  number
+        designInchHeight?: number
       }
     }
 

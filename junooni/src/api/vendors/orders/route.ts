@@ -468,7 +468,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, o
     case "JUNOONI-fulfillment":
       const totalProductCost = productCost * item.quantity;
       const itemTotalWithoutTax = itemTotal - itemTaxTotal;
-      vendorRevenue = Math.max(0, itemTotalWithoutTax - totalProductCost);
+      vendorRevenue = itemTotalWithoutTax - totalProductCost;
       revenueCalculationType = "cost_deduction_minus_tax";
       console.log(`💰 Junooni: (${itemTotal} - ${itemTaxTotal}) - (${productCost} × ${item.quantity}) = ${vendorRevenue}`);
       break;

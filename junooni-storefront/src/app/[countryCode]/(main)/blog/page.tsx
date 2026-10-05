@@ -108,12 +108,12 @@
 //         <section>
 //           <div className="flex items-end justify-between mb-8">
 //             <div>
-//               <span className="text-xs font-bold tracking-widest text-purple-500 uppercase">For Creators</span>
+//               <span className="text-xs font-bold tracking-widest text-orange-500 uppercase">For Creators</span>
 //               <h2 className="mt-1 text-3xl font-black text-gray-900">Launch, Grow & Earn</h2>
 //               <p className="mt-1 text-gray-400">Guides, strategies and success stories for creators.</p>
 //             </div>
 //             <Link href="/blog/creators"
-//               className="hidden text-sm font-semibold text-gray-900 underline underline-offset-4 hover:text-purple-500 sm:block">
+//               className="hidden text-sm font-semibold text-gray-900 underline underline-offset-4 hover:text-orange-500 sm:block">
 //               View all →
 //             </Link>
 //           </div>
@@ -124,7 +124,7 @@
 //             </div>
 //           ) : (
 //             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-//               {creatorsPosts.map((post) => <PostCard key={post.id} post={post} basePath="/blog/creators" accentColor="purple" />)}
+//               {creatorsPosts.map((post) => <PostCard key={post.id} post={post} basePath="/blog/creators" accentColor="orange" />)}
 //             </div>
 //           )}
 
@@ -142,11 +142,11 @@
 // function PostCard({ post, basePath, accentColor }: {
 //   post: Post
 //   basePath: string
-//   accentColor: "orange" | "purple"
+//   accentColor: "orange" | "orange"
 // }) {
 //   const accent = accentColor === "orange"
 //     ? "group-hover:text-orange-500"
-//     : "group-hover:text-purple-500"
+//     : "group-hover:text-orange-500"
 
 //   return (
 //     <Link href={`${basePath}/${post.slug}`} className="flex flex-col group">
@@ -252,13 +252,13 @@ export default async function BlogLandingPage() {
 
   const featuredRaw = [...allFansPosts, ...allCreatorsPosts].filter((post) => post.is_featured)
 
-  const featuredPosts: { post: Post; basePath: string; accentColor: "orange" | "purple" }[] =
+  const featuredPosts: { post: Post; basePath: string; accentColor: "orange" | "orange" }[] =
     featuredRaw.map((post) => {
       const isCreator = post.audience === "creators"
       return {
         post,
         basePath: isCreator ? "/blog/creators" : "/blog/fans",
-        accentColor: isCreator ? "purple" : "orange",
+        accentColor: isCreator ? "orange" : "orange",
       }
     })
 
@@ -339,12 +339,12 @@ export default async function BlogLandingPage() {
         <section>
           <div className="flex items-end justify-between mb-8">
             <div>
-              <span className="text-xs font-bold tracking-widest text-purple-500 uppercase">For Creators</span>
+              <span className="text-xs font-bold tracking-widest text-orange-500 uppercase">For Creators</span>
               <h2 className="mt-1 text-3xl font-black text-gray-900">Launch, Grow & Earn</h2>
               <p className="mt-1 text-gray-400">Guides, strategies and success stories for creators.</p>
             </div>
             <Link href="/blog/creators"
-              className="hidden text-sm font-semibold text-gray-900 underline underline-offset-4 hover:text-purple-500 sm:block">
+              className="hidden text-sm font-semibold text-gray-900 underline underline-offset-4 hover:text-orange-500 sm:block">
               View all →
             </Link>
           </div>
@@ -355,7 +355,7 @@ export default async function BlogLandingPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {creatorsPosts.map((post) => <PostCard key={post.id} post={post} basePath="/blog/creators" accentColor="purple" />)}
+              {creatorsPosts.map((post) => <PostCard key={post.id} post={post} basePath="/blog/creators" accentColor="orange" />)}
             </div>
           )}
 
@@ -373,14 +373,14 @@ export default async function BlogLandingPage() {
 function FeaturedPostCard({ post, basePath, accentColor }: {
   post: Post
   basePath: string
-  accentColor: "orange" | "purple"
+  accentColor: "orange" | "orange"
 }) {
   const badge = accentColor === "orange"
     ? "bg-orange-500"
-    : "bg-purple-500"
+    : "bg-orange-500"
   const accent = accentColor === "orange"
     ? "group-hover:text-orange-500"
-    : "group-hover:text-purple-500"
+    : "group-hover:text-orange-500"
 
   return (
     <Link href={`${basePath}/${post.slug}`} className="relative flex flex-col flex-1 basis-full overflow-hidden bg-gray-100 rounded-2xl group sm:basis-[calc(50%-0.75rem)] lg:basis-[calc(33.333%-1rem)]">
@@ -421,11 +421,11 @@ function FeaturedPostCard({ post, basePath, accentColor }: {
 function PostCard({ post, basePath, accentColor }: {
   post: Post
   basePath: string
-  accentColor: "orange" | "purple"
+  accentColor: "orange" | "orange"
 }) {
   const accent = accentColor === "orange"
     ? "group-hover:text-orange-500"
-    : "group-hover:text-purple-500"
+    : "group-hover:text-orange-500"
 
   return (
     <Link href={`${basePath}/${post.slug}`} className="flex flex-col group">

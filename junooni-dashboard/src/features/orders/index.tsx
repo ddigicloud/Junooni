@@ -1855,18 +1855,18 @@ useEffect(() => {
                               {formatDate(order.created_at)}
                             </TableCell>
                             <TableCell className="text-sm font-medium text-right">
-                              <span style={{
-                                color: order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
-                                  ? "#B91C1C"  // Red color
-                                  : BRAND.textPrimary
-                              }}>
-                                {formatPrice(
-                                  order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
-                                    ? 0
-                                    : order.vendor_total, 
-                                  order.currency_code
-                                )}
-                              </span>
+                              {(() => {
+                                const isRefundedOrCanceled = order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
+                                const displayAmount = isRefundedOrCanceled ? 0 : order.vendor_total
+                                const isNegative = displayAmount < 0
+                                return (
+                                  <span style={{
+                                    color: isRefundedOrCanceled ? "#B91C1C" : isNegative ? "#B91C1C" : BRAND.textPrimary
+                                  }}>
+                                    {formatPrice(displayAmount, order.currency_code)}
+                                  </span>
+                                )
+                              })()}
                             </TableCell>
                             <TableCell className="text-center">
                                <StatusBadge 
@@ -2150,7 +2150,7 @@ useEffect(() => {
                           <p className="text-xs font-medium" style={{
                             color: order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
                               ? "#B91C1C"
-                              : undefined
+                              : order.vendor_total < 0 ? "#B91C1C" : undefined
                           }}>
                             {formatPrice(
                               order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"

@@ -1405,12 +1405,12 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
                     {(section as any).overlay_opacity ?? 55}%
                   </span>
                 </div>
-                <button
+                {/* <button
                   onClick={() => onChange({ overlay_color: "none" } as any)}
                   className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg border border-red-900 text-red-400 hover:bg-red-900/20 transition-colors text-xs"
                 >
                   <X className="w-3 h-3" /> Remove overlay permanently
-                </button>
+                </button> */}
               </div>
             )}
           </Field>
@@ -1601,6 +1601,38 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
               </div>
             </Field>
           </div>
+        </div>
+
+        {/* ── Price display ── */}
+        <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Price display</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { val: "first",  label: "First",   hint: "First variant" },
+              { val: "lowest", label: "Lowest",  hint: "Cheapest variant" },
+              { val: "range",  label: "Range",   hint: "₹499 – ₹1,499" },
+            ] as const).map(opt => (
+              <button
+                key={opt.val}
+                onClick={() => onChange({ price_display: opt.val } as any)}
+                title={opt.hint}
+                className={`py-2 rounded-lg border text-[10px] font-medium transition-all ${
+                  ((section as any).price_display ?? "lowest") === opt.val
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className={`text-[10px] mt-1.5 ${textFaint} opacity-60`}>
+            {((section as any).price_display ?? "lowest") === "range"
+              ? "Shows the min–max price across all variants"
+              : ((section as any).price_display ?? "lowest") === "lowest"
+              ? "Shows the cheapest variant price"
+              : "Shows the first variant's price"}
+          </p>
         </div>
 
         {/* ── Visibility ── */}
@@ -3661,7 +3693,39 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
               </Field>
             </div>
           </div>
-        </>)}
+         </>)}
+
+          {/* ── Price display ── */}
+          <div className={`pt-3 mt-1 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Price display</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { val: "first",  label: "First",  hint: "First variant"    },
+                { val: "lowest", label: "Lowest", hint: "Cheapest variant" },
+                { val: "range",  label: "Range",  hint: "₹499 – ₹1,499"   },
+              ] as const).map(opt => (
+                <button
+                  key={opt.val}
+                  onClick={() => onChange({ price_display: opt.val } as any)}
+                  title={opt.hint}
+                  className={`py-2 rounded-lg border text-[10px] font-medium transition-all ${
+                    ((section as any).price_display ?? "lowest") === opt.val
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className={`text-[10px] mt-1.5 ${textFaint} opacity-60`}>
+              {((section as any).price_display ?? "lowest") === "range"
+                ? "Shows the min–max price across all variants"
+                : ((section as any).price_display ?? "lowest") === "lowest"
+                ? "Shows the cheapest variant price"
+                : "Shows the first variant's price"}
+            </p>
+          </div>
         
         {/* ── Filter settings for category/collection detail pages ── */}
         {(section.type === "category_products" || section.type === "collection_products") && (<>

@@ -151,8 +151,8 @@ const processAllPayoutDetailsStep = createStep(
           })
 
           if (fulfillmentType === "junooni_fulfillment" && costPriceRupees > itemTotalRupees) {
-            console.warn(`⚠️ Skipping ${item.id} — cost ₹${costPriceRupees} > total ₹${itemTotalRupees}`)
-            continue
+            console.warn(`⚠️ Cost ₹${costPriceRupees} > total ₹${itemTotalRupees} for ${item.id} — payout will be negative, proceeding anyway`)
+            // do NOT skip — still create the payout detail with negative amount
           }
 
           // ── Calculate earnings ────────────────────────────────────────
@@ -199,9 +199,12 @@ const processAllPayoutDetailsStep = createStep(
             cost_price:             Math.round(costPriceRupees                * 100),
             commission_rate:        Math.round(earnings.commissionRate        * 100), // 90 → 9000
             selling_price:          Math.round(itemTotalRupees                * 100),
-            status:                 "completed" as const,
+            status:                 "pending" as const,
             reason:                 `Order earnings - ${orderId} - ${item.product_id}`,
-            notes:                  null,
+            notes:                  JSON.stringify({
+                                      hold: true,
+                                      release_after: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+                                    }),
           }
 
           console.log('💾 Storing (paise):', {
@@ -239,19 +242,22 @@ const processAllPayoutDetailsStep = createStep(
       const vendorPayout = await payoutModuleService.getVendorPayout(vendorId)
       if (vendorPayout) {
         const newTotalEarned    = Number(vendorPayout.total_earned)    + totalPaise
-        const newCurrentBalance = Number(vendorPayout.current_balance) + totalPaise
+        //const newCurrentBalance = Number(vendorPayout.current_balance) + totalPaise
         const newTotalOrders    = Number(vendorPayout.total_orders)    + 1
+
+        const newPendingBalance = Number(vendorPayout.pending_balance) + totalPaise
 
         await payoutModuleService.updatePayouts({
           id:              vendorPayout.id,
-          current_balance: newCurrentBalance,
+          pending_balance: newPendingBalance,   // held — not spendable yet
+          // current_balance unchanged until release
           total_earned:    newTotalEarned,
           total_orders:    newTotalOrders,
           last_earning_at: new Date(),
           avg_order_value: Math.round(newTotalEarned / newTotalOrders),
         })
 
-        console.log(`💼 Vendor ${vendorId}: +₹${toRupees(totalPaise).toFixed(2)} | Balance: ₹${toRupees(newCurrentBalance).toFixed(2)}`)
+        console.log(`💼 Vendor ${vendorId}: +₹${toRupees(totalPaise).toFixed(2)} pending | Pending: ₹${toRupees(newPendingBalance).toFixed(2)}`)
       }
     }
 

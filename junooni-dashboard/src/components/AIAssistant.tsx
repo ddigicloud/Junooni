@@ -850,24 +850,20 @@ function JuniCanvasEditModal({
   open,
   blankData,
   session,
+  lastEditLayout,
   onClose,
   onSave,
 }: {
-  open:      boolean
-  blankData: PayloadProductData | null
-  session:   ProductSession
-  onClose:   () => void
+  open:            boolean
+  blankData:       PayloadProductData | null
+  session:         ProductSession
+  lastEditLayout?: { x: number; y: number; width: number; height: number; rotation?: number }
+  onClose:         () => void
   onSave: (result: {
     designBase64:        string
     area:                string
     colorHex:            string
-    designLayout?:       {
-      x:        number
-      y:        number
-      width:    number
-      height:   number
-      rotation?: number
-    }
+    designLayout?:       { x: number; y: number; width: number; height: number; rotation?: number }
     designsByArea?:      Record<string, { base64: string; filename: string }>
     selectedColors?:     Array<{ name: string; value: string }>
     selectedSizes?:      string[]
@@ -919,12 +915,12 @@ function JuniCanvasEditModal({
             initialColorHex:       session.selectedColors?.[0]?.hex,
             initialSelectedColors: session.selectedColors.map(c => ({ name: c.name, value: c.hex })),
             initialSelectedSizes:  session.selectedSizes,
-            initialLayout:         (session as any)._lastEditLayout ?? undefined,
+            initialLayout:         lastEditLayout,
             designsByArea:         session.designsByArea
               ? Object.fromEntries(
                   Object.entries(session.designsByArea).map(([area, d]) => [
                     area,
-                    { base64: d.base64, filename: d.filename },
+                    { base64: d.base64, filename: d.filename, layout: (d as any).layout },
                   ])
                 )
               : undefined,
@@ -1050,7 +1046,14 @@ export default function AIAssistant({ vendorId }: Props) {
           const firstTech = rd.blankData?.printT?.[0]
           if (firstTech?.id) {
             productSessionRef.current.technologyId = firstTech.id
-            console.log(`[AIAssistant] technologyId extracted from blankData: ${firstTech.id}`)
+          }
+        }
+        // Extract area from conversation now — so area picker is suppressed later
+        if (!productSessionRef.current.area) {
+          const areaFromConv = extractAreaFromMessages(messages)
+          if (areaFromConv) {
+            productSessionRef.current.area = areaFromConv
+            console.log('[AIAssistant] Area extracted from conversation:', areaFromConv)
           }
         }
       }
@@ -1429,7 +1432,7 @@ export default function AIAssistant({ vendorId }: Props) {
                   </div>
                 )}
                 <div style={{ maxWidth:"84%", display:"flex", flexDirection:"column", gap:"6px" }}>
-                  <div style={{
+                  {/* <div style={{
                     padding:"10px 14px",
                     borderRadius: msg.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
                     background: msg.role==="user"?"linear-gradient(135deg,#FF7A35,#E8621A)":"#fff",
@@ -1439,7 +1442,7 @@ export default function AIAssistant({ vendorId }: Props) {
                     border: msg.role==="assistant"?"1px solid #f0f0f0":"none",
                   }}>
                     {renderMarkdown(msg.content, msg.role==="user")}
-                  </div>
+                  </div> */}
 
                   {/* Color + Size picker */}
                   {msg.showColorSizePicker && (
@@ -1461,9 +1464,19 @@ export default function AIAssistant({ vendorId }: Props) {
                           )
                         } else {
                           // Area not known — ask area BEFORE upload
+                          // Get areas dynamically from blankData custAreas
+                          const session     = productSessionRef.current
+                          const tech        = session.blankData?.printT?.[0]
+                          const dynamicAreas = (tech?.custAreas ?? [])
+                            .map((a: any) => a.areaName)
+                            .filter(Boolean)
+                          const areasToShow = dynamicAreas.length > 0
+                            ? dynamicAreas
+                            : ["Front"]  // fallback if blankData not loaded yet
+
                           addAssistantMessage(
                             `Great choices! Now, where do you want the design printed?`,
-                            { showAreaPicker: { areas: ["Front", "Back", "Left_sleeves", "Right_sleeves"] } } as any
+                            { showAreaPicker: { areas: areasToShow } } as any
                           )
                         }
                         // Inform Gemini about colors/sizes silently for context
@@ -1498,7 +1511,7 @@ export default function AIAssistant({ vendorId }: Props) {
                   )}
 
                   {/* Area picker */}
-                  {msg.showAreaPicker && (
+                  {msg.showAreaPicker && !productSessionRef.current.area && (
                     <AreaPicker areas={msg.showAreaPicker.areas}
                       onSelect={(areas) => {
                         productSessionRef.current.selectedAreas       = areas.map(a => a.toLowerCase())
@@ -1741,6 +1754,18 @@ export default function AIAssistant({ vendorId }: Props) {
                     </div>
                   )}
 
+                  <div style={{
+                    padding:"10px 14px",
+                    borderRadius: msg.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
+                    background: msg.role==="user"?"linear-gradient(135deg,#FF7A35,#E8621A)":"#fff",
+                    color: msg.role==="user"?"#fff":"#1a1a1a",
+                    fontSize:"13.5px", lineHeight:"1.6",
+                    boxShadow: msg.role==="user"?"0 2px 12px rgba(232,98,26,0.3)":"0 1px 4px rgba(0,0,0,0.08)",
+                    border: msg.role==="assistant"?"1px solid #f0f0f0":"none",
+                  }}>
+                    {renderMarkdown(msg.content, msg.role==="user")}
+                  </div>
+
                   {/* Suggestion chips */}
                   {msg.role==="assistant" && i===messages.length-1
                     && msg.suggestions && msg.suggestions.length>0
@@ -1795,6 +1820,7 @@ export default function AIAssistant({ vendorId }: Props) {
         open={editorOpen}
         blankData={productSessionRef.current.blankData as PayloadProductData ?? null}
         session={productSessionRef.current}
+        lastEditLayout={(productSessionRef.current as any)._lastEditLayout ?? undefined}
         onClose={() => setEditorOpen(false)}
         onSave={async (result) => {
           console.log('[JUNI onSave] result.designBase64 length:', result.designBase64?.length)
@@ -1809,11 +1835,19 @@ export default function AIAssistant({ vendorId }: Props) {
             console.log('[JuniLayout] Saved _lastEditLayout:', result.designLayout)
           }
 
+          // Save ground-truth design dimensions from captureCanvasImageForArea
+          // (same values shown in the blue badge on the canvas layout image)
+          if (result.designInchWidth && result.designInchWidth > 0) {
+            ;(productSessionRef.current as any).designInchWidth  = result.designInchWidth
+            ;(productSessionRef.current as any).designInchHeight = result.designInchHeight
+            console.log(`[JuniLayout] Saved design dimensions: ${result.designInchWidth}" × ${result.designInchHeight}"`)
+          }
+
         if (result.designsByArea && Object.keys(result.designsByArea).length > 0) {
           productSessionRef.current.designsByArea = Object.fromEntries(
             Object.entries(result.designsByArea).map(([area, d]) => [
               area,
-              { sessionId: '', base64: d.base64, filename: d.filename }
+              { sessionId: '', base64: d.base64, filename: d.filename, layout: (d as any).layout }
             ])
           )
         }

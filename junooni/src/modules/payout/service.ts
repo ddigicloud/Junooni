@@ -256,6 +256,8 @@ class PayoutModuleService extends MedusaService({
   }): Promise<PayoutDetails> {
     const vendorPayout = await this.getOrCreateVendorPayout(params.vendorId)
 
+    const releaseAfter = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+
     return await this.createPayoutDetails({
       order_id: params.orderId,
       order_item_id: params.orderItemId,
@@ -267,10 +269,14 @@ class PayoutModuleService extends MedusaService({
       type: "earning",
       fulfillment_type: params.fulfillmentType,
       cost_price: toPaise(params.costPrice),
-      commission_rate: Math.round(params.earnings.commissionRate * 100), // 90% → 9000
+      commission_rate: Math.round(params.earnings.commissionRate * 100),
       selling_price: toPaise(params.sellingPrice),
-      status: "completed",
+      status: "pending",                // was "completed"
       reason: `Order earnings - ${params.orderId} - ${params.productId}`,
+      notes: JSON.stringify({ 
+        hold: true, 
+        release_after: releaseAfter.toISOString() 
+      }),                               // store release_after in notes (no schema change needed)
       payout_id: vendorPayout.id,
     })
   }
@@ -289,13 +295,98 @@ class PayoutModuleService extends MedusaService({
 
     return await this.updatePayouts({
       id: vendorPayout.id,
-      current_balance: vendorPayout.current_balance + amountPaise,
+      pending_balance: vendorPayout.pending_balance + amountPaise,  // held, not spendable yet
+      // current_balance unchanged — only moves here after release
       total_earned: vendorPayout.total_earned + amountPaise,
       total_orders: vendorPayout.total_orders + 1,
       last_earning_at: new Date(),
       avg_order_value: Math.round((vendorPayout.total_earned + amountPaise) / (vendorPayout.total_orders + 1)),
     })
   }
+
+  /**
+ * Release earnings whose 14-day hold has expired.
+ * Moves amount from pending_balance → current_balance.
+ * Call this from a weekly cron or manually from admin.
+ *
+ * @param vendorId  Optional — pass to release only one vendor, omit for all.
+ * @returns         Total paise released across all vendors.
+ */
+async releasePendingEarnings(vendorId?: string): Promise<{
+  releasedCount: number
+  totalReleasedPaise: number
+  errors: Array<{ detailId: string; error: string }>
+}> {
+  const now = new Date()
+
+  // Fetch all pending earnings
+  const filters: any = { type: "earning", status: "pending" }
+  const pendingDetails = await this.listPayoutDetails(filters)
+
+  // Filter by release_after stored in notes, and optionally by vendor
+  const toRelease = pendingDetails.filter(detail => {
+    try {
+      const meta = detail.notes ? JSON.parse(detail.notes) : null
+      if (!meta?.release_after) return false
+      return new Date(meta.release_after) <= now
+    } catch {
+      return false
+    }
+  })
+
+  if (toRelease.length === 0) {
+    return { releasedCount: 0, totalReleasedPaise: 0, errors: [] }
+  }
+
+  let totalReleasedPaise = 0
+  let releasedCount = 0
+  const errors: Array<{ detailId: string; error: string }> = []
+
+  for (const detail of toRelease) {
+    try {
+      const payoutId = typeof detail.payout === "string"
+        ? detail.payout
+        : (detail.payout as any)?.id
+
+      if (!payoutId) {
+        errors.push({ detailId: detail.id, error: "No payout reference found" })
+        continue
+      }
+
+      const vendorPayout = await this.retrievePayout(payoutId)
+      if (!vendorPayout) {
+        errors.push({ detailId: detail.id, error: "Payout account not found" })
+        continue
+      }
+
+      // If vendorId filter passed, skip non-matching vendors
+      if (vendorId && vendorPayout.vendor_id !== vendorId) continue
+
+      // 1. Mark earning as completed
+      await this.updatePayoutDetails({
+        id: detail.id,
+        status: "completed",
+      })
+
+      // 2. Move from pending_balance → current_balance
+      await this.updatePayouts({
+        id: payoutId,
+        pending_balance: Math.max(0, vendorPayout.pending_balance - detail.amount),
+        current_balance: vendorPayout.current_balance + detail.amount,
+      })
+
+      totalReleasedPaise += detail.amount
+      releasedCount++
+    } catch (err) {
+      errors.push({
+        detailId: detail.id,
+        error: err instanceof Error ? err.message : "Unknown error",
+      })
+    }
+  }
+
+  return { releasedCount, totalReleasedPaise, errors }
+}
 
   async getOrCreateVendorPayout(vendorId: string): Promise<Payout> {
     const existingPayout = await this.getVendorPayout(vendorId)
@@ -466,10 +557,7 @@ class PayoutModuleService extends MedusaService({
         console.log(`🧮 [STEP 3] Unit Cost = ₹${costPriceRupees} × Qty ${quantity} = ₹${totalCostPrice}`)
 
         if (totalCostPrice > netAfterGateway) {
-          throw new MedusaError(
-            MedusaError.Types.INVALID_DATA,
-            `Total cost (₹${totalCostPrice}) exceeds net after fees (₹${netAfterGateway.toFixed(2)})`
-          )
+          console.warn(`⚠️ Cost (₹${totalCostPrice}) exceeds net after fees (₹${netAfterGateway.toFixed(2)}) — vendor payout will be negative`)
         }
 
         // STEP 3 → Deduct cost → vendor profit = net payout

@@ -6,24 +6,24 @@ const headers = {
   "x-publishable-api-key": PUBLISHABLE_KEY,
 }
 
-export async function cancelOrder(orderId: string) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/store/orders/${orderId}/cancel`, {
-      method: "POST", headers,
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      return { success: false, error: data.message ?? "Failed to cancel order" }
-    }
-    return { success: true }
-  } catch {
-    return { success: false, error: "Network error. Please try again." }
-  }
-}
+// export async function cancelOrder(orderId: string) {
+//   try {
+//     const res = await fetch(`${BACKEND_URL}/store/orders/${orderId}/cancel`, {
+//       method: "POST", headers,
+//     })
+//     if (!res.ok) {
+//       const data = await res.json()
+//       return { success: false, error: data.message ?? "Failed to cancel order" }
+//     }
+//     return { success: true }
+//   } catch {
+//     return { success: false, error: "Network error. Please try again." }
+//   }
+// }
 
 export async function requestCancelOtp(orderId: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/store/orders/${orderId}/request-cancel-otp`, {
+    const res = await fetch(`${BACKEND_URL}/store/orders/${orderId}/cancel/request-otp`, {
       method: "POST", headers,
     })
     const data = await res.json()
@@ -36,7 +36,7 @@ export async function requestCancelOtp(orderId: string) {
 
 export async function cancelOrderWithOtp(orderId: string, otp: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/store/orders/${orderId}/cancel-with-otp`, {
+    const res = await fetch(`${BACKEND_URL}/store/orders/${orderId}/cancel/verify-otp`, {
       method: "POST",
       headers,
       body: JSON.stringify({ otp }),

@@ -98,6 +98,11 @@ export const retriveVendorsProducts = async (
       const all = response?.products ?? []
       const published = all.filter((p: any) => p.status === "published")
       console.log(`[retriveVendorsProducts] DONE in ${Date.now() - start}ms | all=${all.length} published=${published.length}`)
+      console.log(`[retriveVendorsProducts] product ids+channels:`, all.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        sales_channels: p.sales_channels,
+      })))
       return { products: published }
     })
     .catch((err) => {

@@ -18,7 +18,7 @@
 //   // ── Cache check ────────────────────────────────────────────────────────
 //   let cache: any = null
 //   try { cache = req.scope.resolve("cache") } catch {}
-//   const cacheKey = `vendor-products-published-${vendorId}`
+//   const cacheKey = `vendor-products-published-sc-${vendorId}`
 
 //   if (cache) {
 //     try {
@@ -55,7 +55,8 @@
 //       vendor: { id: vendorId },
 //     },
 //   })
-//   console.log(`[vendors/${vendorId}/products] query.index DONE in ${Date.now() - indexStart}ms | products=${rawProducts?.length}`)
+//   const DEFAULT_SC_ID = "sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H"
+
 
 //   // ── Slim metadata — only keep what listing page needs ─────────────────
 //   const products = (rawProducts ?? []).map((p: any) => ({
@@ -106,7 +107,7 @@ export const GET = async (
   // ── Cache check ────────────────────────────────────────────────────────
   let cache: any = null
   try { cache = req.scope.resolve("cache") } catch {}
-  const cacheKey = `vendor-products-published-${vendorId}`
+  const cacheKey = `vendor-products-published-sc-${vendorId}`
 
   if (cache) {
     try {
@@ -137,19 +138,25 @@ export const GET = async (
       "vendor.name",
       "vendor.handle",
       "vendor.verified",
+      "sales_channels.id",
     ],
     filters: {
       status: "published",
       vendor: { id: vendorId },
+      sales_channels: { id: "sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H" },
     },
   })
-  console.log(`[vendors/${vendorId}/products] query.index DONE in ${Date.now() - indexStart}ms | products=${rawProducts?.length}`)
+  const DEFAULT_SC_ID = "sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H"
+const filteredProducts = (rawProducts ?? []).filter((p: any) =>
+  p.sales_channels?.some((sc: any) => sc.id === DEFAULT_SC_ID)
+)
+console.log(`[vendors/${vendorId}/products] query DONE in ${Date.now() - indexStart}ms | products=${rawProducts?.length} after_sc_filter=${filteredProducts.length}`)
 
   // ── Fetch prices for all products in ONE batch query ───────────────────
   const pricesMap: Record<string, any[]> = {}
 
-  if ((rawProducts ?? []).length > 0) {
-    const productIds = rawProducts.map((p: any) => p.id)
+  if (filteredProducts.length > 0) {
+  const productIds = filteredProducts.map((p: any) => p.id)
     const priceStart = Date.now()
 
     try {
@@ -171,7 +178,7 @@ export const GET = async (
   }
 
   // ── Merge prices + slim metadata ───────────────────────────────────────
-  const products = (rawProducts ?? []).map((p: any) => {
+  const products = filteredProducts.map((p: any) => {
     const variantsWithPrices = pricesMap[p.id] ?? []
 
     const mergedVariants = (p.variants ?? []).map((v: any) => {

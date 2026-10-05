@@ -481,8 +481,8 @@ return (
                             : <div className="flex items-center justify-center w-full h-full"><ShoppingBag className="w-5 h-5 opacity-20" /></div>}
                         </div>
                         <p className={`text-xs font-medium truncate ${isDark ? "text-white/80" : "text-gray-800"}`}>{p.title}</p>
-                        {p.variants?.[0]?.prices?.[0]?.amount !== undefined && (
-                          <p className="text-xs font-bold" style={{ color: brandPrimary }}>{formatPrice(p.variants[0].prices[0].amount)}</p>
+                        {getLowestVariantPrice(p) !== undefined && (
+                          <p className="text-xs font-bold" style={{ color: brandPrimary }}>{formatPrice(getLowestVariantPrice(p)!)}</p>
                         )}
                       </Link>
                     ))}
@@ -896,11 +896,18 @@ function DropdownLink({ href, label, sub, brandPrimary, isDark, active, onHover,
   )
 }
 
+function getLowestVariantPrice(product: Product): number | undefined {
+  const prices = (product.variants ?? [])
+    .map((v: any) => v.calculated_price?.calculated_amount ?? v.prices?.[0]?.amount)
+    .filter((p: any): p is number => typeof p === "number")
+  return prices.length ? Math.min(...prices) : undefined
+}
+
 // ── Product preview card ──────────────────────────────────────────────────────
 function ProductPreviewCard({ product, handle, bare, brandPrimary, isDark, onClick }: {
   product: Product; handle: string; bare: boolean; brandPrimary: string; isDark: boolean; onClick: () => void
 }) {
-  const price = product.variants?.[0]?.prices?.[0]?.amount
+  const price = getLowestVariantPrice(product)
   const href = bare ? `/products/${product.handle}` : `/${handle}/products/${product.handle}`
   return (
     <Link href={href} onClick={onClick} className="shrink-0 w-28 group">

@@ -51,6 +51,23 @@ export async function POST(
   res.json({ Payout: result.payout })
 }
 
+export async function PUT(
+  req: MedusaRequest,
+  res: MedusaResponse
+) {
+  const payoutModuleService: PayoutModuleService = req.scope.resolve(PAYOUT_MODULE)
+  const { id } = req.params
+
+  const result = await payoutModuleService.releasePendingEarnings(id)
+
+  res.json({
+    success: true,
+    releasedCount: result.releasedCount,
+    totalReleasedPaise: result.totalReleasedPaise,
+    errors: result.errors,
+  })
+}
+
 export async function PATCH(
   req: MedusaRequest,
   res: MedusaResponse

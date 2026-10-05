@@ -49,7 +49,7 @@ export default async function CreatorsBlogPage() {
         <div className="max-w-6xl mx-auto">
           <Link href="/blog" className="text-sm text-gray-400 hover:text-gray-700">← Back to Blog</Link>
           <div className="mt-4">
-            <span className="text-xs font-bold tracking-widest text-purple-500 uppercase">For Creators</span>
+            <span className="text-xs font-bold tracking-widest text-orange-500 uppercase">For Creators</span>
             <h1 className="mt-2 text-4xl font-black text-gray-900 md:text-6xl">Launch, Grow & Earn</h1>
             <p className="max-w-xl mt-3 text-lg text-gray-400">Guides, strategies and success stories to help you build your merch brand on JUNOONI.</p>
           </div>
@@ -68,17 +68,17 @@ export default async function CreatorsBlogPage() {
             {/* Featured post */}
             {featured && (
               <Link href={`/blog/creators/${featured.slug}`} className="block mb-12 group">
-                <div className="grid items-center gap-8 overflow-hidden transition-colors rounded-2xl md:grid-cols-2 bg-purple-50 hover:bg-purple-100">
-                  <div className="relative bg-purple-100 md:aspect-square aspect-video">
+                <div className="grid items-center gap-8 overflow-hidden transition-colors rounded-2xl md:grid-cols-2 bg-orange-50 hover:bg-orange-100">
+                  <div className="relative bg-orange-100 md:aspect-square aspect-video">
                     {featured.cover_image ? (
                       <Image src={featured.cover_image} alt={featured.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" priority />
                     ) : (
                       <div className="flex items-center justify-center w-full h-full text-6xl">✍️</div>
                     )}
-                    <span className="absolute px-3 py-1 text-xs font-bold text-white bg-purple-500 rounded-full top-4 left-4">⭐ Featured</span>
+                    <span className="absolute px-3 py-1 text-xs font-bold text-white bg-orange-500 rounded-full top-4 left-4">⭐ Featured</span>
                   </div>
                   <div className="px-8 py-8 md:py-0">
-                    <h2 className="text-2xl font-black leading-tight text-gray-900 transition-colors md:text-3xl group-hover:text-purple-500">{featured.title}</h2>
+                    <h2 className="text-2xl font-black leading-tight text-gray-900 transition-colors md:text-3xl group-hover:text-orange-500">{featured.title}</h2>
                     {featured.excerpt && <p className="mt-3 text-gray-600 line-clamp-3">{featured.excerpt}</p>}
                     <div className="flex items-center mt-4 text-xs text-gray-400 gap-x-2">
                       <span className="font-medium text-gray-600">{featured.author_name || "JUNOONI Team"}</span>
@@ -99,10 +99,10 @@ export default async function CreatorsBlogPage() {
                       {post.cover_image ? (
                         <Image src={post.cover_image} alt={post.title} fill className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="33vw" />
                       ) : (
-                        <div className="flex items-center justify-center w-full h-full text-4xl bg-purple-50">✍️</div>
+                        <div className="flex items-center justify-center w-full h-full text-4xl bg-orange-50">✍️</div>
                       )}
                     </div>
-                    <h3 className="mb-2 text-base font-bold leading-snug text-gray-900 transition-colors line-clamp-2 group-hover:text-purple-500">{post.title}</h3>
+                    <h3 className="mb-2 text-base font-bold leading-snug text-gray-900 transition-colors line-clamp-2 group-hover:text-orange-500">{post.title}</h3>
                     {post.excerpt && <p className="mb-3 text-sm text-gray-500 line-clamp-2">{post.excerpt}</p>}
                     <div className="flex items-center mt-auto text-xs text-gray-400 gap-x-2">
                       <span className="font-medium text-gray-600">{post.author_name || "JUNOONI Team"}</span>

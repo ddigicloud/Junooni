@@ -1,4 +1,3 @@
-
 import { model } from "@medusajs/framework/utils"
 import Payout from "./payouts"
 

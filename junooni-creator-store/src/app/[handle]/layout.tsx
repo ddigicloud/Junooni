@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import PasswordGateWrapper from "@/components/PasswordGateWrapper"
 import { getStoreShell } from "@/lib/api"
 import StoreShellWrapper from "@/components/store/StoreShellWrapper"
+import TrackingScripts from "@/components/store/TrackingScripts"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
 const JWT_SECRET  = process.env.JWT_SECRET ?? "junooni-store-access-secret"
@@ -93,6 +94,7 @@ export async function generateMetadata({ params }: { params: { handle: string } 
   }
 }
 
+
 // ─── Shell ────────────────────────────────────────────────────────────────────
 // function StoreShellWrapper({
 //   handle,
@@ -116,45 +118,76 @@ export async function generateMetadata({ params }: { params: { handle: string } 
 export default async function HandleLayout({ children, params }: Props) {
   const handle = resolveHandle(params.handle)
 
-  console.log(`[layout] handle="${handle}" params.handle="${params.handle}"`)
+  //console.log(`[layout] handle="${handle}" params.handle="${params.handle}"`)
 
   if (STATIC_HANDLES.has(handle) || handle.includes(".")) {
+    //console.log(`[layout] static handle — skipping`)
     return <>{children}</>
   }
 
   if (isVendorPreview()) {
+    //console.log(`[layout] isVendorPreview=true — skipping TrackingScripts`)
     return <StoreShellWrapper handle={handle}>{children}</StoreShellWrapper>
   }
 
   const token = getStoreCookieToken(handle)
+  //console.log(`[layout] token=${token ? "present" : "absent"}`)
 
   if (isValidToken(handle, token)) {
-    return <StoreShellWrapper handle={handle}>{children}</StoreShellWrapper>
+    //console.log(`[layout] isValidToken=true — fetching store for TrackingScripts`)
+    let trackedStore: any = null
+    try {
+      const r = await fetch(`${BACKEND_URL}/storefront/${handle}?shell=true`, {
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(8000),
+      })
+      //console.log(`[layout] isValidToken fetch status=${r.status}`)
+      if (r.ok) {
+        const d = await r.json()
+        trackedStore = d?.store ?? null
+        //console.log(`[layout] isValidToken trackedStore gtm_id=${trackedStore?.gtm_id}`)
+      }
+    } catch (e) {
+      //console.log(`[layout] isValidToken fetch error:`, e)
+    }
+    return (
+      <StoreShellWrapper handle={handle} brandPrimary={trackedStore?.primary_color ?? "#e65100"}>
+        <TrackingScripts store={trackedStore} />
+        {children}
+      </StoreShellWrapper>
+    )
   }
 
   try {
-    // Lightweight shell check — vendor/store only, no products query.index
+    //console.log(`[layout] no token — fetching storefront shell`)
     const res = await fetch(`${BACKEND_URL}/storefront/${handle}?shell=true`, {
       cache: "no-store",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(8000),
     })
+    //console.log(`[layout] storefront fetch status=${res.status}`)
 
     if (!res.ok) {
+      //console.log(`[layout] storefront fetch not ok — rendering without TrackingScripts`)
       return <StoreShellWrapper handle={handle}>{children}</StoreShellWrapper>
     }
 
     const data = await res.json()
     const store = data?.store
+    //console.log(`[layout] store.password_enabled=${store?.password_enabled} gtm_id=${store?.gtm_id}`)
 
     if (!store?.password_enabled) {
+      //console.log(`[layout] rendering with TrackingScripts`)
       return (
         <StoreShellWrapper handle={handle} brandPrimary={store?.primary_color ?? "#e65100"}>
+          <TrackingScripts store={store} />
           {children}
         </StoreShellWrapper>
       )
     }
 
+    //console.log(`[layout] password_enabled=true — rendering PasswordGateWrapper`)
     return (
       <PasswordGateWrapper
         handle={handle}
@@ -165,7 +198,8 @@ export default async function HandleLayout({ children, params }: Props) {
         backendUrl={BACKEND_URL}
       />
     )
-  } catch {
+  } catch (e) {
+    //console.log(`[layout] try/catch error:`, e)
     return <StoreShellWrapper handle={handle}>{children}</StoreShellWrapper>
   }
 }

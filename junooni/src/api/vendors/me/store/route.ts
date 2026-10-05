@@ -127,6 +127,12 @@ export const VendorStoreSchema = z.object({
   }).nullable().optional(),
   custom_css: z.string().nullable().optional(),
 
+   // Tracking
+  gtm_id: z.string().nullable().optional(),
+  ga4_id: z.string().nullable().optional(),
+  gads_id: z.string().nullable().optional(),
+  meta_pixel_id: z.string().nullable().optional(),
+
   // Checkout page settings
   checkout_settings: z.object({
     logo_position: z.enum(["left", "center"]).optional(),
@@ -149,6 +155,7 @@ const SETTINGS_KEYS = [
   "announcement_text", "sticky_header", "sticky_announcement",
   "instagram_url", "youtube_url", "twitter_url", "facebook_url",
   "tiktok_url", "discord_url", "checkout_settings",
+  "gtm_id", "ga4_id", "gads_id", "meta_pixel_id",
 ] as const
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

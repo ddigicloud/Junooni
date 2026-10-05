@@ -143,6 +143,7 @@ export default function ClientStoreShell({
     let cancelled = false
 
       const fetchRemaining = async () => {
+        console.log(`[ClientStoreShell] starting background fetch | totalCount=${totalCount} initial=${initialProducts.length}`)
       const BATCH = 100
       const remaining = totalCount - initialProducts.length
       const batches = Math.ceil(remaining / BATCH)
@@ -171,7 +172,11 @@ export default function ClientStoreShell({
         })
       }
 
-      if (!cancelled) setLoadingMore(false)
+      if (!cancelled) {
+        setLoadingMore(false)
+        console.log(`[ClientStoreShell] all batches done | allProducts count will be:`, initialProducts.length + results.flat().length)
+        console.log(`[ClientStoreShell] all vendor names:`, results.flat().map((p: any) => ({ title: p.title, vendor: p.vendor })))
+      }
     }
 
     fetchRemaining()

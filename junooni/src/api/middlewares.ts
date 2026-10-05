@@ -441,7 +441,7 @@ export default defineMiddlewares({
       ],
     },
     {
-      matcher: "/store/orders/:id/cancel",
+      matcher: "/store/orders/:id/cancel/*",
       method: ["POST", "OPTIONS"],
       middlewares: [
         (req, res, next) => {

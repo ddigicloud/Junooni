@@ -174,6 +174,7 @@ interface Props {
   showSoldOutBadge?: boolean
   cardBorderRadius?: number
   cardBgColor?: string
+  priceDisplay?: "first" | "lowest" | "range"
 }
 
 export default function ProductCard({
@@ -188,6 +189,7 @@ export default function ProductCard({
   showSoldOutBadge = true,
   cardBorderRadius,
   cardBgColor,
+  priceDisplay = "lowest",
 }: Props) {
   const isDark = variant === "dark"
   const [activeImage, setActiveImage] = useState<string | null>(null)
@@ -200,8 +202,23 @@ export default function ProductCard({
   const visibleSwatches = swatches.slice(0, 4)
   const extraColors = swatches.length - 4
 
-  const price = product.variants?.[0]?.prices?.[0]?.amount
-  const priceStr = price !== undefined ? formatINR(price) : null
+  const allVariantPrices: number[] = (product.variants ?? [])
+    .map((v: any) => v.calculated_price?.calculated_amount ?? v.prices?.[0]?.amount)
+    .filter((p: any): p is number => typeof p === "number")
+
+  const priceStr = (() => {
+    if (allVariantPrices.length === 0) return null
+    if (priceDisplay === "range") {
+      const min = Math.min(...allVariantPrices)
+      const max = Math.max(...allVariantPrices)
+      return min === max ? formatINR(min) : `${formatINR(min)} – ${formatINR(max)}`
+    }
+    if (priceDisplay === "lowest") {
+      return formatINR(Math.min(...allVariantPrices))
+    }
+    // "first"
+    return formatINR(allVariantPrices[0])
+  })()
   const defaultImage = product.thumbnail ?? null
 
   const isSoldOut = product.variants?.every(

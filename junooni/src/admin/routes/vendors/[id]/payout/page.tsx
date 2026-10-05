@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Heading, Text, Badge } from "@medusajs/ui";
+import { Heading, Text, Badge, toast } from "@medusajs/ui";
 
 interface PayoutDisplay {
   id: string;
@@ -33,17 +33,17 @@ interface PayoutDetailDisplay {
   order_id: string;
   order_item_id: string;
   product_id: string;
-  amount: number;                    // paise
-  tax_amount: number;                // paise
+  amount: number;
+  tax_amount: number;
   tax_type: string;
-  tds_percentage: number;            // basis points (100 = 1%)
-  tds_amount: number;                // paise
-  payment_processing_fee: number;    // ← NEW: paise (0 for COD, >0 for Razorpay)
+  tds_percentage: number;
+  tds_amount: number;
+  payment_processing_fee: number;
   type: "earning" | "payout" | "adjustment" | "refund";
   fulfillment_type: "creator_fulfillment" | "junooni_fulfillment" | null;
-  cost_price: number | null;         // paise
-  commission_rate: number | null;    // basis points
-  selling_price: number | null;      // paise
+  cost_price: number | null;
+  commission_rate: number | null;
+  selling_price: number | null;
   status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   reason: string;
   notes: string | null;
@@ -81,13 +81,16 @@ const CreatorPayoutTab = () => {
   const [limit] = useState(20);
   const [activeSection, setActiveSection] = useState<"overview" | "details">("overview");
 
-  const [showPayoutForm, setShowPayoutForm]             = useState(false);
-  const [payoutAmount, setPayoutAmount]                 = useState("");
-  const [payoutReference, setPayoutReference]           = useState("");
-  const [payoutNotes, setPayoutNotes]                   = useState("");
-  const [isSubmittingPayout, setIsSubmittingPayout]     = useState(false);
-  const [payoutFormError, setPayoutFormError]           = useState<string | null>(null);
-  const [payoutFormSuccess, setPayoutFormSuccess]       = useState<string | null>(null);
+  const [showPayoutForm, setShowPayoutForm]         = useState(false);
+  const [payoutAmount, setPayoutAmount]             = useState("");
+  const [payoutReference, setPayoutReference]       = useState("");
+  const [payoutNotes, setPayoutNotes]               = useState("");
+  const [isSubmittingPayout, setIsSubmittingPayout] = useState(false);
+  const [payoutFormError, setPayoutFormError]       = useState<string | null>(null);
+  const [payoutFormSuccess, setPayoutFormSuccess]   = useState<string | null>(null);
+
+  // ── Release pending state ──────────────────────────────────────────────────
+  const [isReleasingPending, setIsReleasingPending] = useState(false);
 
   useEffect(() => { fetchPayout(); }, [id]);
 
@@ -173,12 +176,17 @@ const CreatorPayoutTab = () => {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, payment_reference: payoutReference || undefined, notes: payoutNotes || undefined }),
+        body: JSON.stringify({
+          amount,
+          payment_reference: payoutReference || undefined,
+          notes: payoutNotes || undefined,
+        }),
       });
       const data = await response.json();
       if (!response.ok) { setPayoutFormError(data.error || "Failed to record payout"); return; }
       setPayoutFormSuccess(`Successfully recorded payout of ${formatCurrency(amount)}`);
-      setPayoutAmount(""); setPayoutReference(""); setPayoutNotes(""); setShowPayoutForm(false);
+      setPayoutAmount(""); setPayoutReference(""); setPayoutNotes("");
+      setShowPayoutForm(false);
       await fetchPayout();
       if (activeSection === "details") await fetchPayoutDetails();
     } catch (error) {
@@ -188,41 +196,84 @@ const CreatorPayoutTab = () => {
     }
   };
 
+  // ── Release pending earnings handler ───────────────────────────────────────
+  const handleReleasePending = async () => {
+    setIsReleasingPending(true);
+    try {
+      const response = await fetch(`/vendors/${id}/payout`, {
+        method: "PUT",   // hits the new PUT export on the same route file
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to release earnings");
+      toast.success(
+        `Released ${data.releasedCount} transaction(s) — ₹${(data.totalReleasedPaise / 100).toFixed(2)} moved to current balance.`
+      );
+      await fetchPayout();
+      if (activeSection === "details") await fetchPayoutDetails();
+    } catch (err) {
+      toast.error(`Release failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsReleasingPending(false);
+    }
+  };
+
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(amount);
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+    }).format(amount);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Not available";
     try {
       return new Date(dateString).toLocaleDateString(undefined, {
-        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
       });
     } catch (e) { return dateString; }
   };
 
   const getPayoutStatusBadge = () => {
     if (!payout) return null;
-    if (payout.hold_payouts)                                          return <Badge className="text-red-800 bg-red-100">Payouts Held</Badge>;
-    if (!payout.is_payout_enabled)                                    return <Badge className="text-gray-800 bg-gray-100">Payouts Disabled</Badge>;
-    if (payout.current_balance >= payout.minimum_payout_amount)       return <Badge className="text-green-800 bg-green-100">Ready for Payout</Badge>;
+    if (payout.hold_payouts)
+      return <Badge className="text-red-800 bg-red-100">Payouts Held</Badge>;
+    if (!payout.is_payout_enabled)
+      return <Badge className="text-gray-800 bg-gray-100">Payouts Disabled</Badge>;
+    if (payout.current_balance >= payout.minimum_payout_amount)
+      return <Badge className="text-green-800 bg-green-100">Ready for Payout</Badge>;
     return <Badge className="text-yellow-800 bg-yellow-100">Below Minimum</Badge>;
   };
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      earning: "bg-green-100 text-green-800", payout: "bg-blue-100 text-blue-800",
-      adjustment: "bg-yellow-100 text-yellow-800", refund: "bg-red-100 text-red-800",
+      earning:    "bg-green-100 text-green-800",
+      payout:     "bg-blue-100 text-blue-800",
+      adjustment: "bg-yellow-100 text-yellow-800",
+      refund:     "bg-red-100 text-red-800",
     };
-    return <Badge className={colors[type] || "bg-gray-100 text-gray-800"}>{type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
+    return (
+      <Badge className={colors[type] || "bg-gray-100 text-gray-800"}>
+        {type.charAt(0).toUpperCase() + type.slice(1)}
+      </Badge>
+    );
   };
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-800", processing: "bg-blue-100 text-blue-800",
-      completed: "bg-green-100 text-green-800", failed: "bg-red-100 text-red-800",
-      cancelled: "bg-gray-100 text-gray-800",
+      pending:    "bg-yellow-100 text-yellow-800",
+      processing: "bg-blue-100 text-blue-800",
+      completed:  "bg-green-100 text-green-800",
+      failed:     "bg-red-100 text-red-800",
+      cancelled:  "bg-gray-100 text-gray-800",
     };
-    return <Badge className={colors[status] || "bg-gray-100 text-gray-800"}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
+    return (
+      <Badge className={colors[status] || "bg-gray-100 text-gray-800"}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   const getFulfillmentBadge = (fulfillmentType: string | null) => {
@@ -231,14 +282,32 @@ const CreatorPayoutTab = () => {
       creator_fulfillment: "bg-purple-100 text-purple-800",
       junooni_fulfillment: "bg-indigo-100 text-indigo-800",
     };
-    return <Badge className={colors[fulfillmentType] || "bg-gray-100 text-gray-800"}>{fulfillmentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</Badge>;
+    return (
+      <Badge className={colors[fulfillmentType] || "bg-gray-100 text-gray-800"}>
+        {fulfillmentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+      </Badge>
+    );
+  };
+
+  // ── Parse release_after from a transaction's notes field ──────────────────
+  const getReleaseDate = (notes: string | null): string | null => {
+    if (!notes) return null;
+    try {
+      const meta = JSON.parse(notes);
+      return meta?.release_after ?? null;
+    } catch {
+      return null;
+    }
   };
 
   const totalPages = Math.ceil(totalRecords / limit);
 
+  // ── Loading / error / empty states ────────────────────────────────────────
   if (isLoadingPayout) return (
     <div className="p-6 mb-6 bg-white border rounded-lg">
-      <div className="flex items-center justify-center h-40"><Text>Loading payout information...</Text></div>
+      <div className="flex items-center justify-center h-40">
+        <Text>Loading payout information...</Text>
+      </div>
     </div>
   );
 
@@ -255,7 +324,9 @@ const CreatorPayoutTab = () => {
     <div className="p-6 mb-6 bg-white border rounded-lg">
       <div className="p-6 text-center border rounded-lg bg-gray-50">
         <Text className="mb-2 text-gray-500">No payout information available</Text>
-        <Text className="text-sm text-gray-400">Payout data will appear here once the creator starts earning</Text>
+        <Text className="text-sm text-gray-400">
+          Payout data will appear here once the creator starts earning
+        </Text>
       </div>
     </div>
   );
@@ -263,19 +334,36 @@ const CreatorPayoutTab = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white border rounded-lg">
-        {/* Tabs */}
+
+        {/* ── Tabs ──────────────────────────────────────────────────────────── */}
         <div className="flex border-b">
           <button
             onClick={() => setActiveSection("overview")}
-            className={`px-6 py-3 text-sm font-medium ${activeSection === "overview" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-          >Payout Overview</button>
+            className={`px-6 py-3 text-sm font-medium ${
+              activeSection === "overview"
+                ? "border-b-2 border-blue-500 text-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Payout Overview
+          </button>
           <button
             onClick={() => setActiveSection("details")}
-            className={`px-6 py-3 text-sm font-medium ${activeSection === "details" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-          >Transaction Details ({totalRecords})</button>
+            className={`px-6 py-3 text-sm font-medium ${
+              activeSection === "details"
+                ? "border-b-2 border-blue-500 text-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Transaction Details ({totalRecords})
+          </button>
         </div>
 
         <div className="p-6">
+
+          {/* ════════════════════════════════════════════════════════════════
+              OVERVIEW TAB
+          ════════════════════════════════════════════════════════════════ */}
           {activeSection === "overview" && (
             <>
               <div className="flex items-center justify-between mb-6">
@@ -284,28 +372,68 @@ const CreatorPayoutTab = () => {
               </div>
 
               {payoutFormSuccess && (
-                <div className="p-3 mb-4 text-sm text-green-700 border border-green-200 rounded-lg bg-green-50">✅ {payoutFormSuccess}</div>
+                <div className="p-3 mb-4 text-sm text-green-700 border border-green-200 rounded-lg bg-green-50">
+                  ✅ {payoutFormSuccess}
+                </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-3">
+              {/* ── 4-card balance grid ─────────────────────────────────── */}
+              <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
                 <div className="p-4 border rounded-lg bg-green-50">
                   <Text className="text-sm font-medium text-green-600">Current Balance</Text>
-                  <Text className="text-2xl font-bold text-green-700">{formatCurrency(payout.current_balance)}</Text>
-                  <Text className="mt-1 text-xs text-green-500">Amount yet to be paid</Text>
+                  <Text className="text-2xl font-bold text-green-700">
+                    {formatCurrency(payout.current_balance)}
+                  </Text>
+                  <Text className="mt-1 text-xs text-green-500">Released — ready to pay out</Text>
                 </div>
+
+                <div className="p-4 border-2 border-dashed border-amber-300 rounded-lg bg-amber-50">
+                  <Text className="text-sm font-medium text-amber-600">Pending (On Hold)</Text>
+                  <Text className="text-2xl font-bold text-amber-700">
+                    {formatCurrency(payout.pending_balance)}
+                  </Text>
+                  <Text className="mt-1 text-xs text-amber-500">Held — releases after 14 days</Text>
+                </div>
+
                 <div className="p-4 border rounded-lg bg-blue-50">
                   <Text className="text-sm font-medium text-blue-600">Total Paid</Text>
-                  <Text className="text-2xl font-bold text-blue-700">{formatCurrency(payout.total_paid)}</Text>
+                  <Text className="text-2xl font-bold text-blue-700">
+                    {formatCurrency(payout.total_paid)}
+                  </Text>
                   <Text className="mt-1 text-xs text-blue-500">Manually recorded payouts</Text>
                 </div>
+
                 <div className="p-4 border rounded-lg bg-purple-50">
                   <Text className="text-sm font-medium text-purple-600">Total Earned</Text>
-                  <Text className="text-2xl font-bold text-purple-700">{formatCurrency(payout.total_earned)}</Text>
+                  <Text className="text-2xl font-bold text-purple-700">
+                    {formatCurrency(payout.total_earned)}
+                  </Text>
                   <Text className="mt-1 text-xs text-purple-500">Lifetime earnings</Text>
                 </div>
               </div>
 
-              {/* Record Manual Payout */}
+              {/* ── Release pending banner ──────────────────────────────── */}
+              {payout.pending_balance > 0 && (
+                <div className="mb-6 p-4 border border-amber-200 rounded-lg bg-amber-50 flex items-center justify-between gap-4">
+                  <div>
+                    <Text className="font-medium text-amber-800">
+                      {formatCurrency(payout.pending_balance)} is currently on hold
+                    </Text>
+                    <Text className="text-sm text-amber-600 mt-0.5">
+                      Release manually once the 14-day window has passed for eligible orders.
+                    </Text>
+                  </div>
+                  <button
+                    onClick={handleReleasePending}
+                    disabled={isReleasingPending}
+                    className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {isReleasingPending ? "Releasing…" : "Release Eligible"}
+                  </button>
+                </div>
+              )}
+
+              {/* ── Record Manual Payout collapsible ───────────────────── */}
               <div className="mb-6 overflow-hidden border rounded-lg">
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer bg-gray-50 hover:bg-gray-100"
@@ -317,41 +445,80 @@ const CreatorPayoutTab = () => {
                   </div>
                   <span className="text-lg text-gray-400">{showPayoutForm ? "▲" : "▼"}</span>
                 </div>
+
                 {showPayoutForm && (
                   <div className="p-4 space-y-4 border-t">
                     {payoutFormError && (
-                      <div className="p-3 text-sm text-red-600 border border-red-200 rounded bg-red-50">❌ {payoutFormError}</div>
+                      <div className="p-3 text-sm text-red-600 border border-red-200 rounded bg-red-50">
+                        ❌ {payoutFormError}
+                      </div>
                     )}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">Amount (₹) <span className="text-red-500">*</span></label>
-                        <input type="number" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)}
-                          placeholder={`Max: ${formatCurrency(payout.current_balance)}`} min="1" max={payout.current_balance} step="0.01"
-                          className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Amount (₹) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={payoutAmount}
+                          onChange={(e) => setPayoutAmount(e.target.value)}
+                          placeholder={`Max: ${formatCurrency(payout.current_balance)}`}
+                          min="1"
+                          max={payout.current_balance}
+                          step="0.01"
+                          className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                       <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">Payment Reference</label>
-                        <input type="text" value={payoutReference} onChange={(e) => setPayoutReference(e.target.value)}
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
+                          Payment Reference
+                        </label>
+                        <input
+                          type="text"
+                          value={payoutReference}
+                          onChange={(e) => setPayoutReference(e.target.value)}
                           placeholder="e.g. UTR number, transaction ID"
-                          className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                     </div>
                     <div>
                       <label className="block mb-1 text-sm font-medium text-gray-700">Notes</label>
-                      <textarea value={payoutNotes} onChange={(e) => setPayoutNotes(e.target.value)}
-                        placeholder="Optional notes about this payout" rows={2}
-                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <textarea
+                        value={payoutNotes}
+                        onChange={(e) => setPayoutNotes(e.target.value)}
+                        placeholder="Optional notes about this payout"
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                     <div className="flex items-center gap-3 pt-2">
-                      <button onClick={handleRecordPayout} disabled={isSubmittingPayout || !payoutAmount}
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <button
+                        onClick={handleRecordPayout}
+                        disabled={isSubmittingPayout || !payoutAmount}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
                         {isSubmittingPayout ? "Recording..." : "Record Payout"}
                       </button>
-                      <button onClick={() => { setShowPayoutForm(false); setPayoutFormError(null); setPayoutAmount(""); setPayoutReference(""); setPayoutNotes(""); }}
-                        className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
+                      <button
+                        onClick={() => {
+                          setShowPayoutForm(false);
+                          setPayoutFormError(null);
+                          setPayoutAmount("");
+                          setPayoutReference("");
+                          setPayoutNotes("");
+                        }}
+                        className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
                       {payoutAmount && !isNaN(parseFloat(payoutAmount)) && (
                         <Text className="ml-auto text-sm text-gray-500">
-                          After payout: <span className="font-medium text-gray-700">{formatCurrency(payout.current_balance - parseFloat(payoutAmount))}</span> remaining
+                          After payout:{" "}
+                          <span className="font-medium text-gray-700">
+                            {formatCurrency(payout.current_balance - parseFloat(payoutAmount))}
+                          </span>{" "}
+                          remaining
                         </Text>
                       )}
                     </div>
@@ -359,60 +526,108 @@ const CreatorPayoutTab = () => {
                 )}
               </div>
 
+              {/* ── Settings + Statistics ───────────────────────────────── */}
               <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
                 <div className="space-y-4">
                   <Heading level="h3" className="text-lg">Payout Settings</Heading>
                   <div className="space-y-2">
-                    <div className="flex justify-between"><Text className="text-gray-600">Schedule:</Text><Text className="font-medium capitalize">{payout.payout_schedule}</Text></div>
-                    <div className="flex justify-between"><Text className="text-gray-600">Minimum Amount:</Text><Text className="font-medium">{formatCurrency(payout.minimum_payout_amount)}</Text></div>
-                    <div className="flex justify-between"><Text className="text-gray-600">Payment Method:</Text><Text className="font-medium capitalize">{payout.payment_method || "Not Set"}</Text></div>
-                    <div className="flex justify-between"><Text className="text-gray-600">Payout Period:</Text><Text className="font-medium">{payout.payout_period || "Not set"}</Text></div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Schedule:</Text>
+                      <Text className="font-medium capitalize">{payout.payout_schedule}</Text>
+                    </div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Minimum Amount:</Text>
+                      <Text className="font-medium">{formatCurrency(payout.minimum_payout_amount)}</Text>
+                    </div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Payment Method:</Text>
+                      <Text className="font-medium capitalize">{payout.payment_method || "Not Set"}</Text>
+                    </div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Payout Period:</Text>
+                      <Text className="font-medium">{payout.payout_period || "Not set"}</Text>
+                    </div>
                   </div>
                 </div>
+
                 <div className="space-y-4">
                   <Heading level="h3" className="text-lg">Statistics</Heading>
                   <div className="space-y-2">
-                    <div className="flex justify-between"><Text className="text-gray-600">Total Paid:</Text><Text className="font-medium">{formatCurrency(payout.total_paid)}</Text></div>
-                    <div className="flex justify-between"><Text className="text-gray-600">Pending Payout:</Text><Text className="font-medium">{formatCurrency(payout.total_pending_payout)}</Text></div>
-                    <div className="flex justify-between"><Text className="text-gray-600">Total Orders:</Text><Text className="font-medium">{payout.total_orders}</Text></div>
-                    <div className="flex justify-between"><Text className="text-gray-600">Avg Order Value:</Text><Text className="font-medium">{formatCurrency(payout.avg_order_value)}</Text></div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Total Paid:</Text>
+                      <Text className="font-medium">{formatCurrency(payout.total_paid)}</Text>
+                    </div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Pending Payout:</Text>
+                      <Text className="font-medium">{formatCurrency(payout.total_pending_payout)}</Text>
+                    </div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Total Orders:</Text>
+                      <Text className="font-medium">{payout.total_orders}</Text>
+                    </div>
+                    <div className="flex justify-between">
+                      <Text className="text-gray-600">Avg Order Value:</Text>
+                      <Text className="font-medium">{formatCurrency(payout.avg_order_value)}</Text>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* ── Important Dates ─────────────────────────────────────── */}
               <div className="pt-4 border-t">
                 <Heading level="h3" className="mb-4 text-lg">Important Dates</Heading>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div><Text className="text-sm text-gray-600">Last Payout</Text><Text className="font-medium">{formatDate(payout.last_payout_at)}</Text></div>
-                  <div><Text className="text-sm text-gray-600">Last Earning</Text><Text className="font-medium">{formatDate(payout.last_earning_at)}</Text></div>
-                  <div><Text className="text-sm text-gray-600">Next Payout</Text><Text className="font-medium">{formatDate(payout.next_payout_date)}</Text></div>
+                  <div>
+                    <Text className="text-sm text-gray-600">Last Payout</Text>
+                    <Text className="font-medium">{formatDate(payout.last_payout_at)}</Text>
+                  </div>
+                  <div>
+                    <Text className="text-sm text-gray-600">Last Earning</Text>
+                    <Text className="font-medium">{formatDate(payout.last_earning_at)}</Text>
+                  </div>
+                  <div>
+                    <Text className="text-sm text-gray-600">Next Payout</Text>
+                    <Text className="font-medium">{formatDate(payout.next_payout_date)}</Text>
+                  </div>
                 </div>
               </div>
 
+              {/* ── Hold / disabled warning ─────────────────────────────── */}
               {(payout.hold_payouts || !payout.is_payout_enabled) && (
                 <div className="p-4 mt-4 border border-red-300 rounded bg-red-50">
                   <Heading level="h3" className="mb-2 text-lg text-red-700">Payout Status</Heading>
                   {payout.hold_payouts && (
                     <div>
                       <Text className="font-medium text-red-600">Payouts are currently on hold</Text>
-                      {payout.hold_reason && <Text className="mt-1 text-sm text-red-600">Reason: {payout.hold_reason}</Text>}
+                      {payout.hold_reason && (
+                        <Text className="mt-1 text-sm text-red-600">Reason: {payout.hold_reason}</Text>
+                      )}
                     </div>
                   )}
-                  {!payout.is_payout_enabled && <Text className="text-red-600">Payouts are disabled for this vendor</Text>}
+                  {!payout.is_payout_enabled && (
+                    <Text className="text-red-600">Payouts are disabled for this vendor</Text>
+                  )}
                 </div>
               )}
             </>
           )}
 
+          {/* ════════════════════════════════════════════════════════════════
+              TRANSACTION DETAILS TAB
+          ════════════════════════════════════════════════════════════════ */}
           {activeSection === "details" && (
             <>
               <div className="flex items-center justify-between mb-6">
                 <Heading level="h2" className="text-xl">Transaction Details</Heading>
-                <Badge className="px-3 py-1 text-blue-800 bg-blue-100">{totalRecords} {totalRecords === 1 ? 'Record' : 'Records'}</Badge>
+                <Badge className="px-3 py-1 text-blue-800 bg-blue-100">
+                  {totalRecords} {totalRecords === 1 ? "Record" : "Records"}
+                </Badge>
               </div>
 
               {isLoadingDetails ? (
-                <div className="flex items-center justify-center h-40"><Text>Loading transaction details...</Text></div>
+                <div className="flex items-center justify-center h-40">
+                  <Text>Loading transaction details...</Text>
+                </div>
               ) : detailsError ? (
                 <div className="p-4 text-red-600 border border-red-300 rounded bg-red-50">
                   <Heading level="h3" className="mb-2 text-lg">Error Loading Details</Heading>
@@ -421,31 +636,43 @@ const CreatorPayoutTab = () => {
               ) : payoutDetails.length === 0 ? (
                 <div className="p-6 text-center border rounded-lg bg-gray-50">
                   <Text className="mb-2 text-gray-500">No transaction details available</Text>
-                  <Text className="text-sm text-gray-400">Transaction details will appear here once orders are processed</Text>
+                  <Text className="text-sm text-gray-400">
+                    Transaction details will appear here once orders are processed
+                  </Text>
                 </div>
               ) : (
                 <>
+                  {/* Summary cards */}
                   {summary && (
                     <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
                       <div className="p-3 border rounded-lg bg-green-50">
                         <Text className="text-xs text-green-600">Total Earnings</Text>
-                        <Text className="text-lg font-bold text-green-700">{formatCurrency(fromPaise(summary.totalEarnings))}</Text>
+                        <Text className="text-lg font-bold text-green-700">
+                          {formatCurrency(fromPaise(summary.totalEarnings))}
+                        </Text>
                       </div>
                       <div className="p-3 border rounded-lg bg-blue-50">
                         <Text className="text-xs text-blue-600">Total Paid</Text>
-                        <Text className="text-lg font-bold text-blue-700">{formatCurrency(fromPaise(summary.totalPaid))}</Text>
+                        <Text className="text-lg font-bold text-blue-700">
+                          {formatCurrency(fromPaise(summary.totalPaid))}
+                        </Text>
                       </div>
                       <div className="p-3 border rounded-lg bg-purple-50">
                         <Text className="text-xs text-purple-600">Current Balance</Text>
-                        <Text className="text-lg font-bold text-purple-700">{formatCurrency(fromPaise(summary.currentBalance))}</Text>
+                        <Text className="text-lg font-bold text-purple-700">
+                          {formatCurrency(fromPaise(summary.currentBalance))}
+                        </Text>
                       </div>
                       <div className="p-3 border rounded-lg bg-yellow-50">
                         <Text className="text-xs text-yellow-600">Total Orders</Text>
-                        <Text className="text-lg font-bold text-yellow-700">{summary.totalOrders}</Text>
+                        <Text className="text-lg font-bold text-yellow-700">
+                          {summary.totalOrders}
+                        </Text>
                       </div>
                     </div>
                   )}
 
+                  {/* Transactions table */}
                   <div className="mb-6 overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
@@ -455,43 +682,49 @@ const CreatorPayoutTab = () => {
                           <th className="p-3 font-medium text-left">Order ID</th>
                           <th className="p-3 font-medium text-right">Amount</th>
                           <th className="p-3 font-medium text-right">Tax</th>
-                          {/* ── NEW COLUMN ── */}
                           <th className="p-3 font-medium text-right">Processing Fee</th>
                           <th className="p-3 font-medium text-right">TDS</th>
                           <th className="p-3 font-medium text-left">Status</th>
                           <th className="p-3 font-medium text-left">Fulfillment</th>
+                          <th className="p-3 font-medium text-left">Release Date</th>
                         </tr>
                       </thead>
                       <tbody>
                         {payoutDetails.map((detail) => {
-                          const amountRupees     = fromPaise(detail.amount);
-                          const taxRupees        = fromPaise(detail.tax_amount);
-                          const tdsRupees        = fromPaise(detail.tds_amount);
-                          const tdsPercent       = fromBasisPoints(detail.tds_percentage);
-                          // payment_processing_fee may be missing on old records → default 0
-                          const feeRupees        = fromPaise(detail.payment_processing_fee ?? 0);
-                          const isOnlinePayment  = feeRupees > 0;
+                          const amountRupees    = fromPaise(detail.amount);
+                          const taxRupees       = fromPaise(detail.tax_amount);
+                          const tdsRupees       = fromPaise(detail.tds_amount);
+                          const tdsPercent      = fromBasisPoints(detail.tds_percentage);
+                          const feeRupees       = fromPaise(detail.payment_processing_fee ?? 0);
+                          const isOnlinePayment = feeRupees > 0;
+                          const releaseDate     = getReleaseDate(detail.notes);
+                          const isPending       = detail.status === "pending";
 
                           return (
-                            <tr key={detail.id} className="border-b hover:bg-gray-50">
-                              <td className="p-3"><Text className="text-sm">{formatDate(detail.created_at)}</Text></td>
+                            <tr
+                              key={detail.id}
+                              className={`border-b hover:bg-gray-50 ${isPending ? "bg-amber-50/40" : ""}`}
+                            >
+                              <td className="p-3">
+                                <Text className="text-sm">{formatDate(detail.created_at)}</Text>
+                              </td>
                               <td className="p-3">{getTypeBadge(detail.type)}</td>
                               <td className="p-3">
                                 <Text className="font-mono text-sm">
-                                  {detail.order_id === "manual_payout" || !detail.order_id ? "—" : detail.order_id}
+                                  {detail.order_id === "manual_payout" || !detail.order_id
+                                    ? "—"
+                                    : detail.order_id}
                                 </Text>
                               </td>
                               <td className="p-3 text-right">
-                                <Text className={`font-medium ${amountRupees >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {amountRupees >= 0 ? '+' : ''}{formatCurrency(amountRupees)}
+                                <Text className={`font-medium ${amountRupees >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                  {amountRupees >= 0 ? "+" : ""}{formatCurrency(amountRupees)}
                                 </Text>
                               </td>
                               <td className="p-3 text-right">
                                 <Text className="text-sm">{formatCurrency(taxRupees)}</Text>
                                 <Text className="text-xs text-gray-500 uppercase">{detail.tax_type}</Text>
                               </td>
-
-                              {/* ── NEW: Processing fee cell ── */}
                               <td className="p-3 text-right">
                                 {detail.type === "earning" ? (
                                   isOnlinePayment ? (
@@ -511,12 +744,15 @@ const CreatorPayoutTab = () => {
                                   <Text className="text-gray-400">—</Text>
                                 )}
                               </td>
-
                               <td className="p-3 text-right">
                                 {tdsRupees !== 0 ? (
                                   <div>
-                                    <Text className="text-sm text-red-600">{formatCurrency(Math.abs(tdsRupees))}</Text>
-                                    <Text className="text-xs text-gray-500">{tdsPercent.toFixed(0)}%</Text>
+                                    <Text className="text-sm text-red-600">
+                                      {formatCurrency(Math.abs(tdsRupees))}
+                                    </Text>
+                                    <Text className="text-xs text-gray-500">
+                                      {tdsPercent.toFixed(0)}%
+                                    </Text>
                                   </div>
                                 ) : (
                                   <Text className="text-gray-400">-</Text>
@@ -524,6 +760,24 @@ const CreatorPayoutTab = () => {
                               </td>
                               <td className="p-3">{getStatusBadge(detail.status)}</td>
                               <td className="p-3">{getFulfillmentBadge(detail.fulfillment_type)}</td>
+
+                              {/* Release date column — only meaningful for pending earnings */}
+                              <td className="p-3">
+                                {detail.type === "earning" && isPending && releaseDate ? (
+                                  <div>
+                                    <Text className="text-xs font-medium text-amber-700">
+                                      {new Date(releaseDate) <= new Date()
+                                        ? "✅ Eligible"
+                                        : formatDate(releaseDate)}
+                                    </Text>
+                                    {new Date(releaseDate) > new Date() && (
+                                      <Text className="text-xs text-gray-400">Hold ends</Text>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <Text className="text-gray-400 text-xs">—</Text>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -531,14 +785,27 @@ const CreatorPayoutTab = () => {
                     </table>
                   </div>
 
+                  {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between pt-4 border-t">
-                      <Text className="text-sm text-gray-500">Page {currentPage} of {totalPages} ({totalRecords} total records)</Text>
+                      <Text className="text-sm text-gray-500">
+                        Page {currentPage} of {totalPages} ({totalRecords} total records)
+                      </Text>
                       <div className="flex gap-2">
-                        <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}
-                          className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">Previous</button>
-                        <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}
-                          className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">Next</button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          Next
+                        </button>
                       </div>
                     </div>
                   )}
@@ -546,6 +813,7 @@ const CreatorPayoutTab = () => {
               )}
             </>
           )}
+
         </div>
       </div>
     </div>

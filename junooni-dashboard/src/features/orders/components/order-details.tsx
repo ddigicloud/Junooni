@@ -1395,10 +1395,14 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
                 <div className="text-right">
                   <div className={`font-semibold ${
                     isDeduction ? 'text-red-600' : 
+                    totalVendorPayout < 0 ? 'text-red-600' :
                     isAddition ? 'text-green-600' : 
                     'text-gray-900'
                   }`}>
-                    {isDeduction ? '-' : '+'}{formatPrice(totalVendorPayout, order.currency_code)}
+                    {isDeduction 
+                      ? `-${formatPrice(Math.abs(totalVendorPayout), order.currency_code)}`
+                      : formatPrice(totalVendorPayout, order.currency_code)
+                    }
                   </div>
                   <div className="text-xs text-gray-500">Your payout</div>
                 </div>
@@ -1451,7 +1455,12 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
               {originalItems.length > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Revenue from items</span>
-                  <span className="text-green-600">+{formatPrice(order.payment_status === "refunded" ? 0 : originalVendorPayout, order.currency_code)}</span>
+                  <span className={originalVendorPayout >= 0 ? "text-green-600" : "text-red-600"}>
+                    {order.payment_status === "refunded" 
+                      ? formatPrice(0, order.currency_code)
+                      : (originalVendorPayout >= 0 ? "+" : "") + formatPrice(originalVendorPayout, order.currency_code)
+                    }
+                  </span>
                 </div>
               )}
               
@@ -1485,10 +1494,17 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
             <Separator className="my-3" />
             
             {/* Final Profit */}
-            <div className="flex items-center justify-between p-3 border border-green-200 rounded-lg bg-green-50">
+            <div className={`flex items-center justify-between p-3 rounded-lg border ${
+              finalVendorProfit < 0 
+                ? "border-red-200 bg-red-50" 
+                : "border-green-200 bg-green-50"
+            }`}>
               <span className="font-bold text-gray-900">Your Total Profit</span>
-              <span className="text-xl font-bold text-green-600">
-                {formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(finalVendorProfit), order.currency_code)}
+              <span className={`text-xl font-bold ${finalVendorProfit < 0 ? "text-red-600" : "text-green-600"}`}>
+                {order.payment_status === "refunded" 
+                  ? formatPrice(0, order.currency_code)
+                  : formatPrice(finalVendorProfit, order.currency_code)
+                }
               </span>
             </div>
           </div>
@@ -2048,13 +2064,13 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       const data = await response.json()
     
       // ✅ DEBUG: Check what the API returns
-      // console.log('🔍 ========================================');
-      // console.log('🔍 FRONTEND API RESPONSE DEBUG');
-      // console.log('🔍 ========================================');
-      // console.log('Raw API response:', data);
-      // console.log('data.order exists:', !!data.order);
-      // console.log('data.order.payment_collections:', data.order?.payment_collections);
-      // console.log('payment_collections length:', data.order?.payment_collections?.length || 0);
+      console.log('🔍 ========================================');
+      console.log('🔍 FRONTEND API RESPONSE DEBUG');
+      console.log('🔍 ========================================');
+      console.log('Raw API response:', data);
+      console.log('data.order exists:', !!data.order);
+      console.log('data.order.payment_collections:', data.order?.payment_collections);
+      console.log('payment_collections length:', data.order?.payment_collections?.length || 0);
 
       if (data.order?.payment_collections && data.order.payment_collections.length > 0) {
         //console.log('First payment collection in raw data:', data.order.payment_collections[0]);
@@ -3405,21 +3421,23 @@ const generateInvoice = () => {
                   ? "Paid"
                   : "Payment Pending"}
               </div>
-              <div className="text-sm text-gray-600">
+              {/* <div className="text-sm text-gray-600">
                 Method: Online Payment
-              </div>
-              <div className="text-sm font-medium" style={{ 
-                color: order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
-                  ? "#B91C1C"  // Red color for refunded/canceled
-                  : BRAND.primary 
-              }}>
-                Amount: {formatPrice(
-                  order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
-                    ? 0
-                    : order.vendor_payment_amount, 
-                  order.currency_code
-                )}
-              </div>
+              </div> */}
+              {(() => {
+                const isRefundedOrCanceled = order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
+                const profit = calculateFinalVendorProfit(order).finalVendorProfit
+                const displayAmount = isRefundedOrCanceled ? 0 : profit
+                const isNegative = displayAmount < 0
+
+                return (
+                  <div className="text-sm font-medium" style={{
+                    color: isRefundedOrCanceled || isNegative ? "#B91C1C" : BRAND.primary
+                  }}>
+                    Amount: {formatPrice(displayAmount, order.currency_code)}
+                  </div>
+                )
+              })()}
             </div>
           </div>
           
@@ -4559,13 +4577,19 @@ const generateInvoice = () => {
                         {/* ✅ UPDATED: Use calculated vendor profit instead of order.vendor_total */}
                         <div className="flex justify-between font-bold">
                           <span>You earned (net)</span>
-                           <span style={{ color: BRAND.primary }}>
-                              {/* ✅ Check both payment_status and order.status */}
-                              {order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at
-                                ? formatPrice(0, order.currency_code)
-                                : formatPrice(Math.abs(calculateFinalVendorProfit(order).finalVendorProfit), order.currency_code)
-                              }
-                            </span>
+                            {(() => {
+                              const profit = calculateFinalVendorProfit(order).finalVendorProfit
+                              const isNegative = profit < 0
+                              const isRefundedOrCanceled = order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at
+                              return (
+                                <span style={{ color: isRefundedOrCanceled ? "#B91C1C" : isNegative ? "#B91C1C" : BRAND.primary }}>
+                                  {isRefundedOrCanceled
+                                    ? formatPrice(0, order.currency_code)
+                                    : formatPrice(profit, order.currency_code)
+                                  }
+                                </span>
+                              )
+                            })()}
                         </div>
 
                         {/* Add a refund notice */}
@@ -4637,21 +4661,23 @@ const generateInvoice = () => {
                       canceledAt={order.canceled_at}
                     />
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Your Amount</span>
-                    <span className="font-medium" style={{ 
-                      color: order.payment_status === 'refunded' || order.status === 'canceled' 
-                        ? "#B91C1C" 
-                        : BRAND.primary 
-                    }}>
-                      {formatPrice(
-                        order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at
-                          ? 0 
-                          : order.vendor_payment_amount, 
-                        order.currency_code
-                      )}
-                    </span>
-                  </div>
+                  {(() => {
+                    const isRefundedOrCanceled = order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at
+                    const profit = calculateFinalVendorProfit(order).finalVendorProfit
+                    const displayAmount = isRefundedOrCanceled ? 0 : profit
+                    const isNegative = displayAmount < 0
+
+                    return (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Your Amount</span>
+                        <span className="font-medium" style={{ 
+                          color: isRefundedOrCanceled || isNegative ? "#B91C1C" : BRAND.primary 
+                        }}>
+                          {formatPrice(displayAmount, order.currency_code)}
+                        </span>
+                      </div>
+                    )
+                  })()}
                   
                   {/* ✅ Show order status if canceled */}
                   {(order.status === "canceled" || order.canceled_at) && (

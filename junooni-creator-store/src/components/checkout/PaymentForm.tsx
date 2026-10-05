@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { initiatePaymentSession, addCodFee, removeCodFee } from "@/lib/cart"
 import { CreditCard, CheckCircle2, Loader2, ArrowRight } from "lucide-react"
@@ -16,6 +16,17 @@ const PROVIDER_LABELS: Record<string, { label: string; desc: string; icon: strin
     desc: "Pay when your order arrives",
     icon: "💵",
   },
+}
+
+function isCreatorFulfilled(item: any): boolean {
+  const raw = item?.variant?.product?.metadata?.fulfillment_type ?? item?.product?.metadata?.fulfillment_type
+  if (!raw) return false
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+    return String(parsed?.type ?? "").toLowerCase() === "creator-fulfillment"
+  } catch {
+    return String(raw).toLowerCase().includes("creator-fulfillment")
+  }
 }
 
 function getProviderLabel(id: string) {
@@ -37,14 +48,31 @@ export default function PaymentForm({
   const activeSession = cart?.payment_collection?.payment_sessions?.find(
     (s: any) => s.status === "pending"
   )
-  const [selected, setSelected] = useState<string>(
-    activeSession?.provider_id ?? paymentMethods?.[0]?.id ?? ""
+  const hasCreatorFulfillment = (cart?.items ?? []).some(
+    (item: any) => !item.metadata?.is_cod_fee && isCreatorFulfilled(item)
   )
+  const availableMethods = hasCreatorFulfillment
+    ? (paymentMethods ?? []).filter((m: any) => m.id !== "pp_system_default")
+    : (paymentMethods ?? [])
+  const [selected, setSelected] = useState<string>(
+    availableMethods.find((m: any) => m.id === activeSession?.provider_id)?.id
+      ?? availableMethods[0]?.id
+      ?? ""
+  )
+
+  // Clean up a stale COD fee / COD session if a creator item is in the cart
+  const hasCodFeeItem = (cart?.items ?? []).some((i: any) => i.metadata?.is_cod_fee)
+  useEffect(() => {
+    if (hasCreatorFulfillment && hasCodFeeItem && !isPreview) {
+      removeCodFee(handle)
+    }
+  }, [hasCreatorFulfillment, hasCodFeeItem, handle, isPreview])
   const [isPending, startTransition] = useTransition()
 
   const hasPayment = !!activeSession
   const isEditing = searchParams.get("step") === "payment"
-  const showSelector = !hasPayment || isEditing
+  const codSessionBlocked = hasCreatorFulfillment && activeSession?.provider_id === "pp_system_default"
+  const showSelector = !hasPayment || isEditing || codSessionBlocked
 
   const handleContinue = () => {
   if (!selected) return
@@ -130,7 +158,7 @@ export default function PaymentForm({
         </p>
 
         <div className="space-y-3">
-          {paymentMethods?.map((method: any) => {
+          {availableMethods.map((method: any) => {
             const info = getProviderLabel(method.id)
             const isSelected = selected === method.id
             return (

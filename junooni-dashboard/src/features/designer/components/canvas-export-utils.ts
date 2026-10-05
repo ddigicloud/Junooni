@@ -272,7 +272,7 @@ export const captureCanvasImageForArea = async (
   getCanvasConfig: (areaId: string, colorHex?: string) => any,
   getPrintableAreaFromPhoto: (areaId: string, colorHex?: string) => any,
   getCustomizationAreaByName: (areaId: string) => any
-): Promise<string | null> => {
+): Promise<{ base64: string; widthInch: number; heightInch: number } | null> => {
   try {
     const elements        = designElements[areaId] || [];
     const visibleElements = elements.filter(el => el.visible !== false);
@@ -521,7 +521,11 @@ export const captureCanvasImageForArea = async (
     ctx.drawImage(cleanImg,     0,                           HEADER, panelW, panelH);
     ctx.drawImage(annotatedImg, panelW + GAP * 2 + DIVIDER, HEADER, panelW, panelH);
 
-    return offscreen.toDataURL('image/png');
+    return {
+      base64:      offscreen.toDataURL('image/png'),
+      widthInch:   Number(bbWidthInch),
+      heightInch:  Number(bbHeightInch),
+    };
   } catch (error) {
     console.error(`Error capturing canvas image for ${areaId}:`, error);
     return null;
@@ -583,16 +587,16 @@ export const exportAllCanvasImages = async (
     if (elements.filter(el => el.visible !== false).length === 0) continue;
 
     try {
-      const imageData = await captureCanvasImageForArea(
+      const captureResult = await captureCanvasImageForArea(
         areaId, designElements, activeColor, canvasImages,
         getCanvasConfig, getPrintableAreaFromPhoto, getCustomizationAreaByName
       );
 
-      if (imageData) {
+      if (captureResult) {
         const metadata = generateCanvasMetadata(areaId, activeColor, designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateDPI);
         results.push({
           area_id: areaId,
-          image_data: imageData,
+          image_data: captureResult.base64,
           metadata,
           description: `Canvas capture for ${areaId.toUpperCase()}. ${elements.filter(el => el.visible !== false).length} visible element(s).`,
         });

@@ -654,9 +654,11 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
             ) : (
               <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light"
                 aspectRatio={cardAspectRatio} alignment={cardAlignment} showPrice={cardShowPrice}
-                showHover={cardShowHover} showSoldOutBadge={cardShowSoldOut} columns={(section as any).columns ?? 3}
+                showHover={cardShowHover} showSoldOutBadge={cardShowSoldOut} 
+                columns={(section as any).columns ?? 3}
                 cardBorderRadius={(section as any).card_border_radius}
-                cardBgColor={(section as any).card_bg_color} />
+                cardBgColor={(section as any).card_bg_color}
+                priceDisplay={(section as any).price_display ?? "lowest"} />
             )}
           </div>
         </section>

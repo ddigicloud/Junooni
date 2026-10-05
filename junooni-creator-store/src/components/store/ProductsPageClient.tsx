@@ -66,6 +66,7 @@ export default function ProductsPageClient({
   const paddingBottom     = gridSection.padding_bottom ?? 64
   const cardBorderRadius  = gridSection.card_border_radius
   const cardBgColor       = gridSection.card_bg_color
+  const priceDisplay      = gridSection.price_display ?? "lowest"
 
   const brandStyles = {
     "--brand-primary":   brandPrimary,
@@ -202,6 +203,7 @@ export default function ProductsPageClient({
             filterOrder={filterOrder}
             cardBorderRadius={cardBorderRadius}
             cardBgColor={cardBgColor}
+            priceDisplay={priceDisplay}
           />
         )}
       </div>

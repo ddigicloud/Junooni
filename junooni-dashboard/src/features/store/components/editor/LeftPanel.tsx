@@ -2306,6 +2306,46 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 </div>
                 </StyleSection> */}
 
+                <StyleSection title="Tracking & Analytics" isDark={isDark}>
+                    <div className="space-y-3">
+                        <p className={`text-[10px] ${textFaint} opacity-70`}>
+                        Add your tracking IDs. If using Google Tag Manager, configure GA4 and Ads inside GTM instead of adding them separately.
+                        </p>
+                        <Field label="Google Tag Manager ID" faint={textFaint}>
+                        <EditorInput
+                            value={(store as any).settings?.gtm_id ?? (store as any).gtm_id ?? ""}
+                            onChange={(v: string) => setStore((p: any) => ({ ...p, gtm_id: v }))}
+                            placeholder="GTM-XXXXXXX"
+                            isDark={isDark}
+                        />
+                        </Field>
+                        <Field label="Google Analytics 4 ID" faint={textFaint}>
+                        <EditorInput
+                            value={(store as any).settings?.ga4_id ?? (store as any).ga4_id ?? ""}
+                            onChange={(v: string) => setStore((p: any) => ({ ...p, ga4_id: v }))}
+                            placeholder="G-XXXXXXXXXX"
+                            isDark={isDark}
+                        />
+                        </Field>
+                        <Field label="Google Ads Conversion ID" faint={textFaint}>
+                        <EditorInput
+                            value={(store as any).settings?.gads_id ?? (store as any).gads_id ?? ""}
+                            onChange={(v: string) => setStore((p: any) => ({ ...p, gads_id: v }))}
+                            placeholder="AW-XXXXXXXXXX"
+                            isDark={isDark}
+                        />
+                        </Field>
+                        <Field label="Meta Pixel ID" faint={textFaint}>
+                        <EditorInput
+                            value={(store as any).settings?.meta_pixel_id ?? (store as any).meta_pixel_id ?? ""}
+                            onChange={(v: string) => setStore((p: any) => ({ ...p, meta_pixel_id: v }))}
+                            placeholder="XXXXXXXXXXXXXXXX"
+                            isDark={isDark}
+                        />
+                        </Field>
+                    </div>
+                </StyleSection>
+
             </div>
             )}
 
