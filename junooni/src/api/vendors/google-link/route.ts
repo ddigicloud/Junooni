@@ -5,6 +5,7 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { MedusaError, Modules } from "@medusajs/framework/utils"
+import { generateJwtTokenForAuthIdentity } from "@medusajs/medusa/api/auth/utils/generate-jwt-token"
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 type RequestBody = {
@@ -64,7 +65,6 @@ export async function POST(
     const vendorId = (vendorIdentity.app_metadata as any)?.vendor_id as string
 
     // Directly update the Google auth identity to link it to the vendor
-    // Using updateAuthIdentities only — avoids setAuthAppMetadataStep conflict
     await authModuleService.updateAuthIdentities([
       {
         id: googleAuthIdentityId,
@@ -75,10 +75,18 @@ export async function POST(
       },
     ])
 
-    // Generate fresh token — now includes vendor_id in app_metadata
-    const token = await authModuleService.generateJwtToken(
-      googleAuthIdentityId,
-      "vendor"
+    // Fetch updated identity and generate fresh token
+    const [updatedIdentity] = await authModuleService.listAuthIdentities(
+      { id: [googleAuthIdentityId] }
+    )
+
+    const configModule = req.scope.resolve("configModule")
+    const token = generateJwtTokenForAuthIdentity(
+      { authIdentity: updatedIdentity, actorType: "vendor" },
+      {
+        secret: configModule.projectConfig.http.jwtSecret as string,
+        expiresIn: configModule.projectConfig.http.jwtExpiresIn,
+      }
     )
 
     return res.status(200).json({

@@ -18,7 +18,6 @@ export default async function orderShippedHandler({
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const notificationModuleService = container.resolve(Modules.NOTIFICATION)
 
-  // Single query — "order.*" traverses the Fulfillment→Order link directly
   const { data: [fulfillment] } = await query.graph({
     entity: "fulfillment",
     fields: [
@@ -34,7 +33,7 @@ export default async function orderShippedHandler({
       "order.item_total",
       "order.shipping_total",
       "order.tax_total",
-      "order.metadata",           // ← ADD: vendor_orders lives here
+      "order.metadata",
       "order.sales_channel.id",
       "order.sales_channel.name",
       "order.items.*",
@@ -60,14 +59,52 @@ export default async function orderShippedHandler({
   }
 
   // ── Resolve vendor sender info from order metadata ──────────────────────
-  // vendor_orders[0].vendor_handle is the store handle (e.g. "junocreator2")
-  // vendor_orders[0].vendor_name   is the display name (e.g. "Junocreator2")
-  // The Resend provider uses these to build: "Name <handle@junooni.com>"
   const vendorOrders = (order as any).metadata?.vendor_orders ?? []
   const isJunooniMarketplace = (order as any).sales_channel?.name === "Default Sales Channel"
 
   const vendorHandle = isJunooniMarketplace ? null : (vendorOrders[0]?.vendor_handle ?? null)
   const vendorName   = isJunooniMarketplace ? null : (vendorOrders[0]?.vendor_name   ?? null)
+  const vendorId     = isJunooniMarketplace ? null : (vendorOrders[0]?.vendor_id     ?? null)
+
+  // ── Resolve vendor store branding (same logic as getOrderEmailBrandingStep) ──
+  let storeLogo: string | null = null
+  let storePrimaryColor: string | null = null
+  let storeUrl: string | null = null
+
+  if (vendorId) {
+    try {
+      const { data: vendors } = await query.graph({
+        entity: "vendor",
+        fields: [
+          "id",
+          "name",
+          "handle",
+          "vendor_store.store_logo",
+          "vendor_store.custom_domain",
+          "vendor_store.subdomain",
+          "vendor_store.primary_color",
+        ],
+        filters: { id: vendorId },
+      })
+
+      const vendor = vendors?.[0]
+      const vendorStore = vendor?.vendor_store
+
+      if (vendorStore?.store_logo) {
+        storeLogo = vendorStore.store_logo
+
+        if (vendorStore.custom_domain) {
+          storeUrl = `https://${vendorStore.custom_domain}`
+        } else if (vendorStore.subdomain) {
+          storeUrl = `https://${vendorStore.subdomain}.junooni.com`
+        }
+
+        storePrimaryColor = vendorStore.primary_color || null
+      }
+    } catch (e) {
+      console.warn("Could not resolve vendor branding for shipped email:", e)
+    }
+  }
 
   const label = fulfillment.labels?.[0]
 
@@ -82,11 +119,14 @@ export default async function orderShippedHandler({
         ...order,
         fulfillments: [fulfillment],
       },
-      trackingNumber: label?.tracking_number ?? null,
-      trackingUrl:    label?.tracking_url    ?? null,
-      shippedAt:      fulfillment.shipped_at ?? null,
-      storeName:      vendorName,    // ← provider uses this for "from" display name
-      storeHandle:    vendorHandle,  // ← provider uses this for "handle@junooni.com"
+      trackingNumber:    label?.tracking_number ?? null,
+      trackingUrl:       label?.tracking_url    ?? null,
+      shippedAt:         fulfillment.shipped_at ?? null,
+      storeName:         vendorName,
+      storeHandle:       vendorHandle,
+      storeLogo:         storeLogo,
+      storePrimaryColor: storePrimaryColor,
+      storeUrl:          storeUrl,
     },
   })
 

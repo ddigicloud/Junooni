@@ -2,7 +2,7 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse
 } from "@medusajs/framework/http"
-import { MedusaError } from "@medusajs/framework/utils"
+import { MedusaError, Modules } from "@medusajs/framework/utils"
 import { z } from "zod"
 import createVendorWorkflow, {
   CreateVendorWorkflowInput
@@ -10,7 +10,6 @@ import createVendorWorkflow, {
 import MarketplaceModuleService from "../../modules/marketplace/service"
 import { CreatorCategoryEnum } from "../../modules/marketplace/types"
 import jwt from "jsonwebtoken"
-
 
 const VendorFieldsSchema = z.object({
   name: z.string(),
@@ -62,21 +61,54 @@ export const POST = async (
   res: MedusaResponse
 ) => {
   if (req.auth_context?.actor_id) {
+  // For Google OAuth users, actor_id is set immediately on first auth
+  // even before a vendor row exists. So we check the DB directly instead.
+  const marketplaceModuleService: MarketplaceModuleService =
+    req.scope.resolve("marketplaceModuleService")
+  const existing = await marketplaceModuleService.listVendors?.(
+    {},
+    { relations: ["admins"] }
+  ).then(vendors => vendors?.find(v =>
+    v.admins?.some(a => a.id === req.auth_context.actor_id)
+  ))
+  if (existing) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       "Request already authenticated as a vendor."
     )
   }
+}
 
   const vendorData = req.validatedBody
 
   const { result } = await createVendorWorkflow(req.scope)
-    .run({
-      input: {
-        ...vendorData,
-        authIdentityId: req.auth_context.auth_identity_id,
-      } as CreateVendorWorkflowInput
-    })
+  .run({
+    input: {
+      ...vendorData,
+      authIdentityId: req.auth_context.auth_identity_id,
+    } as CreateVendorWorkflowInput
+  })
+  .catch(async (err) => {
+    // Google OAuth identities already have vendor_id in app_metadata
+    // setAuthAppMetadataStep throws — but vendor was already created, so
+    // fetch it directly and return it
+    if (err?.message?.includes('already exists in app metadata')) {
+      const authModuleService = req.scope.resolve(Modules.AUTH)
+      const [authIdentity] = await authModuleService.listAuthIdentities(
+        { id: [req.auth_context.auth_identity_id] }
+      )
+      const vendorId = (authIdentity?.app_metadata as any)?.vendor_id
+      if (vendorId) {
+        const marketplaceModuleService: MarketplaceModuleService =
+          req.scope.resolve("marketplaceModuleService")
+        const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
+          relations: ["admins"]
+        })
+        return { result: { vendor } }
+      }
+    }
+    throw err
+  })
 
   const jwtSecret = process.env.JWT_SECRET || "supersecret"
 

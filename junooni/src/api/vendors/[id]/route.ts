@@ -2,7 +2,7 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework"
-import { MedusaError, ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { MedusaError, ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import MarketplaceModuleService from "../../../modules/marketplace/service"
 import { deleteVendorProductWorkflow } from "../../../workflows//marketplace/delete-vendor-product"
 import { z } from "zod"
@@ -212,27 +212,61 @@ export const DELETE = async (
       log(`❌ Failed to delete vendor_store: ${err.message}`)
     }
 
-    // ── 5. Delete vendor_admin rows ────────────────────────────────────
-    log("Deleting vendor_admin rows…")
-    try {
-      const { data: admins } = await query.graph({
-        entity: "vendor_admin",
-        fields: ["id"],
-        filters: { vendor_id: id },
-      })
-      const adminIds = (admins || []).map((a: any) => a.id).filter(Boolean)
-      if (adminIds.length > 0) {
-        await marketplaceModuleService.deleteVendorAdmins(adminIds)
-        log(`✅ Deleted ${adminIds.length} vendor_admin row(s).`)
-      } else {
-        log("No vendor_admin rows found — skipping.")
-      }
-    } catch (err: any) {
-      errors.push(`Failed to delete vendor_admin rows: ${err.message}`)
-      log(`❌ Failed to delete vendor_admin rows: ${err.message}`)
-    }
+    // ── 5. Delete auth_identity entirely ──────────────────────────────
+// Must happen BEFORE deleting vendor_admin rows
+log("Deleting auth_identity…")
+try {
+  const authModuleService = req.scope.resolve(Modules.AUTH)
+  const allIdentities = await authModuleService.listAuthIdentities(
+    {},
+    { relations: [] }
+  )
+  const { data: admins } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["id"],
+    filters: { vendor_id: id },
+  })
+  const adminIds = (admins || []).map((a: any) => a.id).filter(Boolean)
 
-    // ── 6. Delete the vendor record ────────────────────────────────────
+  const vendorIdentities = allIdentities.filter(identity => {
+    const metaVendorId = (identity.app_metadata as any)?.vendor_id
+    return metaVendorId === id || adminIds.includes(metaVendorId)
+  })
+
+  if (vendorIdentities.length > 0) {
+    await authModuleService.deleteAuthIdentities(
+      vendorIdentities.map(i => i.id)
+    )
+    vendorIdentities.forEach(i => log(`✅ Deleted auth_identity: ${i.id}`))
+  } else {
+    log("No auth_identity found for this vendor — skipping.")
+  }
+} catch (err: any) {
+  errors.push(`Failed to delete auth_identity: ${err.message}`)
+  log(`❌ Failed to delete auth_identity: ${err.message}`)
+}
+
+// ── 6. Delete vendor_admin rows ────────────────────────────────────
+log("Deleting vendor_admin rows…")
+try {
+  const { data: admins } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["id"],
+    filters: { vendor_id: id },
+  })
+  const adminIds = (admins || []).map((a: any) => a.id).filter(Boolean)
+  if (adminIds.length > 0) {
+    await marketplaceModuleService.deleteVendorAdmins(adminIds)
+    log(`✅ Deleted ${adminIds.length} vendor_admin row(s).`)
+  } else {
+    log("No vendor_admin rows found — skipping.")
+  }
+} catch (err: any) {
+  errors.push(`Failed to delete vendor_admin rows: ${err.message}`)
+  log(`❌ Failed to delete vendor_admin rows: ${err.message}`)
+}
+
+// ── 7. Delete the vendor record ────────────────────────────────────
     log("Deleting vendor record…")
     try {
       await marketplaceModuleService.deleteVendors([id])

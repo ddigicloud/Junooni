@@ -327,7 +327,9 @@ async releasePendingEarnings(vendorId?: string): Promise<{
   const toRelease = pendingDetails.filter(detail => {
     try {
       const meta = detail.notes ? JSON.parse(detail.notes) : null
+      // release_after is null until order is delivered — never release these
       if (!meta?.release_after) return false
+      // release_after is set on delivery — only release after 8-day refund window
       return new Date(meta.release_after) <= now
     } catch {
       return false

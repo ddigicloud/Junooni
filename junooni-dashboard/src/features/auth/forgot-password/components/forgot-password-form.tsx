@@ -44,33 +44,44 @@ export function ForgotForm({ className, ...props }: ForgotFormProps) {
 
   // ── Email blur: same check as sign-up ─────────────────────────────────────
   async function onEmailBlur(email: string) {
-    const trimmed = email.trim().toLowerCase()
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return
-    if (emailCheckRef.current === trimmed) return
-    emailCheckRef.current = trimmed
-
-    setEmailStatus('checking')
-    setErrorMessage('')
-    setSuccessMessage('')
-
-    try {
-      const res = await axios.post(`${backendUrl}/vendors/check-email`, { email: trimmed })
-      const { exists, provider } = res.data
-
-      if (!exists) {
-        setEmailStatus('new')
-      } else if (provider === 'emailpass') {
-        setEmailStatus('emailpass')
-      } else {
-        setEmailStatus('google')
-      }
-    } catch {
-      setEmailStatus('idle')
-    }
+  const trimmed = email.trim().toLowerCase()
+  console.log('[ForgotForm] onEmailBlur triggered | email:', trimmed)
+  
+  if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    console.log('[ForgotForm] email invalid or empty — skipping check')
+    return
   }
+  if (emailCheckRef.current === trimmed) {
+    console.log('[ForgotForm] same email as last check — skipping')
+    return
+  }
+  emailCheckRef.current = trimmed
+  setEmailStatus('checking')
+
+  try {
+    const res = await axios.post(`${backendUrl}/vendors/check-email`, { email: trimmed })
+    console.log('[ForgotForm] check-email response:', res.data)
+    const { exists, provider } = res.data
+
+    if (!exists) {
+      console.log('[ForgotForm] → new user')
+      setEmailStatus('new')
+    } else if (provider === 'emailpass') {
+      console.log('[ForgotForm] → emailpass account')
+      setEmailStatus('emailpass')
+    } else {
+      console.log('[ForgotForm] → google account')
+      setEmailStatus('google')
+    }
+  } catch (e) {
+    console.log('[ForgotForm] check-email error:', e)
+    setEmailStatus('idle')
+  }
+}
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function onSubmit(data: z.infer<typeof formSchema>) {
+    console.log('[ForgotForm] onSubmit | emailStatus:', emailStatus)
     // Block if Google-only account — message already shown inline
     if (emailStatus === 'google') return
 

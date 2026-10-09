@@ -392,7 +392,7 @@ const CreatorPayoutTab = () => {
                   <Text className="text-2xl font-bold text-amber-700">
                     {formatCurrency(payout.pending_balance)}
                   </Text>
-                  <Text className="mt-1 text-xs text-amber-500">Held — releases after 14 days</Text>
+                  <Text className="mt-1 text-xs text-amber-500">Held — releases 8 days after delivery</Text>
                 </div>
 
                 <div className="p-4 border rounded-lg bg-blue-50">
@@ -420,7 +420,7 @@ const CreatorPayoutTab = () => {
                       {formatCurrency(payout.pending_balance)} is currently on hold
                     </Text>
                     <Text className="text-sm text-amber-600 mt-0.5">
-                      Release manually once the 14-day window has passed for eligible orders.
+                      Releases 8 days after order delivery. Click to release eligible orders whose refund window has closed.
                     </Text>
                   </div>
                   <button
@@ -763,17 +763,24 @@ const CreatorPayoutTab = () => {
 
                               {/* Release date column — only meaningful for pending earnings */}
                               <td className="p-3">
-                                {detail.type === "earning" && isPending && releaseDate ? (
-                                  <div>
-                                    <Text className="text-xs font-medium text-amber-700">
-                                      {new Date(releaseDate) <= new Date()
-                                        ? "✅ Eligible"
-                                        : formatDate(releaseDate)}
-                                    </Text>
-                                    {new Date(releaseDate) > new Date() && (
-                                      <Text className="text-xs text-gray-400">Hold ends</Text>
-                                    )}
-                                  </div>
+                                {detail.type === "earning" && isPending ? (
+                                  releaseDate ? (
+                                    <div>
+                                      <Text className="text-xs font-medium text-amber-700">
+                                        {new Date(releaseDate) <= new Date()
+                                          ? "✅ Eligible now"
+                                          : formatDate(releaseDate)}
+                                      </Text>
+                                      {new Date(releaseDate) > new Date() && (
+                                        <Text className="text-xs text-gray-400">8-day refund window</Text>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <Text className="text-xs font-medium text-blue-600">⏳ Awaiting delivery</Text>
+                                      <Text className="text-xs text-gray-400">Starts after order delivered</Text>
+                                    </div>
+                                  )
                                 ) : (
                                   <Text className="text-gray-400 text-xs">—</Text>
                                 )}

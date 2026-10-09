@@ -203,9 +203,10 @@ const processAllPayoutDetailsStep = createStep(
             reason:                 `Order earnings - ${orderId} - ${item.product_id}`,
             notes:                  JSON.stringify({
                                       hold: true,
-                                      release_after: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+                                      release_after: null,  // set when order is delivered
+                                      hold_reason: "awaiting_delivery"
                                     }),
-          }
+                      }
 
           console.log('💾 Storing (paise):', {
             amount:        payoutDetailInput.amount,

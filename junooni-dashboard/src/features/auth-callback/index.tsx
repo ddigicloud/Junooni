@@ -94,7 +94,7 @@ export default function GoogleAuthCallback() {
 
           const linkData = await linkResponse.json()
 
-          if (linkResponse.ok && linkData.token) {
+          if (linkResponse.ok && linkData.token && typeof linkData.token === 'string') {
             // Successfully linked Google to existing emailpass account
             const linkedPayload = JSON.parse(atob(linkData.token.split('.')[1]))
             activeToken = linkData.token
@@ -113,8 +113,9 @@ export default function GoogleAuthCallback() {
             // → brand new user, fall through to intent-based routing below
             console.log('[GoogleAuth] google-link: no existing account found for', email)
           } else if (!linkResponse.ok) {
-            // Unexpected error from link endpoint
+            // Unexpected error from link endpoint — treat as new user and continue
             console.warn('[GoogleAuth] google-link unexpected error:', linkData)
+            // Don't throw — fall through to onboarding for new users
           }
         }
 
@@ -138,9 +139,13 @@ export default function GoogleAuthCallback() {
           return
         }
 
-        // intent === 'signin' but no account found → send to sign-up
-        sessionStorage.setItem('googleSignUpPrompt', 'true')
-        navigate({ to: '/sign-up' })
+        // New user regardless of intent → onboarding
+        localStorage.setItem('vendorToken', activeToken)
+        localStorage.setItem('vendorEmail', email)
+        localStorage.setItem('vendorTokenTimestamp', Date.now().toString())
+        if (firstName) localStorage.setItem('googleFirstName', firstName)
+        if (lastName) localStorage.setItem('googleLastName', lastName)
+        navigate({ to: '/onboarding' })
 
       } catch (err: any) {
         console.error('Google vendor callback error:', err)

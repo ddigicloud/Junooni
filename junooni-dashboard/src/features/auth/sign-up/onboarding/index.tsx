@@ -616,6 +616,7 @@ export default function ImprovedCreatorOnboarding() {
   const [pendingFiles, setPendingFiles] = useState({ logo: null, coverphoto: null, cancelled_checkque: null });
   const [vendorData, setVendorData] = useState<ApiVendorResponse | null>(null);
   const [localPayload, setLocalPayload] = useState(null);
+  const [vendorExists, setVendorExists] = useState(false);
   const [stepCompletion, setStepCompletion] = useState({
     "basic-info": false, "sell-type": false, "creator-profile": false
   });
@@ -683,6 +684,7 @@ export default function ImprovedCreatorOnboarding() {
               const data = await res.json();
               if (isActive) {
                 setVendorData(data);
+                setVendorExists(true);
                 setStepCompletion({
                   "basic-info": Boolean(data.vendor.admins?.[0]?.first_name && data.vendor.admins?.[0]?.last_name),
                   "sell-type": Boolean(data.vendor.sell_on_marketplace || data.vendor.sell_on_own_store),
@@ -763,12 +765,10 @@ export default function ImprovedCreatorOnboarding() {
         toast({ title: "Please select a store type", description: "Pick at least one option to continue.", variant: "destructive" }); return;
       }
       if (currentStep === "creator-profile") {
-        const { hasActorId } = checkTokenForActorId();
-        if (hasActorId) await handleServerUpdate(); else handleLocalSave();
+        if (vendorExists) await handleServerUpdate(); else handleLocalSave();
         await handleFinalSubmission(); return;
       }
-      const { hasActorId } = checkTokenForActorId();
-      if (hasActorId) await handleServerUpdate(); else handleLocalSave();
+      if (vendorExists) await handleServerUpdate(); else handleLocalSave();
       const idx = STEPS.findIndex(s => s.id === currentStep);
       if (idx < STEPS.length - 1) setCurrentStep(STEPS[idx + 1].id);
     } catch {
@@ -809,16 +809,16 @@ const handleSaveAndExit = async () => {
     }
 
     setAutoSaveIndicator("Saving...");
-    const { hasActorId } = checkTokenForActorId();
-    if (hasActorId) {
-        await handleServerUpdate();
-        toast({ title: "Profile saved!", description: "Taking you to your dashboard..." });
-        setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/dashboard' }); }, 1500);
-      } else {
-        await handleCreateNewVendor();
-        toast({ title: "Profile created!", description: "Taking you to your dashboard..." });
-        setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/dashboard' }); }, 1500);
-      }
+    if (vendorExists) {
+    await handleServerUpdate();
+    toast({ title: "Profile saved!", description: "Taking you to your dashboard..." });
+    setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/dashboard' }); }, 1500);
+  } else {
+    await handleCreateNewVendor();
+    setVendorExists(true);
+    toast({ title: "Profile created!", description: "Taking you to your dashboard..." });
+    setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/dashboard' }); }, 1500);
+  }
     } catch (error) {
       toast({ title: "Save failed", description: error.message || "Please try again.", variant: "destructive" });
       setAutoSaveIndicator("");
@@ -869,13 +869,13 @@ const handleSaveAndExit = async () => {
   };
 
   const handleFinalSubmission = async () => {
-    const { hasActorId } = checkTokenForActorId();
-    if (hasActorId) {
+    if (vendorExists) {
       await handleServerUpdate();
       toast({ title: "🎉 You're live on JUNOONI!", description: "Welcome to the creator family!" });
       setTimeout(() => navigate({ to: '/dashboard' }), 1000);
     } else {
       await handleCreateNewVendor();
+      setVendorExists(true);
       toast({ title: "🎉 Profile created!", description: "Your creator store is ready!" });
       setTimeout(() => navigate({ to: '/dashboard' }), 1000);
     }
