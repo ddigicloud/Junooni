@@ -94,19 +94,31 @@ export default function GoogleAuthCallback() {
 
           const linkData = await linkResponse.json()
 
-          if (linkResponse.ok && linkData.token && typeof linkData.token === 'string') {
-            // Successfully linked Google to existing emailpass account
-            const linkedPayload = JSON.parse(atob(linkData.token.split('.')[1]))
-            activeToken = linkData.token
-            fullyOnboarded = !!linkedPayload?.actor_id
-            console.log('[GoogleAuth] google-link succeeded | fullyOnboarded after link:', fullyOnboarded)
+          if (linkResponse.ok) {
+          // google-link succeeded — call /auth/token/refresh to get actor_id in token
+          const refreshRes = await fetch(`${backendUrl}/auth/token/refresh`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-publishable-api-key': publishableKey,
+            },
+          })
 
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json()
+            activeToken = refreshData.token
+            const refreshedPayload = JSON.parse(atob(activeToken.split('.')[1]))
+            fullyOnboarded = !!refreshedPayload?.actor_id
+            console.log('[GoogleAuth] google-link + refresh succeeded | fullyOnboarded:', fullyOnboarded)
             storeToken(activeToken, email)
             fullyOnboarded
               ? navigate({ to: '/dashboard' })
               : navigate({ to: '/onboarding' })
             return
           }
+
+          console.warn('[GoogleAuth] google-link succeeded but token refresh failed')
+        }
 
           if (linkResponse.status === 404 && linkData.isNewVendor) {
             // Confirmed: no existing account with this email at all

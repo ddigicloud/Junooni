@@ -51,6 +51,10 @@ export default function CheckoutPageClient({
   const paymentRef = useRef<HTMLDivElement>(null)
   const reviewRef = useRef<HTMLDivElement>(null)
 
+  console.log("🏪 store:", store)
+  console.log("🏪 store.store_logo:", (store as any)?.store_logo)
+  console.log("🏪 vendor.logo:", vendor?.logo)
+
   const previewCart = previewProduct ? {
     ...MOCK_CART,
     items: [{
@@ -416,6 +420,8 @@ export default function CheckoutPageClient({
                   brandPrimary={btnBgColor ?? brandPrimary}
                   isDark={isDark}
                   btnTextColor={btnTextColor}
+                  storeName={vendor.name}        // ← add this
+                  storeLogo={(store as any)?.store_logo ?? vendor?.logo ?? undefined}
                   btnBorderRadius={btnBorderRadius}
                 />
               </div>                           

@@ -6790,15 +6790,29 @@ if (!printTechId || !printTechName) {
               const variantSizeNorm  = normalize(sizeOpt?.value  || '');
 
               // Match uploaded Medusa images by filename (URL contains filename)
+              // Build list of all color norms to detect ambiguous substring matches
+              const allColorNorms = completeProduct.variants
+                .flatMap(v => v.options
+                  ?.filter(o => o.option?.title?.toLowerCase() === 'color')
+                  .map(o => normalize(o.value)) || []
+                )
+                .filter((v, i, arr) => arr.indexOf(v) === i);
+
+              // Match uploaded Medusa images by filename (URL contains filename)
               const matchingImageIds = (completeProduct.images || [])
                 .filter(img => {
-                  // Use only the filename part of the URL for matching
                   const filename = img.url.toLowerCase().split('/').pop() || img.url.toLowerCase();
 
-                  // Color must match (unless no color option on this variant)
-                  const colorMatch = !variantColorNorm || filename.includes(variantColorNorm);
+                  // FIXED: prevent "yellow" from matching "golden-yellow" files
+                  const colorMatch = !variantColorNorm || (
+                    filename.includes(variantColorNorm) &&
+                    !allColorNorms.some(otherColor =>
+                      otherColor !== variantColorNorm &&
+                      otherColor.includes(variantColorNorm) &&
+                      filename.includes(otherColor)
+                    )
+                  );
 
-                  // Size must match only when size_Images is enabled in PayloadCMS
                   const sizeMatch =
                     !payloadImageSettings.size_Images ||
                     !variantSizeNorm ||

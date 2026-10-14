@@ -127,9 +127,16 @@ export const StreamlinedImageManager: React.FC<{
       // PRIORITY 2: URL-based matching (color name in filename)
       if (isColorOption(option.title)) {
         const urlLower = item.url.toLowerCase();
-        const valueLower = value.toLowerCase().replace(/\s+/g, '_');
         const valueDash = value.toLowerCase().replace(/\s+/g, '-');
-        if (urlLower.includes(valueLower) || urlLower.includes(valueDash)) return true;
+        if (urlLower.includes(valueDash)) {
+          const allColorsDash = option.optionValues.map(v => v.toLowerCase().replace(/\s+/g, '-'));
+          const matchesMoreSpecificColor = allColorsDash.some(otherColor =>
+            otherColor !== valueDash &&
+            otherColor.includes(valueDash) &&
+            urlLower.includes(otherColor)
+          );
+          if (!matchesMoreSpecificColor) return true;
+        }
       }
 
      // PRIORITY 3: variantInfo metadata + colorValue shorthand
@@ -422,8 +429,17 @@ export const StreamlinedImageManager: React.FC<{
     // PRIORITY 2: URL-based matching for color
     if (isColorOption(optionName)) {
       const urlLower = item.url.toLowerCase();
-      const valueLower = value.toLowerCase().replace(/\s+/g, '-');
-      if (urlLower.includes(valueLower)) return true;
+      const valueDash = value.toLowerCase().replace(/\s+/g, '-');
+      if (urlLower.includes(valueDash)) {
+        const option = options.find(o => o.title?.toLowerCase() === optionName.toLowerCase());
+        const allColorsDash = (option?.optionValues || []).map(v => v.toLowerCase().replace(/\s+/g, '-'));
+        const matchesMoreSpecificColor = allColorsDash.some(otherColor =>
+          otherColor !== valueDash &&
+          otherColor.includes(valueDash) &&
+          urlLower.includes(otherColor)
+        );
+        if (!matchesMoreSpecificColor) return true;
+      }
     }
 
     // PRIORITY 3: variantInfo primary option match

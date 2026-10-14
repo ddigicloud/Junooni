@@ -141,3 +141,27 @@
     @apply min-h-svh w-full bg-background text-foreground;
   }
 }
+
+.creator-card {
+  position: relative;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 22%;
+  padding: 3px;
+  /* background: linear-gradient(135deg, #e65100, #ffcc80, #e65100); */
+}
+
+.creator-card-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 20%;
+  overflow: hidden;
+}
+
+.creator-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

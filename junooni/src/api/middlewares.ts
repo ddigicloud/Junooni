@@ -298,7 +298,7 @@ export default defineMiddlewares({
     },
     {
       matcher: "/vendors/me",
-      method: ["GET","PUT"],
+      method: ["GET","PUT","POST"],
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
@@ -416,8 +416,8 @@ export default defineMiddlewares({
             /^\/vendors\/check-handle$/,
             /^\/vendors\/uploads$/,
             /^\/vendors\/payout$/,
-            // /^\/vendors\/me$/,
-            // /^\/vendors\/google-link$/, 
+            /^\/vendors\/me$/,
+            /^\/vendors\/google-link$/, 
             /^\/vendors\/[^/]+\/products$/, // ← ADD THIS
             /^\/vendors\/check-email$/,   // ← ADD
             /^\/vendors\/send-otp$/,      // ← ADD

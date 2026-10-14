@@ -30,9 +30,20 @@ export default {
           '0%, 100%': { visibility: 'visible' },
           '50%': { visibility: 'hidden' },
         },
+        'marquee-left': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'marquee-right': {
+          '0%': { transform: 'translateX(-50%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
       },
-      animation: {
+       animation: {
         blink: 'blink 2s step-start infinite',
+        'marquee-left': 'marquee-left 40s linear infinite',
+        'marquee-right': 'marquee-right 40s linear infinite',
+        'spin-slow': 'spin 8s linear infinite',
       },
       colors: {
         background: 'hsl(var(--background))',

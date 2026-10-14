@@ -1039,7 +1039,8 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
   const [confirmRemove, setConfirmRemove] = useState(false)
 
   const subdomain = store.subdomain || vendorHandle
-  const isProPlan = vendorPlan === "pro" || vendorPlan === "enterprise"
+  //const isProPlan = vendorPlan === "pro" || vendorPlan === "enterprise"
+  const isProPlan = ["creator", "studio", "pro", "enterprise"].includes(vendorPlan ?? "")
   const VPS_IP = "134.209.145.195"
 
   const cleanDomain = (raw: string) => raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").trim()

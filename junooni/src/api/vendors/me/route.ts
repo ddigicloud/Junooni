@@ -35,8 +35,7 @@ export const GET = async (
   if (!actorId) return res.status(401).json({ message: "Unauthorized" })
 
   const vendorId = await resolveVendorId(query, actorId)
-  if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
-
+  if (!vendorId) return res.status(200).json({ vendor: null })
   // Fetch full vendor — plan fields and marketplace status are columns on the vendor entity
   const { data: [vendor] } = await query.graph({
     entity: "vendor",
@@ -52,7 +51,7 @@ export const GET = async (
     filters: { id: vendorId },
   })
 
-  if (!vendor) return res.status(404).json({ message: "Vendor not found" })
+  if (!vendor) return res.status(200).json({ vendor: null })
 
   const { data: admins } = await query.graph({
     entity: "vendor_admin",
@@ -123,8 +122,18 @@ async function updateVendorForMe(
   const marketplaceModuleService: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
 
   const actorId = req.auth_context?.actor_id
-  const vendorId = await resolveVendorId(query, actorId)
-  if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
+  let vendorId = await resolveVendorId(query, actorId)
+
+  if (!vendorId) {
+    // actor_id is set but vendor was never created — create and link now
+    const { admins, sell_on_marketplace, ...vendorFields } = req.validatedBody || req.body
+    const newVendor = await marketplaceModuleService.createVendors({ ...vendorFields })
+    await marketplaceModuleService.updateVendorAdmins({
+      id: actorId,
+      vendor_id: newVendor.id,
+    })
+    return res.status(201).json({ vendor: newVendor, message: "Vendor created successfully" })
+  }
 
   const body = req.validatedBody || req.body
   const { admins, sell_on_marketplace, ...vendorFields } = body

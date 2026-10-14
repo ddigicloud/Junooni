@@ -18,8 +18,10 @@ const loadRazorpayScript = (): Promise<boolean> =>
 
 export default function ReviewForm({
   cart, handle, brandPrimary = "#e65100", isDark = false, btnTextColor, btnBorderRadius,
+  storeName, storeLogo,
 }: {
   cart: any; handle: string; brandPrimary?: string; isDark?: boolean; btnTextColor?: string; btnBorderRadius?: number
+  storeName?: string; storeLogo?: string
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -94,8 +96,8 @@ export default function ReviewForm({
           key: activeSession?.data?.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: activeSession?.data?.amount,
           currency: activeSession?.data?.currency || "INR",
-          name: "JUNOONI",
-          image: "https://studio.junooni.com/assets/junooni-favicon-BskTzyxn.png",
+          name: storeName ?? handle,
+          image: storeLogo ?? "https://studio.junooni.com/assets/junooni-favicon-BskTzyxn.png",
           description: "Creator Merchandise",
           order_id: razorpayOrderId,
           prefill: {

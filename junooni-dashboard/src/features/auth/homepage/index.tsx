@@ -1,271 +1,821 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
-  ArrowRight, Star, TrendingUp, Users, Package, Palette, Sparkles,
-  Menu, X, Heart, BarChart3, Shield, Globe, Store, Layers, Ticket,
-  CheckCircle2, Receipt, Truck
+  ArrowRight, Play, Package, ShoppingBag, Truck, Users,
+  Menu, X, Star, TrendingUp, Palette, Heart, BarChart3,
+  Shield, Store, CheckCircle2, Receipt,
+  ChevronLeft, ChevronRight, Minus, Plus, Pencil, Shirt , Rocket,
+  Camera, Award, ChevronDown, Linkedin, Twitter, Instagram,
 } from 'lucide-react';
 
-// Images: place files into /src/assets/ as described above
-import heroVisual from '/src/assets/hero-visual.gif';
-import step1Img from '/src/assets/step-1.png';
-import step2Img from '/src/assets/step-2.png';
-import step3Img from '/src/assets/step-3.png';
-import junoonilogo from '/src/assets/junooni_logo_brand_color.png';
-import gallery1 from '/src/assets/gallery-1.jpeg';
-import gallery2 from '/src/assets/gallery-2.png';
-import gallery3 from '/src/assets/gallery-3.png';
-import gallery4 from '/src/assets/gallery-4.png';
+import junoonilogo    from '/src/assets/junooni_logo_brand_color.png';
+import creatorbanner  from '/src/assets/creator-banner-pic.png';
 import herobanneritems from '/src/assets/hero-banner-items.png';
-import JunooniHero from './JunooniHero.jsx'; // adjust path as needed
-import JunooniSections from './JunooniSections.jsx';
-import JunooniPathsSection from './junoonipathsection.jsx';
-import JunooniEarningsSection from './junooniearningsection';
+import JunooniEarningsSection from './junooniearningsection.tsx';
+import LaptopDashboard from './LaptopDashboard.tsx';
+import tanishqpic from '/src/assets/tanishq-cover-photo.png';
+import shadabpic from '/src/assets/shadab-cover-photo.png';
+import communitymerch from '/src/assets/community-merch.png';
+import junoonibanner from '/src/assets/junooni-banner.png';
+import junoonifulfillment from '/src/assets/junooni-fulfillment.png';
+import creatorfulfillment from '/src/assets/creator-fulfillment.png';
+import tanishkbagchi from '/src/assets/tanishk-bagchi.png';
+import shadabjakati from '/src/assets/shadab-jakati.png';
+import varunbudhadev from '/src/assets/varun-budhadev.jpg';
+import manansachdeva from '/src/assets/manan-sachdeva.jpeg';
+import posters from '/src/assets/posters.webp';
+import phone from '/src/assets/phone.webp';
+import Mug from '/src/assets/mug.webp';
+import tshirt from '/src/assets/t-shirt.webp';
+import hoodie from '/src/assets/hoodie.webp';
+import bottle from '/src/assets/bottle.webp';
+import totebag from '/src/assets/tote-bags.webp';
+import cap from '/src/assets/cap.webp';
+import junoonibannermobile from '/src/assets/junooni-bannermobile.png';
+import communitymerchmobile from '/src/assets/community-merchmobile.png';
+import tanishqbagchi from '/src/assets/tanishq-bagchi.png';
+import creatorMerchVideo from '/src/assets/creator-merch-video.mp4'; 
 
+/* ─────────────────────────────────────────────
+   DATA
+───────────────────────────────────────────── */
+const PRODUCTS = {
+  tshirt:  { label: 'T-Shirt',  cost: 350, shipping: 50  },
+  hoodie:  { label: 'Hoodie',   cost: 550, shipping: 60  },
+  cap:     { label: 'Cap',      cost: 250, shipping: 40  },
+  mug:     { label: 'Mug',      cost: 200, shipping: 45  },
+  totebag: { label: 'Tote Bag', cost: 180, shipping: 40  },
+};
 
+const DEFAULT_PRICES = { tshirt: 999, hoodie: 1299, cap: 699, mug: 499, totebag: 599 };
 
+const CREATOR_CATS = [
+  { label: 'Fitness',     emoji: '💪', bg: 'bg-orange-100' },
+  { label: 'Comedy',      emoji: '😄', bg: 'bg-yellow-100' },
+  { label: 'Gaming',      emoji: '🎮', bg: 'bg-purple-100' },
+  { label: 'Kids',        emoji: '🧸', bg: 'bg-pink-100'   },
+  { label: 'Lifestyle',   emoji: '✨', bg: 'bg-green-100'  },
+  { label: 'Music',       emoji: '🎵', bg: 'bg-blue-100'   },
+  { label: 'Art & Design',emoji: '🎨', bg: 'bg-red-100'    },
+  { label: 'Motivation',  emoji: '🔥', bg: 'bg-amber-100'  },
+  { label: 'Food',        emoji: '🍕', bg: 'bg-lime-100'   },
+  { label: 'and Many More',emoji:'🌟', bg: 'bg-indigo-100' },
+];
+
+const CREATORS_SPOTLIGHT = [
+  {
+    name: 'Tanishk Bagchi',
+    role: 'Music Producer',
+    category: 'MUSIC',
+    categoryIcon: '🎵',
+    banner: tanishkbagchi,
+    products: [tshirt, hoodie, Mug],
+    storeUrl: 'https://tanishkbagchi.junooni.com/',
+    bg: 'from-orange-900 to-black',
+  },
+  {
+    name: 'Shadab Jakati',
+    role: 'Digital Creator',
+    category: 'CREATOR',
+    categoryIcon: '😊',
+    banner: shadabjakati,
+    products: [tshirt, cap, Mug],
+    storeUrl: 'https://shadabjakati.junooni.com/',
+    bg: 'from-yellow-900 to-black',
+  },
+  {
+    name: 'Varun Budhadev',
+    role: 'Actor and V Clothing',
+    category: 'ACTOR',
+    categoryIcon: '🎬',
+    banner: varunbudhadev,
+    products: [tshirt, hoodie, cap],
+    storeUrl: 'https://varunbudhadev.junooni.com/',
+    bg: 'from-gray-900 to-black',
+  },
+];
+
+const CREATORS = [
+  { img: tanishkbagchi,  name: 'Music'  },
+  { img: shadabjakati,   name: 'Comedy'   },
+  { img: varunbudhadev,  name: 'Fitness'  },
+  { img: manansachdeva,  name: 'Motivation'  },
+];
+
+const MERCH = [
+  { label: 'T-Shirts',    img: tshirt  },
+  { label: 'Hoodies',     img: hoodie  },
+  { label: 'Caps',        img: cap     },
+  { label: 'Mugs',        img: Mug     },
+  { label: 'Bottles',     img: bottle  },
+  { label: 'Tote Bags',   img: totebag },
+  { label: 'Wall Art',    img: posters },
+  { label: 'Phone Cases', img: phone   },
+];
+
+const TESTIMONIALS = [
+  { quote: 'Super easy to set up and the team handles everything. My fans love the merch!',
+    name: 'Rohit Singh',  role: 'Fitness Creator',  initials: 'RS', color: 'bg-orange-500' },
+  { quote: 'Finally a platform that understands creators. Smooth process and amazing quality.',
+    name: 'Ananya',       role: 'Gaming Creator',   initials: 'AN', color: 'bg-purple-500' },
+  { quote: "My merch never looked this good. Highly recommend Junooni!",
+    name: 'Kabir Verma',  role: 'Comedy Creator',   initials: 'KV', color: 'bg-blue-500'   },
+];
+
+const FAQS_L = [
+  { q: 'Is it really free to start?',       a: 'Yes! Creating your store and listing products on JUNOONI is completely free. You pay nothing until you make a sale.' },
+  { q: 'Do I need any technical skills?',   a: 'Not at all. JUNOONI is built for creators — not developers. If you can upload a photo, you can set up your store.' },
+  { q: 'How do I get paid?',                a: 'Earnings are transferred directly to your bank account on a regular payout schedule after order fulfillment.' },
+  { q: 'Can I design my own products?',     a: 'Yes. Upload your own artwork or use our canvas designer to create something unique.' },
+  { q: 'How long does shipping take?',      a: 'Most orders are delivered within 5–7 business days across India.' },
+];
+
+const FAQS_R = [
+  { q: 'What products can I sell?',                             a: 'T-shirts, hoodies, caps, mugs, bottles, tote bags, phone cases, wall art and more.' },
+  { q: 'Can I connect my own domain?',                          a: 'Yes. With Own Store you can connect a custom domain so your fans shop at yourbrand.com.' },
+  { q: 'Can I sell on both marketplace and my own store?',      a: 'Absolutely. Most creators use both — Marketplace for discovery and Own Store for brand building.' },
+  { q: 'What if there is an issue with my order?',              a: "JUNOONI's customer service team handles all disputes, replacements and refunds end-to-end." },
+  { q: 'Is there a minimum order quantity?',                    a: 'No. JUNOONI uses print-on-demand — every item is made to order, so there is no minimum.' },
+];
+
+/* ─────────────────────────────────────────────
+   COMPONENT
+───────────────────────────────────────────── */
 const JunooniLandingPage = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentMerch, setCurrentMerch] = useState(0);
-  const [openFaq, setOpenFaq] = useState(null);
+  const [menuOpen,    setMenuOpen]    = useState(false);
+  const [openFaqs,    setOpenFaqs]    = useState({});
+  const [product,     setProduct]     = useState('tshirt');
+  const [price,       setPrice]       = useState(999);
+  const [tIdx,        setTIdx]        = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
 
   const navigate = useNavigate();
+  const goRegister = () => { window.location.href = '/sign-up'; };
+  const goLogin    = () => { navigate({ to: '/sign-in' }); };
+  const scrollTo   = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  const toggleFaq  = key => setOpenFaqs(p => ({ ...p, [key]: !p[key] }));
 
-  const handleRegisterClick = () => {
-    window.location.href = '/sign-up';
+  const p          = PRODUCTS[product];
+  const fees       = Math.round(price * 0.02 * 1.18);
+  const profit     = price - p.cost - p.shipping - fees;
+
+  /* helpers */
+  const emojiFor = k =>
+    ({ tshirt:'👕', hoodie:'🧥', cap:'🧢', mug:'☕', totebag:'👜' })[k];
+
+  const FaqItem = ({ label, item, idx }) => {
+    const key  = `${label}-${idx}`;
+    const open = !!openFaqs[key];
+    return (
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <button onClick={() => toggleFaq(key)}
+          className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left focus:outline-none">
+          <span className="text-sm font-medium text-gray-900">{item.q}</span>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && <div className="px-5 pb-4 text-sm text-gray-500 leading-relaxed">{item.a}</div>}
+      </div>
+    );
   };
-
-  const handleLoginClick = () => {
-    navigate({ to: '/sign-in' });
-  };
-
-  const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const merchTypes = [
-    { name: 'T-Shirts', icon: '👕', color: 'bg-orange-100', shadow: 'shadow-orange-200' },
-    { name: 'Mugs', icon: '☕', color: 'bg-orange-200', shadow: 'shadow-orange-200' },
-    { name: 'Hoodies', icon: '🧥', color: 'bg-orange-50', shadow: 'shadow-orange-200' },
-    { name: 'Stickers', icon: '🏷️', color: 'bg-amber-100', shadow: 'shadow-amber-200' },
-    { name: 'Posters', icon: '🖼️', color: 'bg-orange-100', shadow: 'shadow-orange-200' },
-    { name: 'Phone Cases', icon: '📱', color: 'bg-amber-50', shadow: 'shadow-amber-200' },
-  ];
-
-  // The two paths — this is the core new fact: JUNOONI is not one thing,
-  // it's two ways to sell, both backed by the same zero-inventory engine.
-  const paths = [
-    {
-      key: 'marketplace',
-      icon: Store,
-      label: 'Marketplace',
-      domain: 'junooni.com',
-      tagline: 'List once, get discovered',
-      description:
-        'Your products go live inside the JUNOONI marketplace where creator-shoppers are already browsing. Fastest way to your first sale.',
-      points: ['Live on junooni.com in minutes', 'Built-in discovery & search', 'Starting from 0% commission'],
-    },
-    {
-      key: 'ownstore',
-      icon: Layers,
-      label: 'Own Store',
-      domain: 'yourbrand.com',
-      tagline: 'Your brand, your domain',
-      description:
-        'A fully branded storefront on your own custom domain. Same zero-inventory engine underneath — design, fulfillment, ops, logistics, and customer service, all still on us.',
-      points: ['Custom domain & branding', 'Full storefront design control', 'Same 90% revenue share'],
-    },
-  ];
-
-  const steps = [
-    {
-      step: '01',
-      title: 'Sign up',
-      description: 'Create your creator account — no paperwork, no inventory to plan for.',
-      image: step1Img,
-    },
-    {
-      step: '02',
-      title: 'Pick your path & design',
-      description:
-        'Go live on the Marketplace, spin up your Own Store, or both. Upload your art and place it on real products.',
-      image: step2Img,
-    },
-    {
-      step: '03',
-      title: 'JUNOONI handles everything',
-      description:
-        'Production, fulfillment, GST-compliant invoicing, pan-India delivery, and customer service — you just keep 90% and watch it earn.',
-      image: step3Img,
-    },
-  ];
-
-  const faqs = [
-    {
-      q: 'Marketplace or Own Store — which one is for me?',
-      a: 'Start on the Marketplace (junooni.com) if you want fast discovery from day one. Choose Own Store if you want a fully branded storefront on your own domain. Most creators use both — the backend (fulfillment, ops, logistics, customer service) is identical either way.',
-    },
-    {
-      q: 'Do I need to hold inventory?',
-      a: 'No. JUNOONI runs on a zero inventory risk, print-on-demand model. Products are made only after a customer orders, so there is no stock, no warehousing, and no upfront cost to you.',
-    },
-    {
-      q: 'What does JUNOONI actually handle for me?',
-      a: 'Design tools, production, fulfillment, GST-compliant invoicing, pan-India delivery, and customer service. JUNOONI does everything. Takes nothing beyond a starting commission of 0%.',
-    },
-    {
-      q: 'How much do I earn, and how are payouts handled?',
-      a: 'You keep up to 90% of your revenue, with commission starting from 0%. A payout dashboard shows sales and fees before every transfer, on a regular payout schedule.',
-    },
-    {
-      q: 'What file formats and sizes do you accept?',
-      a: 'High-resolution PNG, JPEG, and vector SVG for print. For apparel, 300 DPI at final print size is recommended for a crisp result.',
-    },
-    {
-      q: 'Are invoices GST-compliant?',
-      a: 'Yes. Every order generates a GST-compliant invoice automatically — no manual bookkeeping on your end.',
-    },
-    {
-      q: 'What if a customer gets a damaged or misprinted item?',
-      a: 'JUNOONI\'s customer service team handles it end-to-end — replacement or refund per policy. You are never in the middle of a returns conversation.',
-    },
-    {
-      q: 'Can I sell products I already make myself, not just print-on-demand?',
-      a: 'Yes. Alongside POD creators, JUNOONI also supports creators selling their own products — we still run the operations, logistics, and customer service on your behalf.',
-    },
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentMerch((prev) => (prev + 1) % merchTypes.length);
-    }, 2200);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
-    <div className="min-h-screen text-gray-900">
-      {/* NAV */}
-      <nav className="fixed z-50 w-full border-b border-orange-100/70 bg-[#FFF8F0]/95 backdrop-blur-sm">
-        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+    <div className="min-h-screen text-gray-900 bg-[#FFF8F0]">
+
+      {/* ══════════════════════════════════════
+          NAV
+      ══════════════════════════════════════ */}
+      <nav className="fixed z-50 w-full border-b border-orange-100/70 bg-white/95 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <button onClick={() => navigate({ to: '/' })} className="flex items-center gap-2 sm:gap-3">
-                <img src={junoonilogo} alt="Junooni" className="h-6 sm:h-8" />
-                <span className="hidden text-xs font-semibold text-gray-700 sm:text-sm md:block">Creator Studio</span>
-              </button>
+
+            {/* Logo */}
+            <button onClick={() => navigate({ to: '/' })} className="flex items-center gap-2">
+              <img src={junoonilogo} alt="Junooni" className="h-7 sm:h-8" />
+            </button>
+
+            {/* Desktop centre links */}
+            <div className="hidden lg:flex items-center gap-6">
+              {[
+                { label: 'Home',         id: null              },
+                { label: 'Features',     id: 'features'        },
+                { label: 'How It Works', id: 'how-it-works'    },
+                { label: 'Products',     id: 'merch'           },
+                { label: 'Pricing',      id: 'earnings'        },
+                { label: 'FAQs',         id: 'faq'             },
+              ].map(({ label, id }) => (
+                <button key={label}
+                  onClick={() => id && scrollTo(id)}
+                  className="px-3 py-2 text-sm text-gray-600 hover:text-[#e65100] font-medium transition-colors">
+                  {label}
+                </button>
+              ))}
             </div>
 
-            <div className="items-center hidden gap-1 md:flex">
-              <Button variant="ghost" onClick={() => scrollTo('paths')}>Marketplace vs Own Store</Button>
-              <Button variant="ghost" onClick={() => scrollTo('how-it-works')}>How it works</Button>
-              <Button variant="outline" onClick={handleLoginClick} className="ml-2">Login</Button>
-              <Button onClick={handleRegisterClick} className="bg-[#e65100] text-white">
-                Start Selling <ArrowRight className="w-4 h-4 ml-2" />
+            {/* Desktop auth */}
+            <div className="hidden md:flex items-center gap-3">
+              <button onClick={goLogin} className="text-sm text-gray-600 font-medium hover:text-[#e65100] transition-colors">
+                Log In
+              </button>
+              <Button onClick={goRegister} className="bg-[#e65100] hover:bg-orange-700 text-white text-sm font-semibold">
+                Create Your Store <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
 
-            <div className="md:hidden">
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 rounded-md hover:bg-orange-50">
-                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
+            {/* Mobile hamburger */}
+            <button className="md:hidden p-2 rounded-md hover:bg-orange-50" onClick={() => setMenuOpen(!menuOpen)}>
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
 
-          {isMenuOpen && (
-            <div className="py-4 border-t border-orange-100 md:hidden">
-              <div className="flex flex-col gap-3 px-2">
-                <Button variant="ghost" onClick={() => { setIsMenuOpen(false); scrollTo('paths'); }}>Marketplace vs Own Store</Button>
-                <Button variant="ghost" onClick={() => { setIsMenuOpen(false); scrollTo('how-it-works'); }}>How it works</Button>
-                <Button variant="ghost" onClick={() => { setIsMenuOpen(false); handleLoginClick(); }}>Login</Button>
-                <Button onClick={() => { setIsMenuOpen(false); handleRegisterClick(); }} className="bg-[#e65100] text-white">Start Selling</Button>
+          {/* Mobile menu */}
+          {menuOpen && (
+            <div className="md:hidden py-4 border-t border-orange-100 flex flex-col gap-1 px-2">
+              {['Home','Features','How It Works','Products','Pricing','FAQs'].map(label => (
+                <button key={label} className="text-left px-3 py-2.5 text-sm text-gray-700 hover:text-[#e65100] hover:bg-orange-50 rounded-lg">
+                  {label}
+                </button>
+              ))}
+              <div className="pt-3 border-t border-orange-100 mt-1 space-y-2">
+                <Button variant="outline" onClick={goLogin} className="w-full">Log In</Button>
+                <Button onClick={goRegister} className="w-full bg-[#e65100] text-white">Create Your Store</Button>
               </div>
             </div>
           )}
         </div>
       </nav>
 
-      {/* HERO */}  
-      <JunooniHero
-        onRegister={handleRegisterClick}
-        onScrollPaths={() => scrollTo('paths')}
-      />
+      {/* ══════════════════════════════════════
+          HERO
+      ══════════════════════════════════════ */}
+      <section className="relative pt-2 overflow-hidden bg-[#FFF8F0]">
+        {/* Glow blobs */}
+        <div className="absolute top-20 right-0 w-[55%] h-[90%] bg-orange-200 rounded-full opacity-20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-[300px] h-[300px] bg-amber-200 rounded-full opacity-15 blur-2xl pointer-events-none" />
 
-      <JunooniSections />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
+                        flex flex-col lg:flex-row items-stretch min-h-[calc(100vh-64px)]">
 
-      {/* TWO PATHS — signature section: Marketplace vs Own Store as ticket-stub cards */}
-      <JunooniPathsSection handleRegisterClick={handleRegisterClick} />
+          {/* ── Left 42% ── */}
+          <div className="lg:w-[42%] flex flex-col justify-center py-16 lg:py-24 pr-0 lg:pr-8">
 
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-12 overflow-hidden sm:py-16 lg:py-20 bg-gradient-to-b from-[#FFF8F0] to-orange-50">
-        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <div className="mb-10 text-center sm:mb-16">
-            <div className="inline-block px-3 py-1.5 sm:px-4 sm:py-2 mb-3 sm:mb-4 text-xs sm:text-sm font-semibold text-orange-800 bg-orange-100 rounded-full">
-              From sign-up to sale
+            <div className="inline-block self-start mb-5 px-4 py-1.5
+                            bg-orange-100 text-[#e65100] text-xs font-bold
+                            rounded-full tracking-widest uppercase border border-orange-200">
+              Creator Studio
             </div>
-            <h2 className="mb-3 text-2xl font-extrabold sm:text-3xl md:text-4xl lg:text-5xl sm:mb-4">
-              JUNOONI does everything. Takes nothing.
-            </h2>
-            <p className="max-w-2xl mx-auto text-sm text-gray-600 sm:text-base lg:text-lg">
-              Three steps between you and your first sale — the rest is on us.
+
+            <h1 className="text-[2.8rem] sm:text-5xl lg:text-[3.5rem] xl:text-[4rem]
+                          font-black leading-[1.05] mb-5">
+              <span className="block text-gray-900">Your Fans.</span>
+              <span className="block text-gray-900">Your Merch.</span>
+              <span className="block text-[#e65100]">Your Brand.</span>
+            </h1>
+
+            <p className="text-gray-600 text-base sm:text-lg mb-8 max-w-md leading-relaxed">
+              Launch your official merchandise store in minutes.
+              No upfront investment. No inventory. We handle everything
+              so you can focus on what you do best — creating.
             </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-10">
+              <Button onClick={goRegister} size="lg"
+                className="bg-[#e65100] hover:bg-orange-700 text-white px-5 py-5
+                          text-base font-bold shadow-lg shadow-orange-200/60 hover:shadow-xl transition-all rounded-xl w-full sm:w-auto">
+                Create Your Store <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+              <Button variant="outline" size="lg"
+                onClick={() => scrollTo('how-it-works')}
+                className="px-5 py-5 text-base border-gray-300 text-gray-700 rounded-xl
+                          hover:border-[#e65100] hover:text-[#e65100] transition-colors w-full sm:w-auto justify-center">
+                <span className="w-7 h-7 bg-[#e65100] rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                  <Play className="w-3 h-3 fill-white text-white" />
+                </span>
+                Watch How It Works
+              </Button>
+            </div>
+
+            {/* Trust badges — 2 × 2 */}
+            <div className="flex gap-4">
+              {[
+                { icon: Package,     label: 'No Upfront Costs' },
+                { icon: ShoppingBag, label: 'Zero Inventory' },
+                { icon: Truck,       label: 'End-to-End Fulfillment' },
+                { icon: Users,       label: 'Built for Creators' },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="flex flex-col items-center gap-1.5 w-20">
+                  <div className="w-11 h-11 rounded-full bg-white shadow-sm border border-orange-100
+                                  flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-[#e65100]" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-600 text-center leading-tight">{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="relative space-y-12 sm:space-y-16 lg:space-y-20">
-            <div className="absolute left-1/2 top-0 bottom-0 hidden lg:block w-0.5 bg-gradient-to-b from-orange-200 via-orange-300 to-orange-200 transform -translate-x-1/2">
-              <div className="absolute top-[10%] left-1/2 transform -translate-x-1/2 w-4 h-4 bg-[#e65100] rounded-full border-4 border-[#FFF8F0] shadow-lg"></div>
-              <div className="absolute top-[48%] left-1/2 transform -translate-x-1/2 w-4 h-4 bg-[#e65100] rounded-full border-4 border-[#FFF8F0] shadow-lg"></div>
-              <div className="absolute top-[86%] left-1/2 transform -translate-x-1/2 w-4 h-4 bg-[#e65100] rounded-full border-4 border-[#FFF8F0] shadow-lg"></div>
-            </div>
+          {/* ── Right 58% — image fills full height ── */}
+          <div className="lg:w-[58%] relative flex items-center justify-center
+                          mt-8 lg:mt-0">
+            <video
+              src={creatorMerchVideo}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="relative z-10 w-full h-auto lg:h-full
+                        object-contain object-center
+                        max-h-[50vh] lg:max-h-none"
+            />
+          </div>
 
-            {steps.map((s, i) => (
-              <div
-                key={i}
-                className={`relative flex flex-col gap-6 sm:gap-8 items-center ${i % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'}`}
-              >
-                <div className="flex-1 w-full">
-                  <div className="relative group">
-                    <div className="absolute inset-0 transition-opacity bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl sm:rounded-3xl opacity-20 blur-xl sm:blur-2xl group-hover:opacity-30"></div>
-                    <div className="relative overflow-hidden shadow-xl sm:shadow-2xl rounded-2xl sm:rounded-3xl">
-                      <img
-                        src={s.image}
-                        alt={s.title}
-                        className="object-cover w-full h-[300px] sm:h-[400px] lg:h-[500px] transform group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          TRUSTED BY 50+ CREATORS
+      ══════════════════════════════════════ */}
+      <section className="py-10 sm:py-12 bg-white border-y border-gray-100 overflow-hidden">
+        <p className="text-center text-xs sm:text-sm font-semibold text-gray-400
+                      uppercase tracking-widest mb-7">
+          Trusted by 50+ Creators Across India
+        </p>
+
+        {/* Row 1 — scrolls right to left */}
+        <div className="relative mb-6">
+          <div className="flex gap-8 animate-marquee-left w-max items-center">
+            {[...CREATORS, ...CREATORS, ...CREATORS, ...CREATORS].map(({ img, name }, i) => (
+              <div key={`r1-${i}`} className="flex items-center gap-3 flex-shrink-0">
+                <div className="creator-card">
+                  <div className="creator-card-img">
+                    <img src={img} alt={name} />
+                  </div>
+                </div>
+                <span className="text-lg font-semibold text-gray-700 whitespace-nowrap">{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2 — scrolls left to right */}
+        <div className="relative">
+          <div className="flex gap-8 animate-marquee-right w-max items-center">
+            {[...CREATORS, ...CREATORS, ...CREATORS, ...CREATORS].map(({ img, name }, i) => (
+              <div key={`r2-${i}`} className="flex items-center gap-3 flex-shrink-0">
+                <div className="creator-card">
+                  <div className="creator-card-img">
+                    <img src={img} alt={name} />
+                  </div>
+                </div>
+                <span className="text-lg font-semibold text-gray-700 whitespace-nowrap">{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      <section className="py-12 sm:py-16 bg-[#FFF8F0]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Header */}
+          <div className="text-center mb-10 relative">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-orange-100 text-[#e65100] text-xs font-bold
+                            uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">
+              <span>⭐</span> Creator Spotlight
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight mb-3">
+              Your favourite creators.<br />
+              <span className="text-[#e65100]">Their world.</span> Your merch.
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base">
+              Explore official stores and wear what you love.
+            </p>
+            {/* View all link */}
+            <a href="https://junooni.com/creators"
+              className="absolute right-0 top-0 text-[#e65100] text-sm font-semibold
+                        flex items-center gap-1 hover:underline hidden sm:flex">
+              View all creators <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {CREATORS_SPOTLIGHT.map(({ name, role, category, categoryIcon, banner, products, storeUrl, bg }) => (
+              <div key={name}
+                className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100
+                          hover:shadow-lg transition-all">
+
+                {/* Banner image */}
+                <div className={`relative h-64 bg-gradient-to-br ${bg} overflow-hidden`}>
+                  <img
+                    src={banner}
+                    alt={name}
+                    className="w-full h-full object-cover object-top"
+                  />
+                  {/* Category badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm
+                                  text-white text-xs font-bold px-3 py-1.5 rounded-full">
+                    <span>{categoryIcon}</span>
+                    <span>{category}</span>
                   </div>
                 </div>
 
-                <div className="flex-1 w-full">
-                  <div className="relative px-4 sm:px-0">
-                    <div className="absolute -left-2 sm:-left-4 -top-6 sm:-top-8 text-[80px] sm:text-[120px] font-black text-orange-100 opacity-50 select-none">
-                      {s.step}
-                    </div>
+                {/* Info */}
+                <div className="p-4">
+                  <h3 className="text-lg font-extrabold text-gray-900">{name}</h3>
+                  <p className="text-gray-500 text-sm mb-4">{role}</p>
 
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-12 h-12 mb-4 text-xl font-black text-white shadow-lg sm:w-16 sm:h-16 sm:mb-6 sm:text-2xl rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600">
-                        {s.step}
+                  {/* Product thumbnails */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {products.map((img, i) => (
+                      <div key={i} className="aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
+                        <img
+                          src={img}
+                          alt={`product-${i}`}
+                          className="w-full h-full object-contain p-2"
+                        />
                       </div>
+                    ))}
+                  </div>
 
-                      <h3 className="mb-3 text-2xl font-extrabold text-gray-900 sm:text-3xl md:text-4xl sm:mb-4">
-                        {s.title}
-                      </h3>
+                  {/* CTA */}
+                  <a href={storeUrl} target="_blank" rel="noopener noreferrer">
+                    <Button
+                      className="w-full bg-[#e65100] hover:bg-orange-700 text-white font-bold py-3 rounded-xl">
+                      Explore Store <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
 
-                      <p className="mb-4 text-base leading-relaxed text-gray-600 sm:text-lg sm:mb-6">
-                        {s.description}
-                      </p>
+          {/* Mobile view all */}
+          <div className="text-center mt-6 sm:hidden">
+            <a href="https://junooni.com/creators"
+              className="text-[#e65100] text-sm font-semibold flex items-center justify-center gap-1">
+              View all creators <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
 
-                      {i === steps.length - 1 && (
-                        <Button
-                          onClick={handleRegisterClick}
-                          size="lg"
-                          className="bg-[#e65100] text-white px-6 py-3 sm:px-8 sm:py-6 text-base sm:text-lg font-semibold hover:bg-orange-700 transition-all hover:shadow-xl w-full sm:w-auto"
-                        >
-                          Get Started Now <ArrowRight className="w-4 h-4 ml-2 sm:w-5 sm:h-5" />
-                        </Button>
-                      )}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          PREMIUM MERCHANDISE
+      ══════════════════════════════════════ */}
+      <section id="merch" className="py-12 sm:py-16 bg-[#FFF8F0]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-8 sm:mb-10 gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+                Premium Merchandise.{' '}
+                <span className="text-[#e65100]">Made for Your Fans.</span>
+              </h2>
+              <p className="text-gray-500 mt-2 text-sm sm:text-base">
+                Wide range of high-quality, customisable products — all under one roof.
+              </p>
+            </div>
+            <a href="https://cms.junooni.com" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline"
+                className="border-[#e65100] text-[#e65100] whitespace-nowrap flex-shrink-0 self-start sm:self-auto hover:bg-orange-50">
+                Explore All Products <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </a>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            {MERCH.map(({ label, img }) => (
+              <div key={label}
+                className="flex flex-col items-center gap-3 bg-white rounded-2xl p-5 sm:p-8
+                          shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-md
+                          transition-all cursor-pointer group flex-shrink-0 w-44 sm:w-52">
+                <div className="w-36 h-36 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                  <img
+                    src={img}
+                    alt={label}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-base text-gray-600 font-medium text-center leading-tight">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          HOW IT WORKS  (4 steps horizontal)
+      ══════════════════════════════════════ */}
+      <section id="how-it-works" className="py-12 sm:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-2">
+            How It <span className="text-[#e65100]">Works</span>
+          </h2>
+          <p className="text-gray-500 text-sm sm:text-base mb-12">
+            Launch your merch store in 4 simple steps.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4 relative">
+            {[
+              { icon: Store,   num: '1', title: 'Create Your Store', desc: 'Set up your store in minutes with your name, logo and style.' },
+              { icon: Package, num: '2', title: 'Add Products',      desc: 'Choose from our wide range of high-quality merch.' },
+              { icon: Rocket,  num: '3', title: 'Start Selling',     desc: 'Share your store with your fans and start getting orders.' },
+              { icon: Truck,   num: '4', title: 'We Handle the Rest',desc: 'From production to delivery, we take care of everything.' },
+            ].map(({ icon: Icon, num, title, desc }, i) => (
+              <div key={i} className="flex flex-col items-center text-center relative">
+
+                {/* Arrow connector — centered on circle */}
+                {i < 3 && (
+                  <div
+                    className="hidden lg:flex absolute items-center justify-center pointer-events-none"
+                    style={{
+                      top: '48px',
+                      left: 'calc(50% + 48px)',
+                      width: 'calc(100% - 96px)',
+                      transform: 'translateY(-50%)',
+                    }}>
+                    <ArrowRight className="w-7 h-7 text-[#e65100]" />
+                  </div>
+                )}
+
+                {/* Big filled orange circle */}
+                <div className="relative z-10 w-24 h-24 rounded-full bg-[#e65100]
+                                flex items-center justify-center mb-4 shadow-lg shadow-orange-200">
+                  <Icon className="w-10 h-10 text-white" strokeWidth={1.5} />
+                </div>
+
+                {/* Number + Title inline */}
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-full bg-[#e65100] flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-[10px] font-black">{num}</span>
+                  </div>
+                  <h3 className="font-extrabold text-gray-900 text-sm sm:text-base">{title}</h3>
+                </div>
+
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-[180px]">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          MARKETPLACE OR OWN STORE
+      ══════════════════════════════════════ */}
+      <section id="paths" className="py-12 sm:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl sm:text-4xl font-extrabold mb-3">
+            <span className="text-[#e65100]">JUNOONI Fulfillment</span>{' '}
+            or{' '}
+            <span className="text-purple-600">Creator Fulfillment</span>{' '}
+            — you choose
+          </h2>
+          <p className="text-gray-500 text-sm sm:text-base mb-10 max-w-2xl mx-auto">
+            Let JUNOONI handle everything, or use your own fulfillment partner.<br />
+            Both ways, you stay in control.
+          </p>
+
+          <div className="flex flex-col lg:flex-row items-stretch gap-0 relative lg:divide-x lg:divide-gray-100">
+
+            {/* JUNOONI Fulfillment */}
+            <div className="flex-1 flex flex-col rounded-2xl overflow-hidden bg-orange-50 p-6 text-left">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-[#e65100] flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-[#e65100]">JUNOONI Fulfillment</h3>
+                  <p className="text-gray-500 text-sm">We handle printing, packing, and shipping for you.</p>
+                </div>
+              </div>
+
+              <ul className="space-y-2 mb-5">
+                {['Print-on-demand handled by us', 'No inventory needed', 'Quality checked before dispatch', 'We handle everything end-to-end'].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-base text-gray-700">
+                    <span className="w-5 h-5 rounded-full bg-[#e65100] flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="rounded-xl overflow-hidden border border-orange-100 mb-5 flex-1">
+                <img
+                  src={junoonifulfillment}
+                  alt="JUNOONI Fulfillment Preview"
+                  className="w-full object-cover"
+                />
+              </div>
+
+              <Button
+                onClick={goRegister}
+                className="bg-[#e65100] hover:bg-orange-700 text-white font-bold w-full py-5 rounded-xl flex items-center justify-center gap-2"
+              >
+                Use JUNOONI Fulfillment <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* OR divider */}
+            <div className="flex lg:flex-col items-center justify-center py-4 lg:py-0 lg:px-0 z-10">
+              <div className="w-10 h-10 rounded-full bg-white border-2 border-gray-200
+                              flex items-center justify-center flex-shrink-0 shadow-md">
+                <span className="text-xs font-extrabold text-gray-500">OR</span>
+              </div>
+            </div>
+
+            {/* Creator Fulfillment */}
+            <div className="flex-1 flex flex-col rounded-2xl overflow-hidden bg-purple-50 p-6 text-left">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-purple-600">Creator Fulfillment</h3>
+                  <p className="text-gray-500 text-sm">Use your own fulfillment partner and stay in full control.</p>
+                </div>
+              </div>
+
+              <ul className="space-y-2 mb-5">
+                {['Bring your own fulfillment partner', 'Set your own pricing and margins', 'Full control over production quality', 'Scale on your own terms'].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-base text-gray-700">
+                    <span className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="rounded-xl overflow-hidden border border-purple-100 mb-5 flex-1">
+                <img
+                  src={creatorfulfillment}
+                  alt="Creator Fulfillment Preview"
+                  className="w-full object-cover"
+                />
+              </div>
+
+              <Button
+                onClick={goRegister}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold w-full py-5 rounded-xl flex items-center justify-center gap-2"
+              >
+                Use Creator Fulfillment <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          EARNINGS CALCULATOR
+      ══════════════════════════════════════ */}
+      <JunooniEarningsSection />
+      
+
+      {/* ══════════════════════════════════════
+          YOUR STUDIO. YOUR CONTROL.
+      ══════════════════════════════════════ */}
+      <section className="py-12 sm:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold">
+              Your Studio.{' '}
+              <span className="text-[#e65100]">Your Control.</span>
+            </h2>
+            <p className="text-gray-500 mt-2 text-sm sm:text-base">
+              Manage everything from one simple dashboard.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+
+            {/* Dashboard mockup */}
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-[460px]">
+                <LaptopDashboard />
+              </div>
+            </div>
+
+            {/* Feature list */}
+            <div>
+              <div className="space-y-5">
+                {[
+                  { icon: BarChart3, title: 'Track orders in real time',         desc: 'See every order as it comes in — status, customer, amount, all in one place.' },
+                  { icon: Receipt,   title: 'View earnings and payouts',          desc: 'Clear payout dashboard with GST-compliant invoices generated automatically.' },
+                  { icon: Package,   title: 'Add new products anytime',           desc: 'Upload designs and publish new products to your store in minutes.' },
+                  { icon: Heart,     title: 'Launch exclusive drops anytime',            desc: 'Create limited edition collections and special drops to keep your fans excited and engaged.' },
+                  { icon: Palette,   title: 'Customize your store settings',      desc: 'Update your banner, bio, links and theme any time you like.' },
+                ].map(({ icon: Icon, title, desc }) => (
+                  <div key={title} className="flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-5 h-5 text-[#e65100]" />
                     </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm sm:text-base">{title}</h4>
+                      <p className="text-gray-500 text-xs sm:text-sm mt-0.5 leading-relaxed">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={goRegister} className="mt-8 bg-[#e65100] hover:bg-orange-700 text-white font-semibold">
+                Explore Your Dashboard <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          WHY CREATORS CHOOSE JUNOONI
+      ══════════════════════════════════════ */}
+      <section className="py-12 sm:py-16 bg-[#fefdfd]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-10">
+            Why Creators Choose{' '}
+            <span className="text-[#e65100]">JUNOONI</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              { icon: Camera,     title: 'Focus on Creating',              desc: 'We handle production, shipping and customer support.' },
+              { icon: TrendingUp, title: 'Turn Your Audience Into Income', desc: 'Monetize your brand with official merchandise.' },
+              { icon: Award,      title: 'High-Quality Products',          desc: 'Premium materials and vibrant prints your fans will love.' },
+              { icon: Shield,     title: 'No Risk, All Opportunity',       desc: 'Start for free, with zero inventory and no hidden costs.' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-4">
+                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-9 h-9 text-[#e65100]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base mb-1">{title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════
+          LOVED BY CREATORS  (testimonials)
+      ══════════════════════════════════════ */}
+      <section className="py-12 sm:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold">
+                Loved by <span className="text-[#e65100]">Creators</span>
+              </h2>
+              <p className="text-gray-500 text-sm sm:text-base mt-1">
+                See what creators are saying about their Junooni experience.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setTIdx(i => (i - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center
+                          hover:border-[#e65100] hover:text-[#e65100] transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => setTIdx(i => (i + 1) % TESTIMONIALS.length)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center
+                          hover:border-[#e65100] hover:text-[#e65100] transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { ...TESTIMONIALS[0], img: tanishqpic },
+              { ...TESTIMONIALS[1], img: shadabpic  },
+              { ...TESTIMONIALS[2], img: tanishqpic },
+            ].map(({ quote, name, role, img }, i) => (
+              <div key={i} className="bg-[#FFF8F0] rounded-2xl p-6 border border-orange-100 shadow-sm
+                                      flex flex-col justify-between">
+                <p className="text-gray-700 text-sm leading-relaxed mb-6">
+                  "{quote}"
+                </p>
+                <div className="flex items-center gap-3">
+                  <img src={img} alt={name}
+                    className="w-11 h-11 rounded-full object-cover flex-shrink-0 border-2 border-orange-100" />
+                  <div>
+                    <div className="font-bold text-gray-900 text-sm">{name}</div>
+                    <div className="text-xs text-gray-500">{role}</div>
                   </div>
                 </div>
               </div>
@@ -274,277 +824,303 @@ const JunooniLandingPage = () => {
         </div>
       </section>
 
-      {/* Bottom Feature Highlight */}
-      <section className="py-8 sm:py-12">
-        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <Card className="overflow-hidden bg-gradient-to-br from-orange-50 to-amber-50">
-            <div className="grid items-center grid-cols-1 gap-6 p-6 sm:gap-8 sm:p-8 lg:grid-cols-2 lg:p-12">
-              <div>
-                <div className="inline-block px-3 py-1 mb-3 text-xs font-semibold text-orange-800 bg-white rounded-full shadow-sm sm:mb-4 sm:text-sm">
-                  Built to fit how you sell
-                </div>
-                <h3 className="mb-3 text-2xl font-extrabold text-gray-900 sm:text-3xl sm:mb-4">
-                  Crafted as per your needs
-                </h3>
-                <p className="mb-4 text-sm leading-relaxed text-gray-700 sm:text-base lg:text-lg sm:mb-6">
-                  Content creator, artist, entrepreneur, or community builder — Marketplace or Own Store, JUNOONI scales with you, from your first design to your thousandth sale, with zero inventory risk throughout.
-                </p>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  <div className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white rounded-full shadow-sm">
-                    <Users className="w-3 h-3 text-orange-600 sm:w-4 sm:h-4" />
-                    <span className="text-xs font-medium text-gray-700 sm:text-sm">For Creators</span>
+      <section className="py-12 sm:py-16 bg-[#FFF8F0]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-center mb-10">
+            How <span className="text-[#e65100]">JUNOONI</span> is Different
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+            {/* JUNOONI — highlighted */}
+            <div className="rounded-2xl border-2 border-[#e65100] p-6 bg-orange-50">
+              <h3 className="text-center font-extrabold text-[#e65100] text-lg mb-6">JUNOONI</h3>
+              <div className="space-y-2">
+                {[
+                  'No upfront fees',
+                  'Zero inventory',
+                  'End-to-end fulfillment',
+                  'Built for creators',
+                  'Keep more earnings',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
+                    <div className="w-6 h-6 rounded-full border-2 border-[#e65100] bg-[#e65100]
+                                    flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-[10px] font-black">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-800 font-medium">{item}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white rounded-full shadow-sm">
-                    <Palette className="w-3 h-3 text-orange-600 sm:w-4 sm:h-4" />
-                    <span className="text-xs font-medium text-gray-700 sm:text-sm">For Artists</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white rounded-full shadow-sm">
-                    <TrendingUp className="w-3 h-3 text-orange-600 sm:w-4 sm:h-4" />
-                    <span className="text-xs font-medium text-gray-700 sm:text-sm">For Entrepreneurs</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white rounded-full shadow-sm">
-                    <Heart className="w-3 h-3 text-orange-600 sm:w-4 sm:h-4" />
-                    <span className="text-xs font-medium text-gray-700 sm:text-sm">For Communities</span>
-                  </div>
-                </div>
-              </div>
-              <div className="relative order-first lg:order-last">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl sm:rounded-2xl opacity-20 blur-2xl sm:blur-3xl"></div>
-                <img
-                  src={gallery4}
-                  alt="Crafted for creators"
-                  className="relative object-cover w-full h-48 shadow-xl sm:shadow-2xl rounded-xl sm:rounded-2xl sm:h-64 lg:h-84"
-                />
+                ))}
               </div>
             </div>
-          </Card>
+
+            {/* Traditional Merch */}
+            <div className="rounded-2xl border border-gray-200 p-6 bg-gray-100">
+              <h3 className="text-center font-semibold text-gray-700 text-base mb-6">Traditional Merch</h3>
+              <div className="space-y-2">
+                {[
+                  'High upfront costs',
+                  'Manage inventory',
+                  'Handle shipping yourself',
+                  'Complex setup',
+                  'Lower profit margins',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
+                    <span className="text-gray-600 text-sm flex-shrink-0 font-medium">✕</span>
+                    <span className="text-sm text-gray-600">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Other Platforms */}
+            <div className="rounded-2xl border border-gray-200 p-6 bg-gray-100">
+              <h3 className="text-center font-semibold text-gray-700 text-base mb-6">Other Platforms</h3>
+              <div className="space-y-2">
+                {[
+                  'Listing fees or commission',
+                  'Limited product range',
+                  'Minimal support',
+                  'Generic templates',
+                  'Less creator control',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
+                    <span className="text-gray-600 text-sm flex-shrink-0 font-medium">✕</span>
+                    <span className="text-sm text-gray-600">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 
-      {/* WE ARE BUILT DIFFERENTLY */}
-      <section className="py-12 bg-[#FFF8F0] sm:py-16 lg:py-20">
-        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <div className="mb-10 text-center sm:mb-16">
-            <div className="inline-block px-3 py-1.5 sm:px-4 sm:py-2 mb-3 sm:mb-4 text-xs sm:text-sm font-semibold text-orange-800 bg-orange-100 rounded-full">
-              End-to-end, by design
-            </div>
-            <h2 className="text-2xl font-extrabold sm:text-3xl md:text-4xl lg:text-5xl">
-              We are built differently
-            </h2>
-          </div>
+      {/* ══════════════════════════════════════
+          TURN YOUR COMMUNITY (dark CTA)
+      ══════════════════════════════════════ */}
+      <section className="overflow-hidden relative min-h-screen sm:min-h-0">
+        {/* Desktop background image */}
+        <img
+          src={communitymerch}
+          alt="JUNOONI merch products"
+          className="absolute inset-0 w-full h-full object-cover object-center hidden sm:block"
+        />
+        {/* Mobile background image */}
+        <img
+          src={communitymerchmobile}
+          alt="JUNOONI merch products"
+          className="absolute inset-0 w-full h-full object-cover object-top block sm:hidden"
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/10 sm:bg-transparent" />
 
-          <div className="space-y-12 sm:space-y-16 lg:space-y-24">
-            <div className="relative grid items-center grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2">
-              <div className="max-w-xl px-4 sm:px-0">
-                <h3 className="mb-3 text-xl font-bold text-gray-900 sm:text-2xl md:text-3xl sm:mb-4">Premium quality products</h3>
-                <p className="text-sm leading-relaxed text-gray-600 sm:text-base lg:text-lg">
-                  Choose from hundreds of premium-quality products to design and start selling. Production, quality checks, packaging, and shipping are ours to handle — designing is yours.
-                </p>
-              </div>
-              <div className="relative group">
-                <div className="absolute inset-0 transition-opacity bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl sm:rounded-3xl opacity-20 blur-xl sm:blur-2xl group-hover:opacity-30"></div>
-                <div className="relative overflow-hidden shadow-lg sm:shadow-xl rounded-2xl sm:rounded-3xl">
-                  <img
-                    src={gallery1}
-                    alt="Premium Quality Products"
-                    className="object-fill w-full h-[300px] sm:h-[400px] lg:h-[500px] transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="relative grid items-center grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2">
-              <div className="relative group lg:order-1">
-                <div className="absolute inset-0 transition-opacity bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl sm:rounded-3xl opacity-20 blur-xl sm:blur-2xl group-hover:opacity-30"></div>
-                <div className="relative overflow-hidden shadow-lg sm:shadow-xl rounded-2xl sm:rounded-3xl">
-                  <img
-                    src={gallery2}
-                    alt="End-to-end operations"
-                    className="object-cover w-full h-[300px] sm:h-[400px] lg:h-[500px] transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-              </div>
-              <div className="max-w-xl px-4 sm:px-0 lg:order-2">
-                <h3 className="mb-3 text-xl font-bold text-gray-900 sm:text-2xl md:text-3xl sm:mb-4">Operations, logistics & customer service — covered</h3>
-                <p className="text-sm leading-relaxed text-gray-600 sm:text-base lg:text-lg">
-                  From production through delivery to every customer query, JUNOONI runs it end-to-end. GST-compliant invoicing and a clear payout dashboard mean you always know where you stand.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative grid items-center grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2">
-              <div className="max-w-xl px-4 sm:px-0">
-                <h3 className="mb-3 text-xl font-bold text-gray-900 sm:text-2xl md:text-3xl sm:mb-4">Build your community</h3>
-                <p className="text-sm leading-relaxed text-gray-600 sm:text-base lg:text-lg">
-                  Reward your fans and grow your audience with custom merchandise, exclusive drops, promotional codes, and limited editions — on the Marketplace, your Own Store, or both.
-                </p>
-              </div>
-              <div className="relative group">
-                <div className="absolute inset-0 transition-opacity bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl sm:rounded-3xl opacity-20 blur-xl sm:blur-2xl group-hover:opacity-30"></div>
-                <div className="relative overflow-hidden shadow-lg sm:shadow-xl rounded-2xl sm:rounded-3xl">
-                  <img
-                    src={gallery3}
-                    alt="Build Your Community"
-                    className="object-cover w-full h-[300px] sm:h-[400px] lg:h-[500px] transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-              </div>
-            </div>
+        {/* Content */}
+        <div className="relative z-10 px-8 sm:px-12 lg:px-16 py-16 sm:py-20 max-w-2xl">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-3 leading-tight">
+            Turn Your Community<br />
+            <span className="text-[#e65100]">Into a Movement</span>
+          </h2>
+          <p className="text-gray-300 text-sm sm:text-base mb-7 max-w-md leading-relaxed">
+            Join 50+ creators who are already building their official merch stores with Junooni.
+            It's free to get started.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={goRegister}
+              className="bg-[#e65100] hover:bg-orange-700 text-white font-bold
+                        px-6 py-4 text-sm shadow-lg rounded-lg">
+              Create Your Store <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowVideo(true)}
+              className="border-white/60 text-white hover:bg-white/10 px-6 py-4 text-sm rounded-lg bg-black/30">
+              <span className="w-6 h-6 bg-white rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                <Play className="w-3 h-3 fill-black text-black" />
+              </span>
+              Watch Demo
+            </Button>
           </div>
         </div>
+
+        {/* YouTube Modal */}
+        {showVideo && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setShowVideo(false)}>
+            <div
+              className="relative w-full max-w-3xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setShowVideo(false)}
+                className="absolute top-3 right-3 z-10 w-8 h-8 bg-black/60 rounded-full
+                          flex items-center justify-center text-white hover:bg-black transition-colors">
+                ✕
+              </button>
+              <iframe
+                src="https://www.youtube.com/embed/3RNUXNfmF0E?autoplay=1"
+                title="JUNOONI Demo"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        )}
       </section>
       
-      <JunooniEarningsSection />
 
-      {/* FAQ */}
-      <section id="faq" className="py-8 bg-[#FFF8F0] sm:py-12">
-        <div className="max-w-4xl px-4 mx-auto text-center sm:px-6 lg:px-8">
-          <div className="inline-block px-3 py-1 rounded-full bg-[#e65100] text-white text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
-            FAQ
+      {/* ══════════════════════════════════════
+          FAQ  (two-column accordion)
+      ══════════════════════════════════════ */}
+      <section id="faq" className="py-12 sm:py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-extrabold mb-2 text-[#e65100]">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base">
+              Everything you need to know about starting and growing your merch store on Junooni.
+            </p>
           </div>
 
-          <h2 className="text-2xl font-extrabold mb-2 text-[#e65100] sm:text-3xl">
-            Frequently asked questions
-          </h2>
-          <p className="mb-6 text-sm text-gray-600 sm:text-base">
-            Quick answers to what creators ask most — if you don't find what you need, reach out to Support.
-          </p>
-
-          <div className="text-left">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div className="space-y-2">
-              {faqs.map((item, idx) => {
-                const open = openFaq === idx;
-                return (
-                  <div
-                    key={idx}
-                    className="relative overflow-hidden bg-white border border-orange-100 rounded-lg"
-                  >
-                    <button
-                      onClick={() => setOpenFaq(open ? null : idx)}
-                      aria-expanded={open}
-                      className="flex items-start justify-between w-full gap-3 px-4 py-3 sm:gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e65100]"
-                    >
-                      <div className="flex-1 pr-2 sm:pr-4">
-                        <div className="text-sm font-medium text-left text-gray-900 sm:text-base">
-                          {item.q}
-                        </div>
-                      </div>
-
-                      <div
-                        className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full border transition-transform flex-shrink-0 ${
-                          open
-                            ? 'bg-[#e65100] text-white border-transparent rotate-45'
-                            : 'bg-white text-gray-700 border-gray-300'
-                        }`}
-                        aria-hidden="true"
-                      >
-                        <span className="text-base select-none sm:text-lg">+</span>
-                      </div>
-                    </button>
-
-                    <div
-                      className={`px-4 pb-3 transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden ${
-                        open ? 'opacity-100 max-h-96' : 'opacity-0 max-h-0'
-                      }`}
-                    >
-                      <div className="text-xs text-gray-600 sm:text-sm">{item.a}</div>
-                    </div>
-                  </div>
-                );
-              })}
+              {FAQS_L.map((item, idx) => (
+                <div key={idx} className="bg-white rounded-xl border border-orange-100 shadow-sm
+                                          hover:shadow-md hover:border-orange-300 transition-all overflow-hidden">
+                  <button onClick={() => toggleFaq(`L-${idx}`)}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left focus:outline-none">
+                    <span className="text-sm font-medium text-gray-900">{item.q}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200
+                      ${openFaqs[`L-${idx}`] ? 'rotate-180' : ''}`} />
+                  </button>
+                  {openFaqs[`L-${idx}`] && (
+                    <div className="px-5 pb-4 text-sm text-gray-500 leading-relaxed">{item.a}</div>
+                  )}
+                </div>
+              ))}
             </div>
-
-            <div className="mt-6 text-center">
-              <p className="mb-3 text-xs text-gray-600 sm:text-sm">Still have a question?</p>
-              <div className="flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-3">
-                <Button
-                  onClick={handleRegisterClick}
-                  className="bg-[#e65100] text-white px-5 py-2 text-sm sm:text-base font-semibold rounded-md hover:bg-white hover:text-[#e65100] hover:border-[#e65100] w-full sm:w-auto"
-                >
-                  Create an account
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-[#e65100] text-[#e65100] px-5 py-2 text-sm sm:text-base font-semibold rounded-md w-full sm:w-auto"
-                  onClick={() => window.open('/contact', '_blank')}
-                >
-                  Contact Support
-                </Button>
-              </div>
+            <div className="space-y-2">
+              {FAQS_R.map((item, idx) => (
+                <div key={idx} className="bg-white rounded-xl border border-orange-100 shadow-sm
+                                          hover:shadow-md hover:border-orange-300 transition-all overflow-hidden">
+                  <button onClick={() => toggleFaq(`R-${idx}`)}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left focus:outline-none">
+                    <span className="text-sm font-medium text-gray-900">{item.q}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200
+                      ${openFaqs[`R-${idx}`] ? 'rotate-180' : ''}`} />
+                  </button>
+                  {openFaqs[`R-${idx}`] && (
+                    <div className="px-5 pb-4 text-sm text-gray-500 leading-relaxed">{item.a}</div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="py-12 text-white sm:py-16 bg-gradient-to-r from-[#e65100] to-orange-800">
-        <div className="max-w-4xl px-4 mx-auto text-center sm:px-6 lg:px-8">
-          <h2 className="mb-3 text-2xl font-bold sm:text-3xl md:text-4xl sm:mb-4">Ready to turn ideas into income?</h2>
-          <p className="mb-6 text-sm text-orange-100 sm:text-base sm:mb-8">Marketplace or Own Store — start designing and publishing in minutes, with zero inventory risk and full control.</p>
-          <div className="flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
-            <Button size="lg" onClick={handleRegisterClick} className="px-6 py-3 text-base font-bold text-orange-600 bg-white sm:px-8 sm:py-4 sm:text-lg">Start Creating Free</Button>
-            <Button size="lg" variant="outline" onClick={() => scrollTo('gallery')} className="px-6 py-3 text-base text-white border-white sm:px-8 sm:py-4 sm:text-lg">Explore Products</Button>
-          </div>
-          <p className="mt-4 text-xs sm:mt-6 sm:text-sm text-orange-100/80">No credit card required • Starting from 0% commission</p>
+      {/* ══════════════════════════════════════
+          NEWSLETTER / FINAL CTA
+      ══════════════════════════════════════ */}
+      <section className="relative overflow-hidden h-screen sm:h-auto">
+        {/* Desktop banner */}
+        <img
+          src={junoonibanner}
+          alt="JUNOONI banner"
+          className="absolute inset-0 w-full h-full object-cover object-center hidden sm:block"
+        />
+        {/* Mobile banner */}
+        <img
+          src={junoonibannermobile}
+          alt="JUNOONI banner"
+          className="absolute inset-0 w-full h-full object-cover object-center block sm:hidden"
+        />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full h-full min-h-[inherit] py-14 sm:py-20">
+          <h2 className="text-2xl sm:text-2xl font-extrabold text-white mb-2">
+            Ready to turn ideas into income?
+          </h2>
+          <p className="text-white/90 text-sm sm:text-sm mb-7">
+            Join Junooni today and launch your official merch store in minutes.
+          </p>
+          <Button onClick={goRegister}
+            className="bg-white text-[#e65100] hover:bg-orange-50 font-bold px-6 py-4 text-sm rounded-lg">
+            Create Your Store <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="py-8 text-white bg-[#1B1330] sm:py-10">
-        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-5">
-            <div className="sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <img src={junoonilogo} alt="Junooni logo" className="h-6 sm:h-8" />
-                <span className="text-xs text-gray-300 sm:text-sm">Creator Studio</span>
+      {/* ══════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════ */}
+      <footer className="py-10 sm:py-14 bg-[#1B1330] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-6">
+
+            {/* Brand */}
+            <div className="lg:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <img src={junoonilogo} alt="Junooni" className="h-7 brightness-0 invert" />
+                <span className="text-gray-400 text-sm">Creator<br />Studio</span>
               </div>
-              <p className="mt-3 text-xs text-gray-400 sm:mt-4 sm:text-sm">India's end-to-end creator commerce platform — design, fulfillment, ops, logistics, and customer service, with zero inventory risk.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Empowering creators to design, publish and sell high-quality merchandise without inventory hassle.
+              </p>
             </div>
 
+            {/* Platform */}
             <div>
-              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Platform</h4>
-              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="https://cms.junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">Product Catalog</a></li>
-                <li><a href="/pages/fulfillment-page" className="hover:text-white">Fulfillment</a></li>
-                <li><a href="/pages/own-store" className="hover:text-white">Own Store</a></li>
-                <li><a href="https://junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">Marketplace</a></li>
+              <h4 className="text-sm font-bold mb-4">Platform</h4>
+              <ul className="space-y-2.5 text-sm text-gray-400">
+                <li><a href="https://cms.junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Product Catalog</a></li>
+                <li><a href="https://studio.junooni.com/pages/fulfillment-page" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors font-bold text-white">Fulfillments</a></li>
+                <li><a href="https://studio.junooni.com/pages/creator-store" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Creator Store</a></li>
+                <li><a href="https://junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Marketplace</a></li>
               </ul>
             </div>
 
+            {/* Guide */}
             <div>
-              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Guide</h4>
-              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="/pages/getting-started" className="hover:text-white">Getting started</a></li>
-                <li><a href="/pages/creating-products" className="hover:text-white">Creating products</a></li>
-                <li><a href="/pages/make_your_brand" className="hover:text-white">Make your brand</a></li>
+              <h4 className="text-sm font-bold mb-4">Guide</h4>
+              <ul className="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#how-it-works" className="hover:text-white transition-colors">Getting started</a></li>
+                <li><a href="#merch" className="hover:text-white transition-colors">Creating products</a></li>
+                <li><a href="#paths" className="hover:text-white transition-colors">Make your brand</a></li>
               </ul>
             </div>
 
+            {/* Social */}
             <div>
-              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Social</h4>
-              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">Instagram</a></li>
-                <li><a href="#" className="hover:text-white">Facebook</a></li>
-                <li><a href="https://youtube.com/@bejunooni?si=p96lWYtfDUMhsII3" className="hover:text-white">Youtube</a></li>
+              <h4 className="text-sm font-bold mb-4">Social</h4>
+              <ul className="space-y-2.5 text-sm text-gray-400">
+                <li><a href="https://instagram.com/junooni" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a></li>
+                <li><a href="https://facebook.com/junooni" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Facebook</a></li>
+                <li><a href="https://youtube.com/@junooni" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Youtube</a></li>
               </ul>
             </div>
 
+            {/* Company */}
             <div>
-              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Company</h4>
-              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="/pages/about-us" className="hover:text-white">About us</a></li>
-                <li><a href="#" className="hover:text-white">Career</a></li>
-                <li><a href="/pages/privacy" className="hover:text-white">Privacy</a></li>
-                <li><a href="/pages/for-creators" className="hover:text-white">For Creators</a></li>
+              <h4 className="text-sm font-bold mb-4">Company</h4>
+              <ul className="space-y-2.5 text-sm text-gray-400">
+                <li><a href="#" className="hover:text-white transition-colors">About us</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Career</a></li>
+                <li><a href="/pages/privacy" className="hover:text-white transition-colors">Privacy</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">For Creators</a></li>
               </ul>
             </div>
+
           </div>
 
-          <div className="pt-4 mt-6 text-xs text-center text-gray-400 border-t border-gray-800 sm:pt-6 sm:mt-8 sm:text-sm">
-            © {new Date().getFullYear()} Junooni Creator Studio. All rights reserved.
+          <div className="border-t border-gray-800 mt-10 pt-6 text-center text-xs text-gray-500">
+            © {new Date().getFullYear()} Junooni. All rights reserved.
           </div>
         </div>
       </footer>
+
     </div>
   );
 };

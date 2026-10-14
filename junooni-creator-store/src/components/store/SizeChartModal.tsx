@@ -41,24 +41,23 @@ export default function SizeChartModal({ sizeChart, brandPrimary, isDark }: Prop
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b shrink-0 ${
-          isDark ? "border-white/10" : "border-gray-100"
-        }`}>
+        <div
+          className="flex items-center justify-between px-6 py-4 shrink-0"
+          style={{ background: brandPrimary }}
+        >
           <div>
-            <h2 className="text-lg font-semibold">Size Guide</h2>
+            <h2 className="text-lg font-semibold text-white">Size Guide</h2>
             {sizeChart.name && (
-              <p className={`text-xs mt-0.5 ${isDark ? "text-white/50" : "text-gray-400"}`}>
+              <p className="text-xs mt-0.5 text-white/70">
                 {sizeChart.name}
               </p>
             )}
           </div>
           <button
             onClick={() => setOpen(false)}
-            className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
-              isDark ? "hover:bg-white/10" : "hover:bg-gray-100"
-            }`}
+            className="flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-white/20"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 text-white" />
           </button>
         </div>
 

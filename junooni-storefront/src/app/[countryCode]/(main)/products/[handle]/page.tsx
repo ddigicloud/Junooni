@@ -179,7 +179,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   const description = stripHtml(
     product.description,
-    `Buy ${product.title} — exclusive creator merchandise on Junooni. Official merch, pan-India shipping.`
+    `Buy ${product.title} — exclusive creator merchandise on JUNOONI. Official merch, pan-India shipping.`
   )
   const creatorName = (product as any).vendor?.name ?? (product as any).brand ?? null
   const firstVariant = product.variants?.[0]
@@ -187,26 +187,26 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const canonicalUrl = `https://junooni.com/${countryCode}/products/${handle}`
 
   return {
-    title: `${product.title} | Junooni`,
+    title: `${product.title} | JUNOONI`,
     description,
     keywords: [
       product.title,
       ...(creatorName ? [`${creatorName} merch`, `${creatorName} merchandise`] : []),
       "official creator merch India",
       "creator merchandise",
-      "Junooni",
+      "JUNOONI",
     ],
     alternates: { canonical: canonicalUrl },
     openGraph: {
-      title: `${product.title} | Junooni`,
+      title: `${product.title} | JUNOONI`,
       description,
       images: product.thumbnail ? [product.thumbnail] : [],
       url: canonicalUrl,
-      siteName: "Junooni",
+      siteName: "JUNOONI",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${product.title} | Junooni`,
+      title: `${product.title} | JUNOONI`,
       description,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
@@ -216,7 +216,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
         "product:price:currency": "INR",
       }),
       "twitter:label1": "Price",
-      "twitter:data1": price ? `₹${price}` : "Check price on Junooni",
+      "twitter:data1": price ? `₹${price}` : "Check price on JUNOONI",
       "twitter:label2": "Ships to",
       "twitter:data2": "Pan India",
     },
@@ -273,7 +273,7 @@ export default async function ProductPage(props: Props) {
 
   // ── Creator ───────────────────────────────────────────────────────────────
   const creatorName =
-    (pricedProduct as any).vendor?.name ?? (pricedProduct as any).brand ?? "Junooni"
+    (pricedProduct as any).vendor?.name ?? (pricedProduct as any).brand ?? "JUNOONI"
   const countryCode = params.countryCode
   const productUrl = `https://junooni.com/${countryCode}/products/${pricedProduct.handle}`
   const category = (pricedProduct as any).categories?.[0]
@@ -285,7 +285,7 @@ export default async function ProductPage(props: Props) {
     name: pricedProduct.title,
     description: stripHtml(
       pricedProduct.description,
-      `Buy ${pricedProduct.title} — exclusive creator merchandise on Junooni.`
+      `Buy ${pricedProduct.title} — exclusive creator merchandise on JUNOONI.`
     ),
     image: images.length > 0 ? images : undefined,
     sku: firstVariant?.sku ?? pricedProduct.id,
@@ -300,7 +300,7 @@ export default async function ProductPage(props: Props) {
       availability: inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
-      seller: { "@type": "Organization", name: "Junooni", url: "https://junooni.com" },
+      seller: { "@type": "Organization", name: "JUNOONI", url: "https://junooni.com" },
     },
   }
 

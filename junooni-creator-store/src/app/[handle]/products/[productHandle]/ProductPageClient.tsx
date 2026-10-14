@@ -1422,7 +1422,7 @@ useEffect(() => {
       />
 
       {/* Product detail */}
-      <div className="px-6 py-4 mx-auto max-w-7xl">
+      <div className="px-6 py-8 mx-auto max-w-7xl">
            <GalleryProvider initialImages={currentImages} variantId={selectedVariant?.id ?? ""}>
           <div className="grid items-start gap-16 mb-6 md:grid-cols-2">
 

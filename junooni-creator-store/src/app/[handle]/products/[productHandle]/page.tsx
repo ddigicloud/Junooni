@@ -84,6 +84,12 @@ const fetchProduct = cache(async (handle: string, productHandle: string): Promis
     console.log(`[fetchProduct] ✅ product.title="${data.product?.title}"`)
     console.log(`[fetchProduct] ✅ product.status="${data.product?.status}"`)
 
+    // ── Price debug — log raw value so we can confirm divide-by-100 or not ──
+    const firstInrPrice = data.product?.variants?.[0]?.prices?.find(
+      (p: any) => p.currency_code === "inr"
+    )?.amount
+    console.log(`[fetchProduct] 💰 variants[0].prices INR amount=${firstInrPrice} (type=${typeof firstInrPrice}) — raw, no math applied`)
+
     return data.product
   } catch (err) {
     const elapsed = Date.now() - t
@@ -110,11 +116,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!shell || !product) return { title: "Product not found" }
 
+  // ── Price — raw value, no division (prices stored as rupees in this setup) ─
+  const rawPrice = product.variants?.[0]?.prices?.find(
+    (p: any) => p.currency_code === "inr"
+  )?.amount
+  console.log(`[generateMetadata] rawPrice=${rawPrice} (type=${typeof rawPrice}) — used as-is for meta tag`)
+
   return {
     title: `${product.title} — ${shell.vendor.name}`,
     description: product.description?.replace(/<[^>]*>/g, "") ?? undefined,
     openGraph: {
       images: product.thumbnail ? [{ url: product.thumbnail }] : [],
+    },
+    other: {
+      ...(rawPrice != null && {
+        "product:price:amount": String(rawPrice),  // e.g. "999" not "9.99"
+        "product:price:currency": "INR",
+      }),
     },
   }
 }
@@ -222,14 +240,62 @@ export default async function ProductPage({ params }: Props) {
 
   console.log(`[ProductPage] ✅ rendering ProductPageClient for product="${product.handle}"`)
 
+  // ── JSON-LD — schema.org/Product for ChatGPT Shopping + Google ────────────
+  const basePrice = product.variants?.[0]?.prices?.find(
+    (p: any) => p.currency_code === "inr"
+  )?.amount
+  console.log(`[ProductPage] 💰 basePrice=${basePrice} (raw, no division) — if this shows 99900 change toFixed line to divide by 100`)
+
+  // prices stored as rupees (not paise) in this Medusa setup → no ÷100
+  // If console shows e.g. 99900, change to: (basePrice / 100).toFixed(2)
+  const priceFormatted = basePrice != null
+    ? Number(basePrice).toFixed(2)
+    : undefined
+
+  const isInStock = product.variants?.some(
+    (v: any) => !v.manage_inventory || v.inventory_quantity > 0
+  )
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: product.description?.replace(/<[^>]*>/g, "") ?? undefined,
+    image: [
+      product.thumbnail,
+      ...(product.images?.map((img: any) => img.url) ?? []),
+    ].filter(Boolean),
+    url: `https://${vendor.handle}.junooni.com/products/${product.handle}`,
+    brand: { "@type": "Brand", name: vendor.name },
+    seller: { "@type": "Organization", name: vendor.name, url: `https://${vendor.handle}.junooni.com` },
+    ...(priceFormatted && {
+      offers: {
+        "@type": "Offer",
+        price: priceFormatted,
+        priceCurrency: "INR",
+        availability: isInStock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        url: `https://${vendor.handle}.junooni.com/products/${product.handle}`,
+        seller: { "@type": "Organization", name: vendor.name },
+      },
+    }),
+  }
+
   return (
-    <ProductPageClient
-      vendor={vendor}
-      initialStore={store}
-      product={product}
-      products={[]}
-      categories={categories}
-      collections={collections}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ProductPageClient
+        vendor={vendor}
+        initialStore={store}
+        product={product}
+        products={[]}
+        categories={categories}
+        collections={collections}
+      />
+    </>
   )
 }

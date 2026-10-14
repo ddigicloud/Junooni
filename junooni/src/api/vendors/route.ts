@@ -9,7 +9,7 @@ import createVendorWorkflow, {
 } from "../../workflows/marketplace/create-vendor"
 import MarketplaceModuleService from "../../modules/marketplace/service"
 import { CreatorCategoryEnum } from "../../modules/marketplace/types"
-import jwt from "jsonwebtoken"
+//import jwt from "jsonwebtoken"
 
 const VendorFieldsSchema = z.object({
   name: z.string(),
@@ -61,17 +61,13 @@ export const POST = async (
   res: MedusaResponse
 ) => {
   if (req.auth_context?.actor_id) {
-  // For Google OAuth users, actor_id is set immediately on first auth
-  // even before a vendor row exists. So we check the DB directly instead.
-  const marketplaceModuleService: MarketplaceModuleService =
-    req.scope.resolve("marketplaceModuleService")
-  const existing = await marketplaceModuleService.listVendors?.(
-    {},
-    { relations: ["admins"] }
-  ).then(vendors => vendors?.find(v =>
-    v.admins?.some(a => a.id === req.auth_context.actor_id)
-  ))
-  if (existing) {
+  const query = req.scope.resolve("query")
+  const { data: [va] } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["id", "vendor_id"],
+    filters: { id: req.auth_context.actor_id },
+  })
+  if (va?.vendor_id) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       "Request already authenticated as a vendor."
@@ -110,21 +106,8 @@ export const POST = async (
     throw err
   })
 
-  const jwtSecret = process.env.JWT_SECRET || "supersecret"
-
-  const newToken = jwt.sign(
-    {
-      actor_id: result.vendor.admins[0].id,
-      actor_type: "vendor",
-      auth_identity_id: req.auth_context.auth_identity_id,
-    },
-    jwtSecret,
-    {
-      expiresIn: "1d",
-    }
-  )
-
-  res.json({ vendor: result.vendor, token: newToken })
+  res.json({ vendor: result.vendor })
+  
 }
 
 // ─── GET /vendors ─────────────────────────────────────────────────────────────
@@ -213,15 +196,36 @@ export const DELETE = async (
 
   const marketplaceModuleService: MarketplaceModuleService =
     req.scope.resolve("marketplaceModuleService")
+  const authModuleService = req.scope.resolve(Modules.AUTH)
 
   try {
-    const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
-      relations: ["admins"]
-    })
-    if (!vendor) {
-      throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor not found")
+    // retrieveVendor throws NOT_FOUND itself — no null check needed
+    await marketplaceModuleService.retrieveVendor(vendorId)
+
+    // Clear vendor_id from auth identity so the user can re-register later
+    // Non-fatal: log and continue if cleanup fails
+    try {
+      const allIdentities = await authModuleService.listAuthIdentities({})
+      const linked = allIdentities.filter(
+        (id) => (id.app_metadata as any)?.vendor_id === vendorId
+      )
+      if (linked.length > 0) {
+        await authModuleService.updateAuthIdentities(
+          linked.map((identity) => ({
+            id: identity.id,
+            app_metadata: {
+              ...(identity.app_metadata as object),
+              vendor_id: null,
+            },
+          }))
+        )
+      }
+    } catch (cleanupErr) {
+      console.warn("Could not clear auth_identity vendor link:", cleanupErr)
     }
-    await marketplaceModuleService.deleteVendors(vendorId)
+
+    await marketplaceModuleService.deleteVendors([vendorId])
+
     return res.json({ message: "Vendor deleted successfully", id: vendorId })
   } catch (error) {
     if (error instanceof MedusaError) throw error
