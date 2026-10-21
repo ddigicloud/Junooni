@@ -379,26 +379,33 @@ function BoldSection({
               </motion.div>
 
               {/* Right-side image */}
-              {((section as any).hero_image_right ?? boldTemplateBanner) && (
-                <motion.div
-                  className="w-full shrink-0 md:w-80 lg:w-96"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.7, delay: 0.1 }}
-                >
-                  <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl ring-1 ring-white/20">
-                    <Image
-                      src={(section as any).hero_image_right ?? boldTemplateBanner}
+              {(() => {
+                const PLACEHOLDER_PATHS = ["/bold-template-banner.png", "/minimal-template-banner.png", "/editorial-template-banner.png"]
+                const raw: string | undefined = (section as any).hero_image_right
+                const heroRightSrc = (!raw || PLACEHOLDER_PATHS.includes(raw)) ? boldTemplateBanner.src : raw
+                return (
+                  <motion.div
+                    className="w-full shrink-0 md:w-80 lg:w-96"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.7, delay: 0.1 }}
+                  >
+                    <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl ring-1 ring-white/20">
+                      <Image
+                        src={heroRightSrc}
                       alt={vendor.name}
                       fill
+                      onError={(e) => console.error("[BOLD IMAGE ERROR] src:", (section as any).hero_image_right ?? boldTemplateBanner.src, e)}
+                      onLoad={() => console.log("[BOLD IMAGE OK] src:", (section as any).hero_image_right ?? boldTemplateBanner.src)}
                       quality={90}
                       sizes="(max-width: 768px) 100vw, 400px"
                       className="object-cover"
                       priority
                     />
-                  </div>
+                 </div>
                 </motion.div>
-              )}
+                )
+              })()}
             </div>
           </div>
         </section>

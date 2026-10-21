@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import codimage from "../../../../../public/cod_black_truck.png"
 import CancelOrderButton from "./CancelOrderButton"
+import ScrollToTop from "./ScrollToTop"
 
 
 interface Props {
@@ -22,23 +23,27 @@ const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
 // ── Fetch order from Medusa ───────────────────────────────────────────────────
 
 async function fetchOrder(orderId: string) {
-  try {
-    const res = await fetch(
-      `${BACKEND_URL}/store/orders/${orderId}?fields=*fulfillments,*fulfillments.labels,*shipping_address,*shipping_methods,*items,*items.variant,*items.thumbnail,*payment_collections,*payment_collections.payments`,
-      {
-        cache: "no-store",
-        headers: {
-          "x-publishable-api-key": PUBLISHABLE_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.order ?? null
-  } catch {
-    return null
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 600))
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/store/orders/${orderId}?fields=*fulfillments,*fulfillments.labels,*shipping_address,*shipping_methods,*items,*items.variant,*items.thumbnail,*payment_collections,*payment_collections.payments`,
+        {
+          cache: "no-store",
+          headers: {
+            "x-publishable-api-key": PUBLISHABLE_KEY,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      if (!res.ok) continue
+      const data = await res.json()
+      if (data.order) return data.order
+    } catch {
+      // retry
+    }
   }
+  return null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,7 +93,7 @@ function getTimelineSteps(order: any, status: string) {
   if (status === "canceled") {
     return [
       { title: "Order Placed", description: formatDate(order.created_at), done: true },
-      { title: "Order Canceled", description: order.payment_status === "refunded" ? "Payment refunded" : "Order was canceled", done: false, canceled: true },
+      { title: "Order Cancelled", description: order.payment_status === "refunded" ? "Payment refunded" : "Order was cancelled", done: false, canceled: true },
     ]
   }
   return [
@@ -120,6 +125,7 @@ function getTimelineSteps(order: any, status: string) {
   ]
 }
 
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function OrderPage({ params }: Props) {
@@ -135,6 +141,7 @@ export default async function OrderPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
+
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between max-w-3xl px-4 mx-auto h-14">
@@ -145,16 +152,22 @@ export default async function OrderPage({ params }: Props) {
         </div>
       </header>
 
-      {/* ── Thank you banner ── */}
-      <div className="border-b border-orange-100 bg-orange-50">
+      {/* ── Top banner (status-aware) ── */}
+      <div className={`border-b ${status === "canceled" ? "border-red-100 bg-red-50" : "border-orange-100 bg-orange-50"}`}>
         <div className="flex items-center max-w-3xl gap-3 px-4 py-4 mx-auto">
-          <div className="flex items-center justify-center bg-orange-100 rounded-full w-9 h-9 shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-orange-500" />
+          <div className={`flex items-center justify-center rounded-full w-9 h-9 shrink-0 ${status === "canceled" ? "bg-red-100" : "bg-orange-100"}`}>
+            {status === "canceled"
+              ? <AlertCircle className="w-5 h-5 text-red-500" />
+              : <CheckCircle2 className="w-5 h-5 text-orange-500" />}
           </div>
           <div>
-            <p className="text-base font-bold text-gray-900">Thank you for your order! 🎉</p>
+            <p className="text-base font-bold text-gray-900">
+              {status === "canceled" ? "Order Cancelled" : "Thank you for your order! 🎉"}
+            </p>
             <p className="text-sm text-gray-500 mt-0.5">
-              Your order has been placed successfully. You can track its status below.
+              {status === "canceled"
+                ? "Your order has been cancelled. If you paid, a refund will be processed shortly."
+                : "Your order has been placed successfully. You can track its status below."}
             </p>
           </div>
         </div>
@@ -162,8 +175,8 @@ export default async function OrderPage({ params }: Props) {
 
       <div className="max-w-3xl px-4 py-8 mx-auto space-y-5">
 
-        {/* ── Success banner (shown right after order) ── */}
-        {isNew && (
+        {/* ── Success banner (shown right after order, not for cancelled) ── */}
+        {isNew && status !== "canceled" && (
           <div className="p-6 text-center border border-green-200 bg-green-50 rounded-2xl">
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
@@ -171,6 +184,20 @@ export default async function OrderPage({ params }: Props) {
             <h1 className="mb-1 text-xl font-bold text-green-900">Order Placed! 🎉</h1>
             <p className="text-sm text-green-700">
               Thank you! You'll receive a confirmation email shortly.
+            </p>
+          </div>
+        )}
+
+        {/* ── Cancelled banner (shown right after cancellation) ── */}
+        {isNew && status === "canceled" && (
+          <div className="p-6 text-center border border-red-200 bg-red-50 rounded-2xl">
+            <ScrollToTop />
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <h1 className="mb-1 text-xl font-bold text-red-900">Order Cancelled</h1>
+            <p className="text-sm text-red-700">
+              Your order has been successfully cancelled. Any payment will be refunded within 5–7 business days.
             </p>
           </div>
         )}
@@ -192,19 +219,19 @@ export default async function OrderPage({ params }: Props) {
             </div>
             <div>
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                status === "canceled"     ? "bg-red-100 text-red-800" :
-                status === "delivered"   ? "bg-green-100 text-green-800" :
-                status === "shipped"     ? "bg-blue-100 text-blue-800" :
-                status === "processing"  ? "bg-purple-100 text-purple-800" :
+                status === "canceled"          ? "bg-red-100 text-red-800" :
+                status === "delivered"         ? "bg-green-100 text-green-800" :
+                status === "shipped"           ? "bg-blue-100 text-blue-800" :
+                status === "processing"        ? "bg-purple-100 text-purple-800" :
                 "bg-amber-100 text-amber-800"
               }`}>
                 {status === "delivered" && <Check className="w-3 h-3" />}
                 {status === "shipped" && <Truck className="w-3 h-3" />}
                 {status === "processing" && <Package className="w-3 h-3" />}
                 {status === "canceled" && <AlertCircle className="w-3 h-3" />}
-                {status === "payment_confirmed" || status === "pending" ? <Clock className="w-3 h-3" /> : null}
+                {(status === "payment_confirmed" || status === "pending") && <Clock className="w-3 h-3" />}
                 {{
-                  canceled: "Canceled",
+                  canceled: "Cancelled",
                   delivered: "Delivered",
                   shipped: "Shipped",
                   processing: "Processing",
@@ -278,10 +305,14 @@ export default async function OrderPage({ params }: Props) {
                 </div>
                 {/* Content */}
                 <div className="pb-5">
-                  <p className={`text-sm font-semibold ${step.done ? "text-gray-900" : "text-gray-400"}`}>
+                  <p className={`text-sm font-semibold ${
+                    (step as any).canceled ? "text-red-700" : step.done ? "text-gray-900" : "text-gray-400"
+                  }`}>
                     {step.title}
                   </p>
-                  <p className={`text-xs mt-0.5 ${step.done ? "text-gray-500" : "text-gray-300"}`}>
+                  <p className={`text-xs mt-0.5 ${
+                    (step as any).canceled ? "text-red-500" : step.done ? "text-gray-500" : "text-gray-300"
+                  }`}>
                     {step.description}
                   </p>
                 </div>
@@ -377,9 +408,10 @@ export default async function OrderPage({ params }: Props) {
         <Link
           href={`/`}
           className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-semibold text-sm w-full"
-          style={{ background: "linear-gradient(135deg, #e65100 0%, #ac1900 100%)" }}
+          style={{ background: status === "canceled" ? "#dc2626" : "linear-gradient(135deg, #e65100 0%, #ac1900 100%)" }}
         >
-          Continue Shopping <ArrowRight className="w-4 h-4" />
+          {status === "canceled" ? "Back to Store" : "Continue Shopping"}
+          <ArrowRight className="w-4 h-4" />
         </Link>
 
         {/* Cancel — only within 2 hours and order not already canceled/shipped/delivered */}

@@ -166,6 +166,7 @@ const STORE_LIST_FIELDS = [
   "vendor.id",
   "vendor.name",
   "vendor.handle",
+  "vendor.logo",
   "vendor.verified",
   "categories.id",
   "categories.name",

@@ -56,8 +56,9 @@ function VendorCard({ vendor, index }: { vendor: Vendor; index: number }) {
       onClick={handleClick}
       className="relative block w-full text-center group"
     >
+      {/* Square image with rounded corners */}
       <div
-        className="relative w-full mx-auto mb-3 overflow-hidden bg-gray-100 shadow-sm transition-all duration-300 group-hover:shadow-md"
+        className="relative w-full mx-auto mb-3 overflow-hidden bg-gray-200 rounded-sm shadow-sm transition-all duration-300 group-hover:shadow-md"
         style={{ paddingBottom: "100%" }}
       >
         <div className="absolute inset-0">
@@ -82,15 +83,21 @@ function VendorCard({ vendor, index }: { vendor: Vendor; index: number }) {
               />
             </div>
           )}
-          <div className="absolute inset-0 flex items-center justify-center transition-opacity bg-black opacity-0 bg-opacity-20 group-hover:opacity-100">
-            <span className="px-4 py-2 text-xs font-medium text-white bg-black bg-opacity-50 rounded-full">
-              View Shop
-            </span>
-          </div>
         </div>
       </div>
-      <h3 className="font-medium text-md text-start">{vendor.name}</h3>
-      <p className="text-sm text-start line-clamp-4">{vendor.creator_bio}</p>
+
+      <div className="bg-gray-100 rounded-b-xl px-3 pt-3 pb-3">
+        {/* Name */}
+        <h3 className="font-semibold text-sm text-start mb-0.5 truncate">{vendor.name}</h3>
+
+        {/* Role / bio — single line */}
+        <p className="text-xs text-gray-500 text-start mb-3" style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "3rem", lineHeight: "1rem" }}>{vendor.creator_bio}</p>
+
+        {/* View Store button */}
+        <button className="flex items-center gap-1.5 px-4 h-10 text-sm font-medium border border-gray-300 rounded-lg hover:border-[#e65100] transition-colors bg-white" style={{ color: "#e65100" }}>
+          View Store <ArrowRight size={14} />
+        </button>
+      </div>
     </Link>
   );
 }
@@ -108,7 +115,7 @@ const VendorList: React.FC<VendorListProps> = ({ vendorsList }) => {
 
   if (featuredVendors.length === 0) {
     return (
-      <section className="relative py-20 bg-gray-50">
+      <section className="relative py-20 bg-white">
         <div className="container px-4 mx-auto sm:px-5">
           <div className="flex items-center justify-between mb-8">
             <p className="text-2xl sm:text-4xl font-bold tracking-tight">Featured creators</p>

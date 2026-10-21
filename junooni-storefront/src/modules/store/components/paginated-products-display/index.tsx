@@ -60,12 +60,12 @@ export default function PaginatedProductsDisplay({
   return (
     <div className="w-full">
       {/* Product count */}
-      <div className="flex flex-wrap items-center justify-between gap-4 px-2 mb-6 md:px-0">
+      {/* <div className="flex flex-wrap items-center justify-between gap-4 px-2 mb-6 md:px-0">
         <p className="text-gray-600">
           Showing <span className="font-medium">{products.length}</span> of{" "}
           <span className="font-medium">{totalCount}</span> products
         </p>
-      </div>
+      </div> */}
 
       {/* Products grid */}
       <ul

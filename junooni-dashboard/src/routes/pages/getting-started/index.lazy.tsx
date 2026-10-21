@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from '@tanstack/react-router'
-import GettingStartedPage from '@/features/getting-started'
+import GettingStartedPage from '@/features/footer-pages/getting-started'
 
 export const Route = createLazyFileRoute('/pages/getting-started/')({
   component: RouteComponent,

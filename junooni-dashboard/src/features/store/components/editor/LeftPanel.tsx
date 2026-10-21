@@ -138,6 +138,7 @@ interface LeftPanelProps {
   backendUrl: string
   triggerDrillId?: string | null
   switchTheme: (templateId: string) => void
+  canRemoveBranding?: boolean
 }
 
 // ─── LeftPanel ────────────────────────────────────────────────────────────────
@@ -441,6 +442,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     setRightPanelOpen, setLeftPanelOpen, setHeaderPickerOpen,
     editingPage, setEditingPage, savePage, deletePage, startNewPage,
     previewPagePath, hasStore, token, backendUrl, triggerDrillId, store, switchTheme,
+    canRemoveBranding = false,
   } = props
 
     const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
@@ -759,6 +761,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
               vendorHandle={vendorHandle}
               currentLayoutKey={currentLayoutKey}
               storeTemplate={storeTemplate}
+              canRemoveBranding={canRemoveBranding}
             />
           ) : null}
         </div>

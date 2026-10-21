@@ -49,6 +49,10 @@ export default function StoreFooter({ vendor, store: initialStore, categories, c
 const footerSection = homeSections.find((s: any) => s.type === "footer")
 
   // Section color overrides
+  const canHideBranding = ["starter", "enterprise"].includes((vendor as any).plan ?? "free")
+  const showPoweredBy = !(canHideBranding && footerSection?.hide_powered_by)
+  console.log("branding check", { plan: (vendor as any).plan, hide: footerSection?.hide_powered_by })
+
   const footerBg   = footerSection?.background_color ?? null
   const footerText = footerSection?.text_color ?? null
 
@@ -232,14 +236,14 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
         className={`border-t ${isDark ? "border-white/10" : "border-gray-100"} px-6 py-5`}
         style={footerBg ? { borderColor: footerText ? `${footerText}20` : undefined } : {}}
       >
-        <div className="flex flex-col items-center justify-between max-w-6xl gap-3 mx-auto text-xs sm:flex-row">
+        <div className={`flex flex-col items-center max-w-6xl gap-3 mx-auto text-xs sm:flex-row ${showPoweredBy ? "justify-between" : "justify-center"}`}>
           <p
             className={isDark ? "text-white/30" : "text-gray-400"}
             style={footerText ? { color: footerText, opacity: 0.5 } : {}}
           >
             © {new Date().getFullYear()} {vendor.name}. All rights reserved.
           </p>
-          <p className={isDark ? "text-white/30" : "text-gray-400"} style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
+          {showPoweredBy && <p className={isDark ? "text-white/30" : "text-gray-400"} style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
             Powered by{" "}
             <a
               href="https://junooni.com"
@@ -251,7 +255,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
                 className="inline-block w-auto h-4 align-middle"
               />
             </a>
-          </p>
+          </p>}
         </div>
       </div>
     </footer>

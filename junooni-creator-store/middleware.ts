@@ -72,12 +72,40 @@ export async function middleware(req: NextRequest) {
   if (!handle) return NextResponse.next()
 
   // ── Redirect custom domain checkout to junooni subdomain ─────────────────
-  // Razorpay CORS only works on *.junooni.com — redirect checkout to subdomain
-  const isJunooniSubdomain = hostname.endsWith(`.${ROOT_DOMAIN}`)
-  if (!isJunooniSubdomain && pathname.startsWith("/checkout")) {
-    const junooniUrl = `https://${handle}.${ROOT_DOMAIN}${pathname}${url.search}`
-    return NextResponse.redirect(junooniUrl)
+const isJunooniSubdomain = hostname.endsWith(`.${ROOT_DOMAIN}`)
+if (!isJunooniSubdomain && pathname.startsWith("/checkout")) {
+  const junooniUrl = `https://${handle}.${ROOT_DOMAIN}${pathname}${url.search}`
+  return NextResponse.redirect(junooniUrl)
+}
+
+// ── CORS for checkout on junooni subdomain ────────────────────────────────
+// When the RSC fetch from a custom domain follows the redirect above, it
+// arrives here as a cross-origin request. Without CORS headers the browser
+// blocks it with "No Access-Control-Allow-Origin".
+if (isJunooniSubdomain && pathname.startsWith("/checkout")) {
+  const origin = req.headers.get("origin") ?? ""
+  const isCrossOrigin = !!origin && !origin.endsWith(`.${ROOT_DOMAIN}`) && origin !== `https://${ROOT_DOMAIN}`
+  if (isCrossOrigin) {
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": origin,
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url",
+          "Access-Control-Max-Age": "86400",
+        },
+      })
+    }
+    url.pathname = pathname === "/" ? `/${handle}` : `/${handle}${pathname}`
+    const res = NextResponse.rewrite(url)
+    res.headers.set("x-handle", handle)
+    res.headers.set("Access-Control-Allow-Origin", origin)
+    res.headers.set("Access-Control-Allow-Credentials", "true")
+    if (url.searchParams.get("__preview") === "1") res.headers.set("x-vendor-preview", "1")
+    return res
   }
+}
 
   // ── Rewrite browser URL path → internal Next.js path ─────────────────────
   //

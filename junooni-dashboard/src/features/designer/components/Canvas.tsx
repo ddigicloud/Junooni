@@ -47,6 +47,7 @@ import EnhancedMockupEngine from '../engines/mockup/MockupEngine';
 import { 
   generateJuniMockupsAllColors,
   generateJuniMockupsAllAreasAllColors,
+  generateJuniMockupsCombined,
   generateJuniCanvasLayout,
 } from './JuniMockupBridge'
 import { captureCanvasImageForArea } from './canvas-export-utils'
@@ -62,6 +63,7 @@ interface EnhancedCanvasProps {
     initialColorHex?:       string
     initialSelectedColors?: Array<{ name: string; value: string }>
     initialSelectedSizes?:  string[]
+     initialTechnologyId?:   string
     initialLayout?:         {        // ← ADD: last edited position/size
       x:        number
       y:        number
@@ -82,6 +84,7 @@ interface EnhancedCanvasProps {
         rotation?: number
       }
       designsByArea?:      Record<string, { base64: string; filename: string; layout?: { x: number; y: number; width: number; height: number; rotation?: number } }>
+      artworkByArea?:           Record<string, { base64: string; filename: string }>
       selectedColors?:     Array<{ name: string; value: string }>
       selectedSizes?:      string[]
       preGeneratedMockups?: Array<{
@@ -113,7 +116,10 @@ const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMo
 
   // ── Active selections ─────────────────────────────────────────────────────
   const [activeTechnology, setActiveTechnology] = useState<string>(() =>
-    productData?.printT?.[0]?.id || productData?.printT?.[0]?.technologyName || 'dtg'
+    juniEditMode?.initialTechnologyId
+      || productData?.printT?.[0]?.id
+      || productData?.printT?.[0]?.technologyName
+      || 'dtg'
   );
   const [activeArea, setActiveArea] = useState<string>('front');
   const [activeColor, setActiveColor] = useState<string>(() => {
@@ -1643,6 +1649,17 @@ useEffect(() => {
 
                 if (areasWithDesigns.length === 0) return
 
+                // ── DEBUG ──
+                console.log('[Artwork] areasWithDesigns:', areasWithDesigns)
+                console.log('[Artwork] designElements keys:', Object.keys(designHook.designElements as any))
+                console.log('[Artwork] elements per area:', Object.fromEntries(
+                  areasWithDesigns.map(area => [
+                    area,
+                    ((designHook.designElements as any)[area] ?? []).length
+                  ])
+                ))
+                // ── END DEBUG ──
+
                 // For multi-area designs use generateJuniMockupsAllAreasAllColors
 
                 // Debug: check what design base64 we're passing
@@ -1731,9 +1748,9 @@ useEffect(() => {
                 // ── END DEBUG LOGS ──
 
                 const mockupResults = isMultiArea
-                  ? await generateJuniMockupsAllAreasAllColors({
+                  ? await generateJuniMockupsCombined({
                       blankData:           productData,
-                      technologyId:        productData?.printT?.[0]?.id ?? productData?.printT?.[0]?.technologyName ?? '',
+                      technologyId:        activeTechnology,
                       selectedColors:      selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
                             designsByArea: Object.fromEntries(
                               areasWithDesigns.map(area => {
@@ -1763,7 +1780,7 @@ useEffect(() => {
                     })
                   : await generateJuniMockupsAllColors({
                       blankData:      productData,
-                      technologyId:   productData?.printT?.[0]?.id ?? productData?.printT?.[0]?.technologyName ?? '',
+                      technologyId:   activeTechnology,
                       selectedColors: selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
                       designBase64:   primaryEl?.imageBase64 ?? '',
                       area:           primaryArea,
@@ -1790,6 +1807,18 @@ useEffect(() => {
                   const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
                   if (!firstImage) continue
 
+                  // ── DEBUG: remove after fixing ──
+                  console.log(`[Artwork Debug] area=${area}`, {
+                    x:         firstImage.x,
+                    y:         firstImage.y,
+                    width:     firstImage.width,
+                    height:    firstImage.height,
+                    scaleX:    firstImage.scaleX,
+                    scaleY:    firstImage.scaleY,
+                    printable: getPrintableAreaFromPhoto(area, activeColor, activeSize),
+                  })
+                  // ── END DEBUG ──
+
                   try {
                     const img = await new Promise<HTMLImageElement>((res, rej) => {
                       const i   = new Image()
@@ -1799,7 +1828,36 @@ useEffect(() => {
                     })
 
                     // Get printable area boundary (the orange dashed box in canvas coords)
-                    const printableArea = getPrintableAreaFromPhoto(area, activeColor, activeSize)
+                    // Force fresh printable area lookup for this specific area
+                    // Don't rely on activeColor match — fall back to first available photo if no color match
+                    const custArea     = getCustomizationAreaByName(area)
+                    const canvasCfgNow = getCanvasConfig(area, activeColor)
+                    const fallbackPrintable = { x: 0, y: 0, width: canvasCfgNow.width, height: canvasCfgNow.height }
+
+                    const printableArea = (() => {
+                      if (!custArea?.designCanvasPhotos?.length) return fallbackPrintable
+                      // Try color match first, then white, then first available
+                      const photo =
+                        custArea.designCanvasPhotos.find((p: any) =>
+                          productData?.size_Images
+                            ? p?.photoColor?.toLowerCase() === activeSize.toLowerCase()
+                            : p?.photoColor?.toLowerCase() === activeColor.toLowerCase()
+                        ) ??
+                        custArea.designCanvasPhotos.find((p: any) =>
+                          ['#ffffff', 'white'].includes(p?.photoColor?.toLowerCase() || '')
+                        ) ??
+                        custArea.designCanvasPhotos[0]
+
+                      if (!photo?.printAreaCoord) return fallbackPrintable
+                      const coord  = photo.printAreaCoord
+                      const isNorm = coord.x <= 1 && coord.y <= 1 && coord.width <= 1 && coord.height <= 1
+                      return {
+                        x:      coord.x                                    * canvasCfgNow.width,
+                        y:      coord.y                                    * canvasCfgNow.height,
+                        width:  (isNorm ? coord.width  : coord.width)      * canvasCfgNow.width,
+                        height: (isNorm ? coord.height : coord.height)     * canvasCfgNow.height,
+                      }
+                    })()
 
                     // Element as rendered on canvas (after user resize)
                     const elW      = Math.round(firstImage.width  * (firstImage.scaleX ?? 1))
@@ -1845,10 +1903,10 @@ useEffect(() => {
 
                     ctx.restore()
 
-                    // ── Trim transparent edges so output is tight around visible pixels ──
-                    // Scan pixel data to find actual content bounding box
+                    // ── Trim transparent edges — scan in UNSCALED coords, read from scaled canvas ──
                     const imageData = ctx.getImageData(0, 0, offscreen.width, offscreen.height)
                     const pixels    = imageData.data
+                    // Scan scaled pixels
                     let minX = offscreen.width, minY = offscreen.height, maxX = 0, maxY = 0
                     for (let y = 0; y < offscreen.height; y++) {
                       for (let x = 0; x < offscreen.width; x++) {
@@ -1864,24 +1922,28 @@ useEffect(() => {
 
                     let renderedBase64: string
                     if (maxX >= minX && maxY >= minY) {
-                      // Crop to tight content bounds
                       const trimW   = maxX - minX + 1
                       const trimH   = maxY - minY + 1
+                      // Output at UNSCALED size — divide by scale factor so result isn't 2× oversized
+                      const outW    = Math.round(trimW / scale)
+                      const outH    = Math.round(trimH / scale)
                       const trimmed = document.createElement('canvas')
-                      trimmed.width  = trimW
-                      trimmed.height = trimH
+                      trimmed.width  = outW
+                      trimmed.height = outH
                       const tCtx    = trimmed.getContext('2d')!
-                      tCtx.drawImage(offscreen, minX, minY, trimW, trimH, 0, 0, trimW, trimH)
+                      tCtx.imageSmoothingEnabled = true
+                      tCtx.imageSmoothingQuality = 'high'
+                      // Draw from scaled source coords into unscaled output
+                      tCtx.drawImage(offscreen, minX, minY, trimW, trimH, 0, 0, outW, outH)
                       renderedBase64 = trimmed.toDataURL('image/png', 1.0)
                       console.log(
-                        `[JUNI Save] Design captured & trimmed:`,
-                        `printable=${pW}×${pH}, element=${elW}×${elH} at (${elX},${elY}),`,
-                        `rotation=${rotation}°, trimmed=${trimW}×${trimH}`
+                        `[JUNI Save] area=${area} captured:`,
+                        `printable=${pW}×${pH}, element=${elW}×${elH},`,
+                        `rotation=${rotation}°, trimmed=${outW}×${outH}`
                       )
                     } else {
-                      // Fallback: nothing visible — use full printable canvas
                       renderedBase64 = offscreen.toDataURL('image/png', 1.0)
-                      console.warn(`[JUNI Save] No visible pixels found for ${area}, using full printable area`)
+                      console.warn(`[JUNI Save] No visible pixels for ${area} — using full canvas`)
                     }
 
                     updatedDesignsByArea[area] = {
@@ -1989,25 +2051,36 @@ useEffect(() => {
                   // ── FIX: store ORIGINAL imageBase64 here, not the clipped artwork ──
                   // This is what loads back when creator clicks Edit again
                   designsByArea: Object.fromEntries(
-                    areasWithDesigns.map(area => {
-                      const elements   = (designHook.designElements as any)[area] as any[]
-                      const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
-                      return [
+                  areasWithDesigns.map(area => {
+                    const elements   = (designHook.designElements as any)[area] as any[]
+                    const firstImage = elements?.find((el: any) => el.type === 'image' && el.imageBase64)
+                    return [
+                      area,
+                      {
+                        base64:    firstImage?.imageBase64 ?? '',          // full original — for re-editing
+                        filename:  `original-design-${area}.png`,
+                        layout: firstImage ? {
+                          x:        firstImage.x,
+                          y:        firstImage.y,
+                          width:    firstImage.width,
+                          height:   firstImage.height,
+                          rotation: firstImage.rotation ?? 0,
+                        } : undefined,
+                        // ── clipped artwork — for manufacturer ──
+                        artworkBase64: updatedDesignsByArea[area]?.base64 ?? '',
+                        artworkFilename: `edited-design-${area}.png`,
+                      }
+                    ]
+                  })
+                ),
+
+                artworkByArea: Object.fromEntries(
+                    areasWithDesigns
+                      .filter(area => updatedDesignsByArea[area]?.base64)
+                      .map(area => [
                         area,
-                        {
-                          base64:    firstImage?.imageBase64 ?? '',
-                          filename: `original-design-${area}.png`,
-                          // ── Save per-area layout so re-edit restores each area's position ──
-                          layout: firstImage ? {
-                            x:        firstImage.x,
-                            y:        firstImage.y,
-                            width:    firstImage.width,
-                            height:   firstImage.height,
-                            rotation: firstImage.rotation ?? 0,
-                          } : undefined,
-                        }
-                      ]
-                    })
+                        { base64: updatedDesignsByArea[area].base64, filename: `edited-design-${area}.png` }
+                      ])
                   ),
 
                   selectedColors,

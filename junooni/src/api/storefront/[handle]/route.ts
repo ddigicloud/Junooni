@@ -24,6 +24,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         "creator_bio", "creator_title", "creator_category",
         "instagram", "youtube", "xtwitter", "facebook", "othersocial",
         "sell_on_own_store",
+        "plan",
         "vendor_store.id",
         "vendor_store.subdomain",
         "vendor_store.custom_domain",
@@ -88,6 +89,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     xtwitter:         vendor.xtwitter,
     facebook:         vendor.facebook,
     othersocial:      vendor.othersocial,
+    plan:             vendor.plan ?? "free",
   }
 
   // ── 3. Password gate ───────────────────────────────────────────────────

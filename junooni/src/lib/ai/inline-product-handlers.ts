@@ -620,7 +620,7 @@ export async function handleCreateProductFromChat(
     design_area?:               string
     canvas_layout_base64?:      string
     all_canvas_layouts?:        string[]  // one canvas layout PNG per area for multi-area
-    designs_by_area?:           Record<string, { sessionId: string; base64: string; filename: string }>
+    designs_by_area?:  Record<string, { sessionId: string; base64: string; filename: string; artworkBase64?: string }>
   },
   req: MedusaRequest,
   vendorId: string
@@ -844,14 +844,17 @@ export async function handleCreateProductFromChat(
       const hasMultiArea  = Object.keys(designsByArea).length > 1
 
       if (hasMultiArea) {
-        // Multi-area: one design file per area
+        // Multi-area: use artworkBase64 (clipped) if available, fall back to base64 (original)
         for (const [area, areaDesign] of Object.entries(designsByArea)) {
           const d = areaDesign as any
-          if (!d?.base64 || d.base64.length < 100) continue
+          const artworkBase64 = d.artworkBase64 && d.artworkBase64.length > 100 ? d.artworkBase64 : null
+          const base64ToUse   = artworkBase64 ?? d.base64
+          if (!base64ToUse || base64ToUse.length < 100) continue
+          console.log(`[create_product_from_chat] Multi-area [${area}]: using ${artworkBase64 ? 'clipped-artwork' : 'original-upload'}`)
           artworkFiles.push({
-            filename: d.filename ?? `design-${area}.png`,
+            filename: artworkBase64 ? `edited-design-${area}.png` : (d.filename ?? `design-${area}.png`),
             mimeType: "image/png",
-            content:  d.base64.replace(/^data:[^;]+;base64,/, ""),
+            content:  base64ToUse.replace(/^data:[^;]+;base64,/, ""),
             access:   "private",
           })
         }

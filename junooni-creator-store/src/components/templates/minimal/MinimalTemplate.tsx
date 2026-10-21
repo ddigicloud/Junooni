@@ -548,7 +548,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
 
               {/* Creator image/logo side */}
              {/* Creator image/logo side — hidden when hide_right_image is true */}
-              {!(section as any).hide_right_image && ((section as any).hero_image_right ?? minimaltemplatebanner) && (
+              {!(section as any).hide_right_image && ((section as any).hero_image_right || minimaltemplatebanner) && (
                 <motion.div
                   className="w-full shrink-0 md:w-80 lg:w-96"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -557,7 +557,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 >
                   <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl">
                     <Image
-                      src={(section as any).hero_image_right ?? "/minimal-template-banner.png"}
+                      src={(section as any).hero_image_right ?? minimaltemplatebanner}
                       alt={vendor.name}
                       fill
                       quality={90}

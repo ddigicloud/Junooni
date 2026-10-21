@@ -3,7 +3,7 @@ import JUNI from "../assets/JUNI.png"
 import JUNI2 from "../assets/JUNI-video.mp4"
 import EnhancedCanvas from '../features/designer/components/Canvas'
 import type { PayloadProductData } from '../features/designer/components/types'
-import { generateJuniMockupsAllColors, generateJuniCanvasLayout, generateJuniMockupsAllAreasAllColors } from '../features/designer/components/JuniMockupBridge'
+import { generateJuniMockupsAllColors, generateJuniCanvasLayout, generateJuniMockupsAllAreasAllColors, generateJuniMockupsCombined } from '../features/designer/components/JuniMockupBridge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,6 +56,7 @@ interface Message {
   showSameOrDifferent?:  { areas: string[] }
   showAreaUpload?:       { area: string; areaIndex: number; totalAreas: number }
   showPositionPicker?:   { area: string }
+  showTechPicker?:       { technologies: Array<{ id: string; name: string; description?: string }> }
   productCards?:     ProductCard[]
   mockupPreview?:    string
   mockupSlides?:     MockupSlide[]
@@ -573,6 +574,66 @@ function PositionPicker({ area, onSelect }: { area: string; onSelect: (position:
   )
 }
 
+function TechPicker({ technologies, onSelect }: {
+  technologies: Array<{ id: string; name: string; description?: string }>
+  onSelect: (techId: string, techName: string) => void
+}) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  if (confirmed) return null
+
+  return (
+    <div style={{ background: '#fff', border: '1.5px solid #f0f0f0', borderRadius: '14px', padding: '12px', marginTop: '4px' }}>
+      <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#888' }}>
+        Select your preferred print technology:
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+        {technologies.map(tech => {
+          const isSel = selected === tech.id
+          return (
+            <button key={tech.id} onClick={() => setSelected(tech.id)}
+              style={{
+                padding: '10px 14px', textAlign: 'left',
+                background: isSel ? '#fff5f0' : '#f8f8f8',
+                border: isSel ? `2px solid ${BRAND}` : '1.5px solid #e8e8e8',
+                borderRadius: '10px', cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}>
+              <div style={{ fontWeight: 600, fontSize: '13px', color: isSel ? BRAND : '#1a1a1a' }}>
+                {tech.name}
+              </div>
+              {tech.description && (
+                <div style={{ fontSize: '11px', color: '#888', marginTop: '3px' }}>
+                  {tech.description}
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      <button
+        onClick={() => {
+          if (!selected) return
+          const tech = technologies.find(t => t.id === selected)!
+          setConfirmed(true)
+          onSelect(tech.id, tech.name)
+        }}
+        disabled={!selected}
+        style={{
+          width: '100%', padding: '9px',
+          background: selected ? BRAND : '#e0e0e0',
+          color: '#fff', border: 'none', borderRadius: '20px',
+          fontWeight: 600, fontSize: '13px',
+          cursor: selected ? 'pointer' : 'not-allowed',
+        }}>
+        Confirm Technology
+      </button>
+    </div>
+  )
+}
+
+
+
 function SameOrDifferentPicker({ areas, onSelect }: { areas: string[]; onSelect: (same: boolean) => void }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", padding:"4px 0" }}>
@@ -915,6 +976,7 @@ function JuniCanvasEditModal({
             initialColorHex:       session.selectedColors?.[0]?.hex,
             initialSelectedColors: session.selectedColors.map(c => ({ name: c.name, value: c.hex })),
             initialSelectedSizes:  session.selectedSizes,
+            initialTechnologyId:   session.technologyId,
             initialLayout:         lastEditLayout,
             designsByArea:         session.designsByArea
               ? Object.fromEntries(
@@ -966,7 +1028,20 @@ export default function AIAssistant({ vendorId }: Props) {
   }, [messages, loading, open])
 
   const addAssistantMessage = (content: string, extra?: Partial<Message>) => {
-    const markers    = parseMessageMarkers(content)
+  const markers    = parseMessageMarkers(content)
+
+  // If awaiting tech selection — strip color/size pickers from Gemini's reply
+  // so they don't show before creator picks a technology
+  if ((productSessionRef.current as any)._awaitingTechSelection) {
+    markers.showColorPicker     = undefined
+    markers.showSizePicker      = undefined
+    markers.showColorSizePicker = undefined
+    markers.showAreaPicker      = undefined
+    markers.showUpload          = false
+    markers.showAreaUpload      = undefined
+  }
+
+  
     const parsedActs = parseActions(markers.clean)
     const autoActs   = parsedActs.length > 0 ? parsedActs : detectRelevantActions(markers.clean)
     const baseMsg: Message = {
@@ -1014,6 +1089,7 @@ export default function AIAssistant({ vendorId }: Props) {
         productSession: {
           ...session,
           confirmedTitle: (session as any)._confirmedTitle || undefined,
+          artworkByArea:   (session as any).artworkByArea || undefined, 
         },
         // Design context passed separately so Gemini gets it without it appearing in chat
         designContext: session.designSessionId ? {
@@ -1042,12 +1118,49 @@ export default function AIAssistant({ vendorId }: Props) {
     for (const rd of renderData) {
       if (rd.render_type === "BLANK_DETAILS" && rd.blankData) {
         productSessionRef.current.blankData = rd.blankData
-        if (!productSessionRef.current.technologyId) {
-          const firstTech = rd.blankData?.printT?.[0]
-          if (firstTech?.id) {
-            productSessionRef.current.technologyId = firstTech.id
+
+        console.log('🔵 [TechDebug] BLANK_DETAILS received:', {
+          productName:      rd.blankData?.name,
+          printTCount:      rd.blankData?.printT?.length,
+          existingTechId:   productSessionRef.current.technologyId,
+          awaitingTech:     (productSessionRef.current as any)._awaitingTechSelection,
+        })
+
+        {
+          const technologies = rd.blankData?.printT ?? []
+
+          console.log('🔵 [TechDebug] printT from blankData:', {
+            count: technologies.length,
+            names: technologies.map((t: any) => t.technologyName),
+            ids:   technologies.map((t: any) => t.id),
+            rawPrintT: rd.blankData?.printT,
+          })
+
+          if (technologies.length > 1) {
+            console.log('🟢 [TechDebug] Multiple techs — should show picker')
+            console.log('[AIAssistant] Multiple technologies found:', technologies.map((t: any) => t.technologyName))
+            // Flag to suppress color/size picker from Gemini's reply
+            ;(productSessionRef.current as any)._awaitingTechSelection = true
+            // Add tech picker directly to extra so it works in ALL paths
+            // (both addAssistantMessage and sendMessageWithCleanHistory)
+            ;(extra as any).showTechPicker = {
+              technologies: technologies.map((t: any) => ({
+                id:          t.id ?? t.technologyName,
+                name:        t.technologyName,
+                description: t.description ?? '',
+              }))
+            }
+          } else {
+            // Single tech — only set if not already set
+            if (!productSessionRef.current.technologyId) {
+              const firstTech = technologies[0]
+              if (firstTech?.id) {
+                productSessionRef.current.technologyId = firstTech.id
+              }
+            }
           }
         }
+
         // Extract area from conversation now — so area picker is suppressed later
         if (!productSessionRef.current.area) {
           const areaFromConv = extractAreaFromMessages(messages)
@@ -1114,7 +1227,7 @@ export default function AIAssistant({ vendorId }: Props) {
       const isMultiArea   = Object.keys(designsByArea).length > 1
 
       const results = isMultiArea
-        ? await generateJuniMockupsAllAreasAllColors({
+        ? await generateJuniMockupsCombined({
             blankData:           session.blankData,
             technologyId:        session.technologyId!,
             selectedColors:      session.selectedColors,
@@ -1331,19 +1444,22 @@ export default function AIAssistant({ vendorId }: Props) {
       const data    = await res.json()
       const extra   = data.renderData?.length > 0 ? processRenderData(data.renderData) : {}
       const markers = parseMessageMarkers(data.reply ?? "")
+      const awaitingTech = (productSessionRef.current as any)._awaitingTechSelection
+
       setMessages([
         { role:"user", content: userText },
         {
           role:"assistant", content: markers.clean,
           actions:             detectRelevantActions(markers.clean),
           suggestions:         detectSuggestions(markers.clean),
-          showUpload:          markers.showUpload,
-          showColorPicker:     markers.showColorPicker,
-          showSizePicker:      markers.showSizePicker,
-          showColorSizePicker: markers.showColorSizePicker,
-          showAreaPicker:      markers.showAreaPicker,
+          // Suppress color/size/area pickers if waiting for tech selection
+          showUpload:          awaitingTech ? false : markers.showUpload,
+          showColorPicker:     awaitingTech ? undefined : markers.showColorPicker,
+          showSizePicker:      awaitingTech ? undefined : markers.showSizePicker,
+          showColorSizePicker: awaitingTech ? undefined : markers.showColorSizePicker,
+          showAreaPicker:      awaitingTech ? undefined : markers.showAreaPicker,
           showSameOrDifferent: markers.showSameOrDifferent,
-          showAreaUpload:      markers.showAreaUpload,
+          showAreaUpload:      awaitingTech ? undefined : markers.showAreaUpload,
           showPositionPicker:  markers.showPositionPicker,
           ...extra
         }
@@ -1641,6 +1757,61 @@ export default function AIAssistant({ vendorId }: Props) {
                     />
                   )}
 
+                  
+
+                  {/* Technology picker */}
+                  {msg.showTechPicker && (
+                    <TechPicker
+                      technologies={msg.showTechPicker.technologies}
+                      onSelect={(techId, techName) => {
+                        productSessionRef.current.technologyId = techId
+                        ;(productSessionRef.current as any)._awaitingTechSelection = false
+                        console.log('[AIAssistant] Technology selected:', techName, techId)
+
+                        const tech = productSessionRef.current.blankData?.printT?.find(
+                          (t: any) => t.id === techId || t.technologyName === techName
+                        )
+                        const dynamicAreas = (tech?.custAreas ?? [])
+                          .map((a: any) => a.areaName)
+                          .filter(Boolean)
+
+                        // Get colors and sizes directly from blankData — no need to call Gemini again
+                        const blankData = productSessionRef.current.blankData
+                        const colors: ColorOption[] = (blankData?.colorOptions ?? []).map((c: any) => ({
+                          name: c.colorName,
+                          hex:  c.colorHex,
+                        }))
+                        const sizes: SizeOption[] = (blankData?.sizeOptions ?? []).map((s: any) => ({
+                          name: s.sizeName,
+                        }))
+
+                        if (colors.length > 0 && sizes.length > 0) {
+                          addAssistantMessage(
+                            `Got it! Using **${techName}** for printing. Now pick your colors and sizes.`,
+                            { showColorSizePicker: { colors, sizes } }
+                          )
+                        } else if (colors.length > 0) {
+                          addAssistantMessage(
+                            `Got it! Using **${techName}** for printing. Now pick your colors.`,
+                            { showColorSizePicker: { colors, sizes: [] } }
+                          )
+                        } else {
+                          // Fallback to Gemini if blankData doesn't have colors
+                          addAssistantMessage(
+                            `Got it! Using **${techName}** for printing. Now pick your colors and sizes.`
+                          )
+                          sendToBackend([
+                            ...messages,
+                            { role: 'user' as const, content: `I selected ${techName} technology. Please show all available color and size options.` }
+                          ]).then(data => {
+                            const extra = data.renderData?.length > 0 ? processRenderData(data.renderData) : {}
+                            addAssistantMessage(data.reply, extra)
+                          }).catch(() => {})
+                        }
+                      }}
+                    />
+                  )}
+
                   {/* Position picker (rarely shown) */}
                   {msg.showPositionPicker && (
                     <PositionPicker area={msg.showPositionPicker.area}
@@ -1655,7 +1826,7 @@ export default function AIAssistant({ vendorId }: Props) {
                   )}
 
                   {/* Product cards — only show while no product selected yet */}
-                  {msg.productCards && msg.productCards.length > 0 && !productSelectedRef.current && (
+                  {msg.productCards && msg.productCards.length > 1 && !productSelectedRef.current && !productSessionRef.current?.blankData && (
                     <ProductCardList
                       products={msg.productCards}
                       isLockedByParent={false}
@@ -1845,10 +2016,19 @@ export default function AIAssistant({ vendorId }: Props) {
 
         if (result.designsByArea && Object.keys(result.designsByArea).length > 0) {
           productSessionRef.current.designsByArea = Object.fromEntries(
-            Object.entries(result.designsByArea).map(([area, d]) => [
-              area,
-              { sessionId: '', base64: d.base64, filename: d.filename, layout: (d as any).layout }
-            ])
+            Object.entries(result.designsByArea)
+              .filter(([, d]) => d.base64 && d.base64.length > 100)  // skip empty/deleted areas
+              .map(([area, d]) => [
+                area,
+                {
+                  sessionId:       '',
+                  base64:          d.base64,
+                  filename:        d.filename,
+                  layout:          (d as any).layout,
+                  artworkBase64:   (d as any).artworkBase64   ?? d.base64,
+                  artworkFilename: (d as any).artworkFilename ?? d.filename,
+                }
+              ])
           )
         }
 

@@ -56,11 +56,15 @@ function findMockupPhoto(mockupPhotos: any[], areaName: string, colorHex: string
   const areaNorm   = areaName.toLowerCase().replace(/_/g, '').replace(/-/g, '')
 
   const matchesArea = (p: any) => {
-    const va = (p.viewAngle ?? '').toLowerCase().replace(/_/g, '')
-    const an = (p.area?.[0]?.areaName ?? '').toLowerCase().replace(/_/g, '')
-    return va === areaNorm || an === areaNorm ||
-           va.startsWith(areaNorm) || areaNorm.startsWith(va) ||
-           an.startsWith(areaNorm) || areaNorm.startsWith(an)
+    const va = (p.viewAngle ?? '').toLowerCase().replace(/_/g, '').replace(/-/g, '')
+    const an = (p.area?.[0]?.areaName ?? '').toLowerCase().replace(/_/g, '').replace(/-/g, '')
+    const exactOrBounded = (a: string, b: string) => {
+      if (a === b) return true
+      if (a.startsWith(b) && (a.length === b.length || !/[a-z]/.test(a[b.length]))) return true
+      if (b.startsWith(a) && (b.length === a.length || !/[a-z]/.test(b[a.length]))) return true
+      return false
+    }
+    return exactOrBounded(va, areaNorm) || exactOrBounded(an, areaNorm)
   }
 
   const pool = mockupPhotos.filter(matchesArea)
@@ -496,6 +500,95 @@ export async function generateJuniMockupsAllAreasAllColors(opts: {
   return results
 }
 
+export async function generateJuniMockupsCombined(opts: {
+  blankData:           any
+  technologyId:        string
+  selectedColors:      Array<{ name: string; hex: string }>
+  designsByArea:       AreaDesignMap
+  defaultDesignBase64: string
+  targetResolution?:   number
+  onProgress?:         (done: number, total: number, label: string) => void
+}): Promise<Array<{ colorName: string; colorHex: string; base64: string }>> {
+  const results: Array<{ colorName: string; colorHex: string; base64: string }> = []
+
+  const tech = opts.blankData?.printT?.find((t: any) =>
+    t.id === opts.technologyId || t.technologyName === opts.technologyId
+  ) ?? opts.blankData?.printT?.[0]
+  if (!tech) return results
+
+  const { canvasConfigs, printableAreas } = getAllConfigs(tech)
+  const areas = Object.keys(opts.designsByArea)
+
+  for (let i = 0; i < opts.selectedColors.length; i++) {
+    const color = opts.selectedColors[i]
+    opts.onProgress?.(i, opts.selectedColors.length, color.name)
+
+    try {
+      // Build design elements for ALL areas combined
+      const allDesignElements: Record<string, DesignElement[]> = {}
+
+      for (const area of areas) {
+        const areaData   = opts.designsByArea[area]
+        const areaDesign = areaData?.base64 ?? opts.defaultDesignBase64
+        const areaLayout = areaData?.elements?.[0]
+        const areaKey    = area.toLowerCase().trim()
+        const custArea   = getCustArea(tech, area)
+        if (!custArea) continue
+        const canvasConfig  = buildCanvasConfig(custArea)
+        const printableArea = buildPrintableArea(custArea, canvasConfig)
+        const element = await buildDesignElementFromBase64(areaDesign, printableArea, areaLayout)
+        allDesignElements[areaKey] = [element]
+      }
+
+      // Use front/first area's mockup photo (it shows full garment)
+      const primaryArea = areas[0]
+      const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], primaryArea, color.hex)
+      if (!mockupPhoto) continue
+
+      // Only combine if all areas share the same mockup photo (e.g. front + left_pocket)
+      // Areas like "back" need their own separate photo — don't combine those
+      // Areas that are visible on the front-view photo — combine these
+      const frontViewAreas = ['front', 'leftpocket', 'rightpocket', 'leftchest', 'rightchest', 'chest', 'pocket']
+      const allFrontFacing = areas.every(area =>
+        frontViewAreas.includes(area.toLowerCase().replace(/[_\-\s]/g, ''))
+      )
+      if (!allFrontFacing) {
+        // Fall back to separate mockups per area
+        for (const area of areas) {
+          const areaData   = opts.designsByArea[area]
+          const areaDesign = areaData?.base64 ?? opts.defaultDesignBase64
+          const areaLayout = areaData?.elements?.[0]
+          try {
+            const result = await generateJuniMockup({
+              blankData: opts.blankData, technologyId: opts.technologyId,
+              selectedColorHex: color.hex, designBase64: areaDesign,
+              area, position: 'center', targetResolution: opts.targetResolution ?? 1000,
+              designLayout: areaLayout,
+            })
+            results.push({ colorName: `${color.name} / ${area}`, colorHex: color.hex, base64: result.base64 })
+          } catch (err: any) {
+            console.error(`[JuniMockupBridge] Fallback failed for ${color.name}/${area}:`, err.message)
+          }
+        }
+        continue
+      }
+
+      // Render ALL areas' elements onto ONE mockup image
+      const { renderMockupDirectly } = await import('./MockupGeneratorClass')
+      const base64 = await renderMockupDirectly(
+        mockupPhoto, allDesignElements, canvasConfigs, printableAreas,
+        color.hex, opts.targetResolution ?? 1000
+      )
+
+      results.push({ colorName: color.name, colorHex: color.hex, base64 })
+    } catch (err: any) {
+      console.error(`[JuniMockupBridge] Combined failed for ${color.name}:`, err.message)
+    }
+  }
+
+  opts.onProgress?.(opts.selectedColors.length, opts.selectedColors.length, 'done')
+  return results
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 6: Canvas layout screenshot for manufacturer
 // Calls captureCanvasImageForArea from canvas-export-utils.ts

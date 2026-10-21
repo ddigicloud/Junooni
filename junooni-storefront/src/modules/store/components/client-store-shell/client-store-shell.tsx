@@ -404,28 +404,27 @@ export default function ClientStoreShell({
       </div>
 
       <div className="w-full px-0 ml-0 md:ml-4 sm:px-0">
-        <div className="px-2 mt-0 mb-0 small:mt-12 text-2xl-semi">
+        <div className="px-2 mb-0 text-2xl-semi">
           <h1 data-testid="store-page-title">All products</h1>
         </div>
 
         {/* Sort + active filters row */}
         <div className="flex flex-col gap-3 mt-4 mb-4">
-          <div className="flex items-center justify-between">
-            {/* <div className="flex items-center gap-2">
-             
-              {loadingMore && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                  <span className="w-3 h-3 border border-gray-300 border-t-gray-500 rounded-full animate-spin" />
-                  Loading more…
-                </span>
-              )}
-            </div> */}
-            <div/>
-            <SortWrapper
-              sortBy={sortBy}
-              data-testid="sort-above-grid"
-              onSortChange={(newSort: SortOptions) => setQueryParams("sortBy", newSort)}
-            />
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div className="order-1 md:order-2 px-2 md:px-0">
+              <SortWrapper
+                sortBy={sortBy}
+                data-testid="sort-above-grid"
+                onSortChange={(newSort: SortOptions) => setQueryParams("sortBy", newSort)}
+              />
+            </div>
+            <p className="order-2 md:order-1 text-sm text-gray-500 px-2">
+              Showing{" "}
+              <span className="font-medium text-gray-700">{paginatedProducts.length}</span>{" "}
+              of{" "}
+              <span className="font-medium text-gray-700">{totalFilteredCount}</span>{" "}
+              products
+            </p>
           </div>
 
           {/* Active filter pills */}

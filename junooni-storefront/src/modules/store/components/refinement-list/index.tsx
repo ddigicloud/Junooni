@@ -268,20 +268,20 @@ const RefinementList = ({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Filters</h2>
         {hasActiveFilters && (
           <button className="text-sm text-[#e65100] hover:underline" onClick={clearAllFilters}>
             Clear All
           </button>
         )}
-      </div>
+      </div> */}
 
       {/* Categories */}
       {showCategoryFilter && (
-        <div className="pb-4 border-b">
+        <div className="pb-4 border-b border-[#e65100]">
           <button
-            className="flex items-center justify-between w-full mb-3 text-[#e65100]"
+            className="flex items-center justify-between w-full mb-3"
             onClick={() => toggleSection('category')}
           >
             <h3 className="font-medium">Categories</h3>
@@ -304,7 +304,7 @@ const RefinementList = ({
               {formattedCategories.length > categoryLimit + 1 && (
                 <button
                   onClick={() => setCategoryLimit((prev) => prev + 10)}
-                  className="-mt-2 text-sm font-medium text-[#e65100] hover:underline flex items-center gap-1"
+                  className="-mt-2 text-sm font-medium hover:underline flex items-center gap-1"
                 >
                   ({formattedCategories.length - categoryLimit - 1} more)
                   <ChevronDown className="w-4 h-4" />
@@ -313,7 +313,7 @@ const RefinementList = ({
               {categoryLimit > 10 && (
                 <button
                   onClick={() => setCategoryLimit(10)}
-                  className="mt-0 font-medium text-sm text-[#e65100] hover:underline flex items-center gap-1"
+                  className="mt-0 font-medium text-sm hover:underline flex items-center gap-1"
                 >
                   Show less <ChevronUp className="w-4 h-4" />
                 </button>
@@ -325,7 +325,7 @@ const RefinementList = ({
 
       {/* Collections */}
       {showCollectionFilter && (
-        <div className="pb-4 border-b">
+        <div className="pb-4 border-b border-[#e65100]">
           <button
             className="flex items-center justify-between w-full mb-3"
             onClick={() => toggleSection('collection')}
@@ -347,7 +347,7 @@ const RefinementList = ({
 
       {/* Vendors */}
       {showVendorFilter && (
-        <div className="pb-4 border-b">
+        <div className="pb-4 border-b border-[#e65100]">
           <button
             className="flex items-center justify-between w-full mb-3"
             onClick={() => toggleSection('vendor')}
@@ -370,7 +370,7 @@ const RefinementList = ({
 
       {/* Colors */}
       {showColorFilter && (
-        <div className="pb-4 border-b">
+        <div className="pb-4 border-b border-[#e65100]">
           <button
             className="flex items-center justify-between w-full mb-3"
             onClick={() => toggleSection('color')}

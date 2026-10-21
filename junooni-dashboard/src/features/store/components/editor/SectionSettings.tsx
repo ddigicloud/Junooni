@@ -914,7 +914,9 @@ function ColorOverride({ section, onChange, isDark, textFaint }: {
 export function SectionSettings({ section, onChange, token, backendUrl, isDark,
   collections = [], categories = [], pages = [], products = [],
   vendorHandle = "", currentLayoutKey = "home", storeLogo = "", storeTemplate = "",
+  canRemoveBranding = false,
 }: {
+  canRemoveBranding?: boolean
   section: StoreSection
   onChange: (p: Partial<StoreSection>) => void
   token: string
@@ -3290,6 +3292,52 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           collections={collections}
           categories={categories}
         />
+        <StyleSection title="Branding" isDark={isDark}>
+          {(() => {
+            const showBranding = !canRemoveBranding || !section.hide_powered_by
+            return (
+              <div className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
+                !canRemoveBranding
+                  ? `${isDark ? "border-gray-800" : "border-gray-100"} opacity-70`
+                  : showBranding
+                    ? "border-orange-500/40 bg-orange-500/10"
+                    : isDark ? "border-gray-700" : "border-gray-200"
+              }`}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showBranding}
+                  disabled={!canRemoveBranding}
+                  onClick={() => onChange({ hide_powered_by: showBranding })}
+                  className="relative mt-0.5 shrink-0 disabled:cursor-not-allowed"
+                >
+                  <div className={`w-8 h-4 rounded-full transition-colors ${
+                    !canRemoveBranding ? "bg-gray-400" : showBranding ? "bg-orange-500" : "bg-gray-600"
+                  }`} />
+                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${
+                    showBranding ? "translate-x-4" : ""
+                  }`} />
+                </button>
+                <div>
+                  <p className={`text-xs font-medium ${textPrimary}`}>Show "Powered by JUNOONI"</p>
+                  <p className={`text-[10px] mt-0.5 ${textFaint}`}>
+                    {canRemoveBranding ? (
+                      "Turn off to remove the JUNOONI badge from your store footer"
+                    ) : (
+                      <>
+                        Available on Starter and above.{" "}
+                        <a href="/membership" target="_blank" rel="noopener noreferrer"
+                           className="text-orange-500 underline underline-offset-2">
+                          Upgrade
+                        </a>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
+        </StyleSection>
       </>)}
 
       {/* ── CATEGORY GRID ── */}

@@ -256,8 +256,8 @@ const JunooniLandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
                         flex flex-col lg:flex-row items-stretch min-h-[calc(100vh-64px)]">
 
-          {/* ── Left 42% ── */}
-          <div className="lg:w-[42%] flex flex-col justify-center py-16 lg:py-24 pr-0 lg:pr-8">
+          {/* ── Left 52% ── */}
+          <div className="lg:w-[60%] flex flex-col justify-center py-16 lg:py-24 pr-0 lg:pr-8">
 
             <div className="inline-block self-start mb-5 px-4 py-1.5
                             bg-orange-100 text-[#e65100] text-xs font-bold
@@ -314,8 +314,8 @@ const JunooniLandingPage = () => {
             </div>
           </div>
 
-          {/* ── Right 58% — image fills full height ── */}
-          <div className="lg:w-[58%] relative flex items-center justify-center
+          {/* ── Right 48% — image fills full height ── */}
+          <div className="lg:w-[40%] relative flex items-center justify-center
                           mt-8 lg:mt-0">
             <video
               src={creatorMerchVideo}
@@ -1076,8 +1076,8 @@ const JunooniLandingPage = () => {
               <h4 className="text-sm font-bold mb-4">Platform</h4>
               <ul className="space-y-2.5 text-sm text-gray-400">
                 <li><a href="https://cms.junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Product Catalog</a></li>
-                <li><a href="https://studio.junooni.com/pages/fulfillment-page" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors font-bold text-white">Fulfillments</a></li>
-                <li><a href="https://studio.junooni.com/pages/creator-store" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Creator Store</a></li>
+                <li><a href="pages/fulfillment-page" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors font-bold text-white">Fulfillments</a></li>
+                <li><a href="pages/creator-store" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Creator Store</a></li>
                 <li><a href="https://junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Marketplace</a></li>
               </ul>
             </div>
@@ -1086,9 +1086,9 @@ const JunooniLandingPage = () => {
             <div>
               <h4 className="text-sm font-bold mb-4">Guide</h4>
               <ul className="space-y-2.5 text-sm text-gray-400">
-                <li><a href="#how-it-works" className="hover:text-white transition-colors">Getting started</a></li>
-                <li><a href="#merch" className="hover:text-white transition-colors">Creating products</a></li>
-                <li><a href="#paths" className="hover:text-white transition-colors">Make your brand</a></li>
+                <li><a href="pages/getting-started" className="hover:text-white transition-colors">Getting started</a></li>
+                <li><a href="pages/creating-products" className="hover:text-white transition-colors">Creating products</a></li>
+                <li><a href="pages/make_your_brand" className="hover:text-white transition-colors">Make your brand</a></li>
               </ul>
             </div>
 

@@ -623,6 +623,11 @@ export default defineMiddlewares({
         method: ["POST"],
         middlewares: [], // public — token is the auth proof
       },
+      {
+        matcher: "/admin/products/import",
+        method: ["POST"],
+        middlewares: [upload.single("file")],
+      },
     {
       matcher: "/admin/products",
       method: ["POST"],

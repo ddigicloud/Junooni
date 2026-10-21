@@ -91,6 +91,8 @@ const ProductPreview = ({
   isFeatured = false
 }: ProductPreviewProps) => {
   
+  console.log("vendor dataaa:", JSON.stringify(product.vendor, null, 2))
+
   // Color hover state
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
@@ -421,81 +423,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
             </div>
           </div>
         )}
-        
-        {/* 2. Vendor Name - Truncated */}
-        {/* <div className="flex items-center px-2 mb-2">
-          <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
-          {product.vendor?.verified === "Yes" && (
-            <Check size={14} className="text-orange-500" />
-          )}
-        </div> */}
-        {/* 2. Vendor Name - Truncated */}
-        <div className="flex items-center px-2 mb-2">
-          {product.vendor?.handle ? (
-            <LocalizedClientLink 
-              href={`/creator/${product.vendor.handle}`}
-              className="mr-1 text-sm font-medium text-black hover:text-orange-600 transition-colors"
-            >
-              {vendorName}
-            </LocalizedClientLink>
-          ) : (
-            <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
-          )}
-          {product.vendor?.verified === "Yes" && (
-            // <Check size={14} className="text-orange-500" />
-            <svg
-              className="ml-2 inline-block align-middle"
-              width="18"
-              height="18"
-              viewBox="0 0 20 20"
-              preserveAspectRatio="xMidYMid meet"
-              aria-label="Verified"
-            >
-              {/* Verified badge shape (clean + symmetrical) */}
-              <path
-                fill="#e65100"
-                d="
-                  M10 0.8
-                  L12.2 2.2
-                  L14.9 1.9
-                  L16.1 4.4
-                  L18.6 5.6
-                  L17.9 8.3
-                  L19.2 10
-                  L17.9 11.7
-                  L18.6 14.4
-                  L16.1 15.6
-                  L14.9 18.1
-                  L12.2 17.8
-                  L10 19.2
-                  L7.8 17.8
-                  L5.1 18.1
-                  L3.9 15.6
-                  L1.4 14.4
-                  L2.1 11.7
-                  L0.8 10
-                  L2.1 8.3
-                  L1.4 5.6
-                  L3.9 4.4
-                  L5.1 1.9
-                  L7.8 2.2
-                  Z"
-              />
 
-              {/* Check */}
-              <path
-                d="M6.2 10.2l2.1 2.2 4.5-4.6"
-                fill="none"
-                stroke="white"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-                          
-          )}
-        </div>
-        
         {/* 3. Product Name */}
         <h3
           className="text-sm sm:text-base font-medium mb-1.5 leading-tight px-2"
@@ -513,6 +441,56 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
             </span>
           </LocalizedClientLink>
         </h3>
+        
+        {/* 2. Vendor Name - Truncated */}
+        {/* <div className="flex items-center px-2 mb-2">
+          <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
+          {product.vendor?.verified === "Yes" && (
+            <Check size={14} className="text-orange-500" />
+          )}
+        </div> */}
+        {/* 2. Vendor Name - Truncated */}
+        <div className="flex items-center gap-1.5 px-2 mb-2">
+          {/* Creator avatar */}
+          <div className="w-5 h-5 rounded-full overflow-hidden bg-orange-50 ring-1 ring-orange-300 flex-shrink-0">
+            {(product.vendor as any)?.photo || (product.vendor as any)?.logo ? (
+              <img
+                src={(product.vendor as any)?.photo || (product.vendor as any)?.logo}
+                alt={vendorName}
+                className="w-full h-full object-cover object-top"
+              />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center text-[8px] font-bold text-orange-400">
+                {vendorName.slice(0, 2).toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          {/* "By Name" */}
+          {product.vendor?.handle ? (
+            <LocalizedClientLink
+              href={`/creator/${product.vendor.handle}`}
+              className="text-xs text-gray-500 hover:text-orange-600 transition-colors"
+            >
+              By <span className="font-medium text-gray-700">{vendorName}</span>
+            </LocalizedClientLink>
+          ) : (
+            <span className="text-xs text-gray-500">
+              By <span className="font-medium text-gray-700">{vendorName}</span>
+            </span>
+          )}
+
+          {/* Verified badge */}
+          {product.vendor?.verified === "Yes" && (
+            <svg
+              className="inline-block flex-shrink-0"
+              width="14" height="14" viewBox="0 0 20 20"
+            >
+              <path fill="#e65100" d="M10 0.8 L12.2 2.2 L14.9 1.9 L16.1 4.4 L18.6 5.6 L17.9 8.3 L19.2 10 L17.9 11.7 L18.6 14.4 L16.1 15.6 L14.9 18.1 L12.2 17.8 L10 19.2 L7.8 17.8 L5.1 18.1 L3.9 15.6 L1.4 14.4 L2.1 11.7 L0.8 10 L2.1 8.3 L1.4 5.6 L3.9 4.4 L5.1 1.9 L7.8 2.2 Z"/>
+              <path d="M6.2 10.2l2.1 2.2 4.5-4.6" fill="none" stroke="white" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </div>
 
         
         {/* 4. Color Options */}
@@ -569,7 +547,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
         </div>
         
         {/* 6. Reviews - Last */}
-        <div className="flex items-center px-2 pb-2">
+        {/* <div className="flex items-center px-2 pb-2">
           {isLoadingReviews ? (
             <div className="flex items-center">
               <div className="flex mr-2">
@@ -614,7 +592,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
               </span>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -312,8 +312,14 @@ async function dispatchTool(
       }
 
       // Pass per-area designs for multi-area artwork files
-      if (productSession?.designsByArea && Object.keys(productSession.designsByArea).length > 1) {
+      // Pass per-area designs for multi-area artwork files
+      // Use artworkByArea (clipped edited) if available, fall back to designsByArea
+      if (productSession?.artworkByArea && Object.keys(productSession.artworkByArea).length > 1) {
+        createArgs.designs_by_area = productSession.artworkByArea
+        console.log('[create_product_from_chat] Using artworkByArea (clipped) for manufacturer artwork')
+      } else if (productSession?.designsByArea && Object.keys(productSession.designsByArea).length > 1) {
         createArgs.designs_by_area = productSession.designsByArea
+        console.log('[create_product_from_chat] Using designsByArea (fallback) for manufacturer artwork')
       }
 
       // Override design_session_id from server-side session (prevents Gemini using wrong/placeholder ID)
@@ -378,6 +384,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         designBase64?: string
         designInchWidth?:  number
         designInchHeight?: number
+        artworkByArea?: Record<string, { base64: string; filename: string }> 
       }
     }
 

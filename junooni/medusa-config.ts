@@ -107,6 +107,14 @@ module.exports = defineConfig({
       options: {
         providers: [
           {
+              resolve: "@medusajs/medusa/notification-local",
+              id: "local",
+              options: {
+                name: "Local Notification Provider",
+                channels: ["feed"],
+              },
+            },
+          {
             resolve: "./src/modules/resend",
             id: "resend",
             options: {
@@ -130,6 +138,22 @@ module.exports = defineConfig({
             options: {
               key_id: process.env.RAZORPAY_ID,
               key_secret: process.env.RAZORPAY_SECRET,
+            },
+          },
+        ],
+      },
+    },
+    // ─── File Module (required for product import/export) ──────────────────────
+    {
+      resolve: "@medusajs/medusa/file",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/file-local",
+            id: "local",
+            options: {
+              upload_dir: "static",
+              backend_url: "http://localhost:9000/static",
             },
           },
         ],

@@ -8,7 +8,7 @@ import { getStorefrontData, getStoreProducts } from "@/lib/api"
 
 interface Props {
   params: { handle: string }
-  searchParams: { step?: string; __preview?: string }
+  searchParams: { step?: string; __preview?: string; _cart_id?: string }
 }
 
 function resolveHandle(paramHandle: string): string {
@@ -29,15 +29,16 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
 
   const [data, cart] = await Promise.all([
     getStorefrontData(handle),
-    retrieveCart(handle),
+    retrieveCart(handle, searchParams._cart_id ?? undefined), // ← pass URL cart ID as fallback
   ])
 
   console.log("🔍 cart?.id:", cart?.id, "isEditorPreview:", isEditorPreview)
   if (!data) notFound()
 
   if (!isEditorPreview && (!cart || !cart.items?.length)) {
-    redirect(`/${handle}`)
+    redirect(`/`) // ← was /${handle}, causes double handle on subdomain
   }
+
 
   const { vendor, store } = data
 

@@ -115,6 +115,7 @@ export interface StoreSection {
   show_collection_filter?: boolean
   filter_order?: string[]
   [key: string]: any
+  hide_powered_by?: boolean
 }
 
 export interface StorePage {

@@ -62,6 +62,7 @@ export default function StoreEditorPage() {
   const [store,            setStore]            = useState<VendorStore>({})
   const [hasUnsavedChanges,setHasUnsavedChanges]= useState(false)
   const [vendorHandle,     setVendorHandle]     = useState("")
+  const [vendorPlan,       setVendorPlan]       = useState<string>("free")
   const [isLoading,        setIsLoading]        = useState(true)
   const [isSaving,         setIsSaving]         = useState(false)
   const [hasStore,         setHasStore]         = useState(false)
@@ -193,6 +194,7 @@ export default function StoreEditorPage() {
         if (vRes.ok) {
           vd = await vRes.json()
           setVendorHandle(vd.vendor?.handle ?? "")
+          setVendorPlan((vd.vendor?.plan ?? "free").toLowerCase())
         }
 
         // capture store name for template substitution
@@ -334,7 +336,7 @@ export default function StoreEditorPage() {
             ? "/editorial-template-banner.png"
             : storeTemplate === "bold"
               ? "/bold-template-banner.png"
-              : "/minimal-template-banner.png"
+              : "/minimal-template-banner.jpeg"
 
             finalSecs = finalSecs.map((s: any) => {
               if (s.type === "hero" && !s.hero_image_right) {
@@ -569,7 +571,7 @@ export default function StoreEditorPage() {
     const correctBanner =
       templateId === "editorial" ? "/editorial-template-banner.png" :
       templateId === "bold"      ? "/bold-template-banner.png"      :
-                                   "/minimal-template-banner.png"
+                                   "/minimal-template-banner.jpeg"
 
     const defaultNavItems: NavItem[] = [
       { id: "nav_home",     label: "Home",        url: "/" },
@@ -740,7 +742,7 @@ export default function StoreEditorPage() {
 
   const ns: StoreSection = {
     id: genId(), type,
-    ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.png" } : {}),
+    ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.jpeg" } : {}),
     ...(type === "collection"   ? { title: "All Products", limit: 12, columns: 3, show_sold_out: true } : {}),
     ...(type === "featured"     ? { title: "Featured Drops", limit: 4, columns: 4 } : {}),
     ...(type === "about"        ? { title: "About Me", text: "Share your story..." } : {}),
@@ -867,7 +869,7 @@ export default function StoreEditorPage() {
 const addSectionAferId = (type: SectionType, afterId: string | null) => {
     const ns: StoreSection = {
       id: genId(), type,
-      ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.png" } : {}),
+      ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.jpeg" } : {}),
       ...(type === "collection"   ? { title: "All Products", limit: 12, columns: 3, show_sold_out: true } : {}),
       ...(type === "featured"     ? { title: "Featured Drops", limit: 4, columns: 4 } : {}),
       ...(type === "about"        ? { title: "About Me", text: "Share your story..." } : {}),
@@ -1427,6 +1429,7 @@ const previewUrl = (() => {
             <LeftPanel
               activeTab={activeTab} setActiveTab={setActiveTab}
               store={store} switchTheme={switchTheme}
+              canRemoveBranding={["starter", "enterprise"].includes(vendorPlan)}
               isDark={isDark} panelBg={panelBg} panelBorder={panelBorder}
               bodySectionPickerOpen={bodySectionPickerOpen}
               setBodySectionPickerOpen={setBodySectionPickerOpen}

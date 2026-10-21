@@ -20,6 +20,13 @@ interface Props {
   skipAnnouncement?: boolean
 }
 
+// function getLowestVariantPrice(product: Product): number | undefined {
+//   const prices = (product.variants ?? [])
+//     .map((v: any) => v.calculated_price?.calculated_amount ?? v.prices?.[0]?.amount)
+//     .filter((p: any): p is number => typeof p === "number")
+//   return prices.length ? Math.min(...prices) : undefined
+// }
+
 export default function StoreHeader({
   vendor, store,
   categories = [], collections = [], products = [], skipAnnouncement = false

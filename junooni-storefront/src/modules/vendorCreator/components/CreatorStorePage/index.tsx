@@ -1029,6 +1029,7 @@ const handleFollowToggle = async () => {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
+                          type="button"
                           onClick={handleFollowToggle}
                           disabled={isLoadingAuth}
                           className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition ${
@@ -1053,6 +1054,7 @@ const handleFollowToggle = async () => {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            type="button"
                             onClick={() =>
                               setShowShareOptions(!showShareOptions)
                             }
@@ -1242,6 +1244,7 @@ const handleFollowToggle = async () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  type="button"
                   onClick={handleFollowToggle}
                   disabled={isLoadingAuth}
                   className={`flex-1 flex items-center justify-center px-4 py-3 rounded-full text-sm font-medium transition ${
