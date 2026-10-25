@@ -629,6 +629,7 @@ interface LocationState {
   colorSpecificImages?: Record<string, any[]>;
   storeMetadata?: any;
   navigationContext?: any;
+  validColorSizePairs?: Array<{ color: { name: string; value: string }; size: string }>;
   enhancedImageAreaAnalysis?: {
     area_specifications: Record<string, {
       canvas_width_pixels: number;
@@ -4022,6 +4023,30 @@ form.setValue('status', ensureValidStatus('proposed'));
         handleGenerateVariants();
         
         setTimeout(() => {
+          // Remove invalid color-size combinations using pairs from Canvas
+          const pairs = (mergedLocationStateRef.current as any)?.validColorSizePairs;
+          if (pairs?.length) {
+            const currentVariants = form.getValues('variants');
+            const validVariants = currentVariants.filter(variant => {
+              const colorOpt = variant.optionValues?.find(
+                (o: any) => o.optionName?.toLowerCase() === 'color'
+              );
+              const sizeOpt = variant.optionValues?.find(
+                (o: any) => o.optionName?.toLowerCase() === 'size'
+              );
+              if (!colorOpt || !sizeOpt) return true;
+              return pairs.some(
+                (p: any) =>
+                  p.color.name.toLowerCase() === colorOpt.value.toLowerCase() &&
+                  p.size.toLowerCase() === sizeOpt.value.toLowerCase()
+              );
+            });
+            if (validVariants.length !== currentVariants.length) {
+              console.log(`✅ Filtered variants: ${currentVariants.length} → ${validVariants.length}`);
+              replaceVariants(validVariants);
+            }
+          }
+
           const variants = form.getValues('variants');
           const correctPrice = payloadProduct.pricing.suggestedRetail;
           
@@ -4177,12 +4202,34 @@ const populateFormWithDesignData = (
     
     // STEP 5: Generate variants with delay to ensure options are set
     setTimeout(() => {
-      //console.log('🎯 POPULATE DEBUG: Generating variants');
       try {
         handleGenerateVariants();
         
-        // Set pricing after variants are generated
         setTimeout(() => {
+          // Remove invalid color-size combinations using pairs from Canvas
+          const pairs = (mergedLocationStateRef.current as any)?.validColorSizePairs;
+          if (pairs?.length) {
+            const currentVariants = form.getValues('variants');
+            const validVariants = currentVariants.filter(variant => {
+              const colorOpt = variant.optionValues?.find(
+                (o: any) => o.optionName?.toLowerCase() === 'color'
+              );
+              const sizeOpt = variant.optionValues?.find(
+                (o: any) => o.optionName?.toLowerCase() === 'size'
+              );
+              if (!colorOpt || !sizeOpt) return true; // keep single-option variants
+              return pairs.some(
+                (p: any) =>
+                  p.color.name.toLowerCase() === colorOpt.value.toLowerCase() &&
+                  p.size.toLowerCase() === sizeOpt.value.toLowerCase()
+              );
+            });
+            if (validVariants.length !== currentVariants.length) {
+              console.log(`✅ Filtered variants: ${currentVariants.length} → ${validVariants.length} (removed invalid color-size pairs)`);
+              replaceVariants(validVariants);
+            }
+          }
+
           const variants = form.getValues('variants');
           const priceToApply = productData?.pricing?.suggestedRetail || 
                               (productData?.cost ? Math.round(productData.cost * 2.5) : 
@@ -4193,11 +4240,10 @@ const populateFormWithDesignData = (
               form.setValue(`variants.${index}.price`, priceToApply);
               form.setValue(`variants.${index}.stock`, 10);
             });
-            //console.log('🎯 POPULATE DEBUG: Variant prices set');
           }
         }, 1000);
       } catch (variantError) {
-        //console.error('🎯 POPULATE ERROR: Variant generation failed:', variantError);
+        console.error('Variant generation failed:', variantError);
       }
     }, 1000);
     

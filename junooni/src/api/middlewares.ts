@@ -441,13 +441,28 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/store/orders/:id/cancel/request-otp",
+      method: ["POST", "OPTIONS"],
+      middlewares: [
+        (req, res, next) => {
+          res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-publishable-api-key")
+          res.setHeader("Access-Control-Allow-Credentials", "true")
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          next()
+        },
+      ],
+    },
+    {
       matcher: "/store/orders/:id/cancel/*",
       method: ["POST", "OPTIONS"],
       middlewares: [
         (req, res, next) => {
-          cors({ origin: true, credentials: true })(req, res, next)
-        },
-        (req, res, next) => {
+          res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-publishable-api-key")
+          res.setHeader("Access-Control-Allow-Credentials", "true")
           if (req.method === "OPTIONS") { res.status(204).end(); return }
           next()
         },

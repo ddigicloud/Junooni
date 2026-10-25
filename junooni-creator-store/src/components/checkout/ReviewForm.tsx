@@ -92,6 +92,27 @@ export default function ReviewForm({
           return
         }
 
+        const hostname = window.location.hostname
+        const isCustomDomain =
+          !hostname.includes("junooni.com") &&
+          !hostname.includes("localhost") &&
+          hostname !== ""
+
+        // On custom domains Razorpay blocks the modal.
+        // Redirect mode opens razorpay.com directly — no domain check.
+        // Razorpay POSTs result to our Medusa backend, which then
+        // redirects the customer back to the custom domain confirmation page.
+        const callbackUrl = isCustomDomain
+          ? `${BACKEND_URL}/razorpay-callback` +
+            `?collection_id=${cart.payment_collection?.id}` +
+            `&session_id=${activeSession?.id}` +
+            `&cart_id=${cart.id}` +
+            `&store_handle=${handle}` +
+            `&return_to=${encodeURIComponent(
+              `${window.location.origin}/checkout?step=confirmation`
+            )}`
+          : undefined
+
         const options: any = {
           key: activeSession?.data?.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: activeSession?.data?.amount,
@@ -106,19 +127,26 @@ export default function ReviewForm({
             contact: cart.shipping_address?.phone ?? cart.billing_address?.phone ?? "",
           },
           theme: { color: brandPrimary },
-          handler: async (response: any) => {
-            try {
-              setError(null)
-              await authorizePayment(response)
-              await placeOrder(handle)
-            } catch (e: any) {
-              setError(e.message || "Order placement failed")
-              setIsProcessing(false)
-            }
-          },
-          modal: {
-            ondismiss: () => { setIsProcessing(false) },
-          },
+          ...(isCustomDomain
+            ? {
+                redirect: true,
+                callback_url: callbackUrl,
+              }
+            : {
+                handler: async (response: any) => {
+                  try {
+                    setError(null)
+                    await authorizePayment(response)
+                    await placeOrder(handle)
+                  } catch (e: any) {
+                    setError(e.message || "Order placement failed")
+                    setIsProcessing(false)
+                  }
+                },
+                modal: {
+                  ondismiss: () => { setIsProcessing(false) },
+                },
+              }),
         }
 
         try {

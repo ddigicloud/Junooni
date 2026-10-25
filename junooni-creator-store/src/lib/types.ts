@@ -191,6 +191,13 @@ export interface StorefrontData {
   products: Product[]
   categories?: CategoryMeta[]
   collections?: CollectionMeta[]
+  total_products?: number
+  pagination?: {
+    page: number
+    total: number
+    totalPages: number
+    hasMore: boolean
+  }
 }
 
 

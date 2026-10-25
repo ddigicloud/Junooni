@@ -88,10 +88,12 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     }))
 
     console.log(`[collections-route] handle=${handle} got=${products.length} products in ${Date.now() - t1}ms`)
+    console.log(`[collections-route] product ids:`, products.map((p: any) => p.id))
   } catch (err) {
     console.error(`[collections-route] query.index failed:`, err)
   }
 
+  
   // ── 3. Build collections — attach matching products to each ─────────────
   const productMap = new Map(products.map((p: any) => [p.id, p]))
 
@@ -111,6 +113,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     })
 
   // ── 4. Categories derived from products — no extra DB call ──────────────
+  console.log(`[collections-route] built collections:`, collections.map((c: any) => ({ title: c.title, product_count: c.product_count, raw_ids: c.product_ids?.length })))
   const categoriesMap = new Map<string, any>()
   for (const product of products) {
     for (const cat of product.categories ?? []) {

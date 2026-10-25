@@ -271,17 +271,18 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     }))
 
   // ── 8. Build response ──────────────────────────────────────────────────
-  const totalPages = Math.ceil(totalProducts / PAGE_SIZE)
+  const totalPages = Math.ceil(allVendorProductIds.length / PAGE_SIZE)
 
   const response = {
     vendor:      publicVendor,
     store:       storeResponse,
     products,
+    total_products: allVendorProductIds.length,
     categories:  Array.from(categoriesMap.values()),
     collections: vendorCollections,
     pagination: {
       page,
-      total:      totalProducts,
+      total:      allVendorProductIds.length,
       totalPages,
       hasMore:    page < totalPages,
     },

@@ -31,7 +31,11 @@ export default async function CollectionPage({ params }: Props) {
   // Vendor/store itself doesn't exist — fall back to the global branded 404
   if (!storeData) notFound()
 
-  const { vendor, store, categories } = storeData
+  const { vendor, store, categories, pagination } = storeData
+
+  console.log("[collection-detail page] pagination:", JSON.stringify(pagination))
+  console.log("[collection-detail page] storeData.total_products:", (storeData as any).total_products)
+  console.log("[collection-detail page] products.length:", storeData.products?.length)
 
   const brandPrimary   = store?.primary_color   ?? "#e65100"
   const brandSecondary = store?.secondary_color ?? "#000"
@@ -100,6 +104,7 @@ export default async function CollectionPage({ params }: Props) {
       col={colData.collection}
       handle={params.handle}
       collectionHandle={params.collectionHandle}
+      totalProducts={pagination?.total ?? (storeData.products ?? []).length}
     />
   )
 }

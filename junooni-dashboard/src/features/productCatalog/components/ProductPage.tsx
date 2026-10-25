@@ -282,8 +282,8 @@ const ProductPage = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedImage, setSelectedImage] = useState<number>(0);
-  const [selectedColor, setSelectedColor] = useState<ColorOption | null>(null);
-  const [selectedSize, setSelectedSize] = useState<SizeOption | null>(null);
+  const [selectedColors, setSelectedColors] = useState<ColorOption[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<SizeOption[]>([]);
   const [selectedTechnology, setSelectedTechnology] = useState<PrintingTechnology | null>(null);
   const [openSections, setOpenSections] = useState({
     details: true,
@@ -329,11 +329,10 @@ const ProductPage = () => {
           
           // Set default selections
           if (parsedProduct.colorOptions?.length > 0) {
-            setSelectedColor(parsedProduct.colorOptions[0]);
+            setSelectedColors([parsedProduct.colorOptions[0]]);
           }
-          
           if (parsedProduct.sizeOptions?.length > 0) {
-            setSelectedSize(parsedProduct.sizeOptions[0]);
+            setSelectedSizes(parsedProduct.sizeOptions.slice());
           }
 
           // Set default printing technology
@@ -361,11 +360,10 @@ const ProductPage = () => {
         
         // Set default selections
         if (data.colorOptions?.length > 0) {
-          setSelectedColor(data.colorOptions[0]);
+          setSelectedColors([data.colorOptions[0]]);
         }
-        
         if (data.sizeOptions?.length > 0) {
-          setSelectedSize(data.sizeOptions[0]);
+          setSelectedSizes(data.sizeOptions.slice());
         }
 
         // Set default printing technology
@@ -874,26 +872,42 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                           <h3 className="text-sm font-semibold text-gray-900">Colors available</h3>
                         </div>
                         <div className="flex flex-wrap gap-3">
-                          {product.colorOptions.map((color: ColorOption) => (
-                            <TooltipProvider key={color.id}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div
-                                    className="w-8 h-8 transition-all duration-200 border-2 rounded-full shadow-sm cursor-allowed"
-                                    style={{ 
-                                      backgroundColor: color.colorHex,
-                                      border: color.colorHex?.toLowerCase() === '#ffffff' 
-                                        ? '2px solid #e5e7eb' 
-                                        : '2px solid #ccc'
-                                    }}
-                                  ></div>
-                                </TooltipTrigger>
-                                <TooltipContent className="text-white bg-gray-900">
-                                  <p>{color.colorName}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ))}
+                          {product.colorOptions.map((color: ColorOption) => {
+                            const isSelected = selectedColors.some(c => c.id === color.id)
+                            const isWhite    = color.colorHex?.toLowerCase() === '#ffffff'
+                            return (
+                              <TooltipProvider key={color.id}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={() => setSelectedColors(prev =>
+                                        prev.some(c => c.id === color.id)
+                                          ? prev.length > 1 ? prev.filter(c => c.id !== color.id) : prev
+                                          : [...prev, color]
+                                      )}
+                                      className="relative w-9 h-9 rounded-full transition-all duration-200 shadow-sm hover:scale-110 focus:outline-none"
+                                      style={{
+                                        backgroundColor: color.colorHex,
+                                        border: isSelected ? '3px solid #e65100' : isWhite ? '2px solid #e5e7eb' : '2px solid #d1d5db',
+                                        boxShadow: isSelected ? '0 0 0 3px rgba(230,81,0,0.25)' : undefined,
+                                        transform: isSelected ? 'scale(1.15)' : undefined,
+                                      }}
+                                    >
+                                      {isSelected && (
+                                        <svg className="absolute inset-0 m-auto w-4 h-4" fill="none"
+                                          stroke={isWhite ? '#000' : '#fff'} viewBox="0 0 24 24" strokeWidth={3}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="text-white bg-gray-900">
+                                    <p>{color.colorName}{isSelected ? ' ✓' : ''}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )
+                          })}
                         </div>
 
                       </div>
@@ -907,17 +921,26 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          {product.sizeOptions.map((size: SizeOption) => (
-                            <div
-                              key={size.id}
-                              className="
-                                py-2 px-3 border-2 rounded-lg text-center text-md font-medium
-                                border-[#e65100] bg-[#e65100] text-white cursor-allowed
-                              "
-                            >
-                              {size.sizeName}
-                            </div>
-                          ))}
+                          {product.sizeOptions.map((size: SizeOption) => {
+                            const isSelected = selectedSizes.some(s => s.id === size.id)
+                            return (
+                              <button
+                                key={size.id}
+                                onClick={() => setSelectedSizes(prev =>
+                                  prev.some(s => s.id === size.id)
+                                    ? prev.length > 1 ? prev.filter(s => s.id !== size.id) : prev
+                                    : [...prev, size]
+                                )}
+                                className={`py-2 px-3 border-2 rounded-lg text-center text-md font-medium transition-all duration-200 hover:scale-105 ${
+                                  isSelected
+                                    ? 'border-[#e65100] bg-[#e65100] text-white shadow-md scale-105'
+                                    : 'border-[#e65100] bg-white text-[#e65100] hover:bg-[#e65100]/10'
+                                }`}
+                              >
+                                {size.sizeName}
+                              </button>
+                            )
+                          })}
                         </div>
 
                         {/* No size description should show because nothing can be selected */}
@@ -1057,15 +1080,17 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                         <Button 
                           className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                           size="lg"
-                          disabled={!selectedColor || !selectedSize || !selectedTechnology || !planCheckDone || planLimitReached}
+                          disabled={!selectedColors.length || !selectedSizes.length || !selectedTechnology || !planCheckDone || planLimitReached}
                           onClick={() => {
                             if (planLimitReached) return;
-                            router.navigate({ 
-                              to: `/designer/${productId}`, 
-                              search: { 
-                                color: selectedColor?.id,
+                            router.navigate({
+                              to: `/designer/${productId}`,
+                              search: {
+                                color:      selectedColors[0]?.colorHex,
+                                colors:     selectedColors.map(c => `${c.colorName}:${c.colorHex}`).join(','),
+                                sizes:      selectedSizes.map(s => s.sizeName).join(','),
                                 technology: selectedTechnology?.id,
-                              }
+                              },
                             });
                           }}
                         >
@@ -1073,9 +1098,9 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                             ? 'Checking your plan...'
                             : planLimitReached
                             ? `🔒 Product limit reached on ${vendorPlan} plan`
-                            : !selectedColor || !selectedSize || !selectedTechnology 
-                            ? 'Select Options Above' 
-                            : '🎨 Start Creating Magic'
+                            : !selectedColors.length || !selectedSizes.length || !selectedTechnology
+                            ? `Select ${!selectedColors.length ? 'a color' : !selectedSizes.length ? 'a size' : 'a technology'} to continue`
+                            : `🎨 Start Creating — ${selectedColors.length} color${selectedColors.length > 1 ? 's' : ''}, ${selectedSizes.length} size${selectedSizes.length > 1 ? 's' : ''}`
                           }
                         </Button>
 

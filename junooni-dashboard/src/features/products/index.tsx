@@ -47,10 +47,10 @@ const validateToken = (): boolean => {
   
   const now = Date.now();
   const tokenAge = now - parseInt(tokenTimestamp);
-  const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+ const THREE_HOURS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
   
-  // If token is older than 1 hour, clear it
-  if (tokenAge > ONE_HOUR) {
+  // If token is older than 3 hours, clear it
+  if (tokenAge > THREE_HOURS) {
     localStorage.removeItem("vendorToken");
     localStorage.removeItem("vendorTokenTimestamp");
     return false;
@@ -235,7 +235,7 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
   useEffect(() => {
     const token = localStorage.getItem('vendorToken');
     
-    if (!token) {
+    if (!token || !validateToken()) {
       toast({
         title: "Authentication Required",
         description: "Please sign in to access your products.",

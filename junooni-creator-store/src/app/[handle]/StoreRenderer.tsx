@@ -11,9 +11,10 @@ interface Props {
   products: any[]
   categories: any[]
   collections: any[]
+  totalProducts?: number
 }
 
-export default function StoreRenderer({ vendor, store: serverStore, products, categories, collections }: Props) {
+export default function StoreRenderer({ vendor, store: serverStore, products, categories, collections, totalProducts }: Props) {
   // This reactively picks up editor postMessage updates
   const store = useEditorStore(serverStore)
 
@@ -28,15 +29,15 @@ export default function StoreRenderer({ vendor, store: serverStore, products, ca
     <div style={brandStyles}>
       {template === "minimal" && (
         <MinimalTemplate vendor={vendor} store={store} products={products}
-          categories={categories} collections={collections} />
+          categories={categories} collections={collections} totalProducts={totalProducts} />
       )}
       {template === "bold" && (
         <BoldTemplate vendor={vendor} store={store} products={products}
-          categories={categories} collections={collections} />
+          categories={categories} collections={collections} totalProducts={totalProducts} />
       )}
       {template === "editorial" && (
         <EditorialTemplate vendor={vendor} store={store} products={products}
-          categories={categories} collections={collections} />
+          categories={categories} collections={collections} totalProducts={totalProducts} />
       )}
     </div>
   )

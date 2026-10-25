@@ -609,6 +609,22 @@ export interface BlankProduct {
           width?: number | null;
           height?: number | null;
         };
+        /**
+         * Leave ON for standard sizes (S–XL). Turn OFF only for large sizes that your fulfillment partner does not offer in every color.
+         */
+        availableInAllColors?: boolean | null;
+        /**
+         * List only the colors your fulfillment partner DOES offer in this size. Color name must match exactly as entered in Color Options above.
+         */
+        availableColors?:
+          | {
+              /**
+               * Must match colorName in Color Options exactly (e.g. "Jet Black")
+               */
+              colorName: string;
+              id?: string | null;
+            }[]
+          | null;
         id?: string | null;
       }[]
     | null;
@@ -2389,6 +2405,13 @@ export interface BlankProductsSelect<T extends boolean = true> {
           | {
               width?: T;
               height?: T;
+            };
+        availableInAllColors?: T;
+        availableColors?:
+          | T
+          | {
+              colorName?: T;
+              id?: T;
             };
         id?: T;
       };

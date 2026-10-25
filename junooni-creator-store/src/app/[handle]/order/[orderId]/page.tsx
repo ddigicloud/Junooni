@@ -23,26 +23,47 @@ const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
 // ── Fetch order from Medusa ───────────────────────────────────────────────────
 
 async function fetchOrder(orderId: string) {
+  console.log(`[fetchOrder] Starting fetch for orderId: ${orderId}`)
+
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 600))
+    if (attempt > 0) {
+      const delay = attempt * 600
+      console.log(`[fetchOrder] Attempt ${attempt + 1} — waiting ${delay}ms before retry`)
+      await new Promise(r => setTimeout(r, delay))
+    }
+
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/store/orders/${orderId}?fields=*fulfillments,*fulfillments.labels,*shipping_address,*shipping_methods,*items,*items.variant,*items.thumbnail,*payment_collections,*payment_collections.payments`,
-        {
-          cache: "no-store",
-          headers: {
-            "x-publishable-api-key": PUBLISHABLE_KEY,
-            "Content-Type": "application/json",
-          },
-        }
-      )
-      if (!res.ok) continue
+      const url = `${BACKEND_URL}/store/orders/${orderId}?fields=*fulfillments,*fulfillments.labels,*shipping_address,*shipping_methods,*items,*items.variant,*items.thumbnail,*payment_collections,*payment_collections.payments`
+      console.log(`[fetchOrder] Attempt ${attempt + 1} — fetching: ${url}`)
+
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          "x-publishable-api-key": PUBLISHABLE_KEY,
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log(`[fetchOrder] Attempt ${attempt + 1} — response status: ${res.status} ${res.statusText}`)
+
+      if (!res.ok) {
+        const body = await res.text()
+        console.log(`[fetchOrder] Attempt ${attempt + 1} — non-ok body: ${body.slice(0, 300)}`)
+        continue
+      }
+
       const data = await res.json()
+      console.log(`[fetchOrder] Attempt ${attempt + 1} — data.order exists: ${!!data.order}`)
+      console.log(`[fetchOrder] Attempt ${attempt + 1} — data keys: ${Object.keys(data).join(", ")}`)
+
       if (data.order) return data.order
-    } catch {
-      // retry
+
+    } catch (err) {
+      console.error(`[fetchOrder] Attempt ${attempt + 1} — threw error:`, err)
     }
   }
+
+  console.error(`[fetchOrder] All 4 attempts exhausted for orderId: ${orderId}`)
   return null
 }
 
@@ -131,8 +152,16 @@ function getTimelineSteps(order: any, status: string) {
 export default async function OrderPage({ params }: Props) {
   const { handle, orderId } = params
 
+  console.log(`[OrderPage] Rendering for handle=${handle} orderId=${orderId}`)
+
   const order = await fetchOrder(orderId)
-  if (!order) notFound()
+   if (!order) {
+    console.error(`[OrderPage] order is null — calling notFound() for orderId: ${orderId}`)
+    notFound()
+  }
+
+  console.log(`[OrderPage] Order loaded — status: ${order.status}, payment_status: ${order.payment_status}, fulfillment_status: ${order.fulfillment_status}`)
+
 
   const status = getStatus(order)
   const trackingInfo = getTrackingInfo(order)

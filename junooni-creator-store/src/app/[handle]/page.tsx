@@ -69,7 +69,7 @@ export default async function CreatorStorePage({ params }: Props) {
 
   if (!data || !data.vendor) notFound()
 
-  const { vendor, store, products, categories, collections } = data
+  const { vendor, store, products, categories, collections, pagination } = data
   const isDraft = store?.status !== "live"
 
   if (isDraft) {
@@ -132,6 +132,7 @@ export default async function CreatorStorePage({ params }: Props) {
       products={products ?? []}
       categories={categories ?? []}
       collections={collections ?? []}
+      totalProducts={pagination?.total ?? (products ?? []).length}
     />
   )
 }

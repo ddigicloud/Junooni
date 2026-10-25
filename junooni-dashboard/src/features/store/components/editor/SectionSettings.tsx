@@ -1520,8 +1520,8 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${textFaint}`}>Layout</p>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Max products" faint={textFaint}>
-              <input type="number" min={1} max={48} value={section.limit ?? 12}
-                onChange={e => onChange({ limit: parseInt(e.target.value) || 12 })}
+              <input type="number" min={1} max={20} value={section.limit ?? 12}
+                onChange={e => onChange({ limit: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)) })}
                 className={`w-full px-2 py-1.5 text-xs rounded-lg border focus:outline-none focus:border-orange-500 ${
                   isDark ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border-gray-300 text-gray-800"
                 }`} />

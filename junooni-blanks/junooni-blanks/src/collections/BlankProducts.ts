@@ -720,6 +720,37 @@ export const BlankProducts: CollectionConfig = {
                     { name: 'height', type: 'number' },
                   ],
                 },
+
+                // ─── FULFILLMENT COLOR AVAILABILITY ───────────────────────────
+                {
+                  name: 'availableInAllColors',
+                  type: 'checkbox',
+                  label: 'Available in all colors?',
+                  defaultValue: true,
+                  admin: {
+                    description: 'Leave ON for standard sizes (S–XL). Turn OFF only for large sizes that your fulfillment partner does not offer in every color.',
+                  },
+                },
+                {
+                  name: 'availableColors',
+                  type: 'array',
+                  label: 'Available colors for this size',
+                  admin: {
+                    description: 'List only the colors your fulfillment partner DOES offer in this size. Color name must match exactly as entered in Color Options above.',
+                    condition: (_, siblingData) => !siblingData?.availableInAllColors,
+                  },
+                  fields: [
+                    {
+                      name: 'colorName',
+                      type: 'text',
+                      required: true,
+                      admin: {
+                        description: 'Must match colorName in Color Options exactly (e.g. "Jet Black")',
+                      },
+                    },
+                  ],
+                },
+                // ──────────────────────────────────────────────────────────────
               ],
             },
             {

@@ -20,10 +20,11 @@ interface Props {
   categories: any[]
   collections: any[]
   handle: string
+  totalProducts?: number
 }
 
 export default function CollectionsPageClient({
-  vendor, initialStore, products, categories, collections, handle,
+  vendor, initialStore, products, categories, collections, handle, totalProducts,
 }: Props) {
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
@@ -401,7 +402,7 @@ export default function CollectionsPageClient({
     <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-gray-50"} ${fontClass}`}>
       <StoreHeader
         vendor={vendor} store={store}
-        categories={categories} collections={collections} products={products}
+        categories={categories} collections={collections} products={products} totalProducts={totalProducts}
       />
 
       {/* ── Collections Grid — always first, click to edit ── */}

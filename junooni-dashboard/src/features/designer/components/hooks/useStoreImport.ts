@@ -14,6 +14,7 @@ interface UseStoreImportOptions {
   activeTechnology: string;
   selectedColors: Array<{ name: string; value: string }>;
   selectedSizes: string[];
+  isColorAvailableForSize: (colorName: string, sizeName: string) => boolean;
   allMockups: any[];
   designElements: Record<string, DesignElement[]>;
   getAllCanvasConfigs: Record<string, any>;
@@ -37,6 +38,7 @@ export const useStoreImport = ({
   activeTechnology,
   selectedColors,
   selectedSizes,
+  isColorAvailableForSize,
   allMockups,
   designElements,
   getAllCanvasConfigs,
@@ -101,6 +103,7 @@ export const useStoreImport = ({
       },
       mockupImages: {},
       colorSpecificImages: saved1 ? {} : transferQualityImages,
+      validColorSizePairs: transformedData.validColorSizePairs ?? null,
       uploadQualityColorSpecificImages: uploadQualityImages,
       designImages: transformedData.designImages || [],
       enhancedProductData: transformedData.enhancedProductData,
@@ -263,6 +266,19 @@ export const useStoreImport = ({
         total_images_generated: storeData.generation_summary?.total_images_generated || 0,
         errors: storeData.generation_summary?.errors || [],
       },
+      validColorSizePairs: selectedColors.flatMap(color =>
+        selectedSizes
+          .filter(size => {
+            const sizeOpt = (filteredProductData?.sizeOptions ?? []).find(
+              (s: any) => s.sizeName?.toLowerCase().trim() === size?.toLowerCase().trim()
+            );
+            if (!sizeOpt || sizeOpt.availableInAllColors !== false) return true;
+            return (sizeOpt.availableColors ?? []).some(
+              (c: any) => c.colorName?.toLowerCase().trim() === color.name?.toLowerCase().trim()
+            );
+          })
+          .map(size => ({ color, size }))
+      ),
     };
   }, [selectedColors, selectedSizes, allMockups, calculatePriceFromCost]);
 
@@ -351,15 +367,18 @@ export const useStoreImport = ({
     const allMockupsForTech: any[] = [];
       selectedColors.forEach(color => {
         if (productData.size_Images) {
-          // size_Images=true: get mockups for EACH selected size separately
+          // size_Images=true: only generate for sizes where this color is available
           selectedSizes.forEach(size => {
+            if (!isColorAvailableForSize(color.name, size)) return;
             const mockups = getMockupsForColor(productData, color.value, activeTechnology, size);
             mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name, photoSize: size }));
           });
         } else {
-          // size_Images=false: one set of mockups for all sizes (shared)
+          // size_Images=false: only generate if color is valid for at least one selected size
+          const validSizes = selectedSizes.filter(s => isColorAvailableForSize(color.name, s));
+          if (!validSizes.length) return;
           const mockups = getMockupsForColor(productData, color.value, activeTechnology, undefined);
-          mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name }));
+          mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name, validSizes }));
         }
       });
 
@@ -387,7 +406,10 @@ export const useStoreImport = ({
       for (const mockup of allMockupsForTech) {
         const mockupSize = (mockup as any).photoSize;
         const sizesToProcess = productData.size_Images && mockupSize && selectedSizes.includes(mockupSize)
-          ? [mockupSize] : productData.size_Images ? [] : selectedSizes;
+          ? [mockupSize]
+          : productData.size_Images
+          ? []
+          : ((mockup as any).validSizes ?? selectedSizes.filter((s: string) => isColorAvailableForSize(mockup.target_color_name, s)));
 
         if (productData.size_Images && sizesToProcess.length === 0) continue;
 
@@ -490,6 +512,7 @@ export const useStoreImport = ({
     productData, activeTechnology, designElements, getAllCanvasConfigs, getAllPrintableAreas,
     mockupGenerator, extractDesignImages, exportAllCanvasImages, calculateTotalPricing,
     generateDetailedAreaAnalysis, getVisibleDesignElements, transformStoreDataForCreate, navigateToCreatePage,
+    isColorAvailableForSize,
   ]);
 
   return {

@@ -18,11 +18,12 @@ interface Props {
   col: any
   handle: string
   collectionHandle: string
+  totalProducts?: number
 }
 
 export default function CollectionDetailPageClient({
   vendor, initialStore, products, collectionProducts: initialColProducts,
-  categories, collections, col, handle, collectionHandle,
+  categories, collections, col, handle, collectionHandle, totalProducts,
 }: Props) {
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
@@ -368,7 +369,7 @@ export default function CollectionDetailPageClient({
       <div className="sticky top-0 z-40">
         <StoreHeader
           vendor={vendor} store={store}
-          categories={categories} collections={collections} products={products}
+          categories={categories} collections={collections} products={products}  totalProducts={totalProducts}
         />
       </div>
 

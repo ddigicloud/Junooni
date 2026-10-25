@@ -18,6 +18,7 @@ interface Props {
   collections?: CollectionMeta[]
   products?: Product[]
   skipAnnouncement?: boolean
+  totalProducts?: number
 }
 
 // function getLowestVariantPrice(product: Product): number | undefined {
@@ -29,7 +30,7 @@ interface Props {
 
 export default function StoreHeader({
   vendor, store,
-  categories = [], collections = [], products = [], skipAnnouncement = false
+  categories = [], collections = [], products = [], skipAnnouncement = false, totalProducts
 }: Props) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -561,7 +562,7 @@ return (
                   </p>
                   {activeDropdown === "shop" && (
                     <div className="space-y-0.5">
-                      <DropdownLink href={storePath("/products")} label="All Products" sub={`${products.length} items`} brandPrimary={brandPrimary} isDark={isDark} active={!hoverItem} onHover={() => setHoverItem(undefined)} onClick={() => setActiveDropdown(null)} />
+                      <DropdownLink href={storePath("/products")} label="All Products" sub={`${(totalProducts != null && totalProducts > 0) ? totalProducts : products.length} items`} brandPrimary={brandPrimary} isDark={isDark} active={!hoverItem} onHover={() => setHoverItem(undefined)} onClick={() => setActiveDropdown(null)} />
                       {collections.slice(0, 5).map(c => (
                         <DropdownLink key={c.id} href={storePath(`/collections/${c.handle}`)} label={c.title} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
                       ))}

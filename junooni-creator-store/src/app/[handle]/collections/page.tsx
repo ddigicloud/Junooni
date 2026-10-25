@@ -24,7 +24,7 @@ export default async function CollectionsIndexPage({ params }: Props) {
 
   if (!storeData) notFound()
 
-  const { vendor, store, categories } = storeData
+  const { vendor, store, categories, pagination } = storeData
 
   return (
     <CollectionsPageClient
@@ -34,6 +34,7 @@ export default async function CollectionsIndexPage({ params }: Props) {
       categories={collectionsData?.categories ?? categories ?? []}
       collections={collectionsData?.collections ?? []}
       handle={params.handle}
+      totalProducts={pagination?.total ?? (collectionsData?.products ?? []).length}
     />
   )
 }

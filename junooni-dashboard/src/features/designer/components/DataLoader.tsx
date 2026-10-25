@@ -652,6 +652,9 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
   const [showSuccessNotification, setShowSuccessNotification] = useState<boolean>(false);
+  const [planCheckDone, setPlanCheckDone] = useState<boolean>(false);
+  const [planBlocked, setPlanBlocked] = useState<boolean>(false);
+  const [vendorPlan, setVendorPlan] = useState<string>('free');
   
   // =====================================
   // ENHANCED IMAGE URL PROCESSING
@@ -932,6 +935,65 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   // =====================================
   
   useEffect(() => {
+    const checkPlanLimit = async () => {
+      const token = localStorage.getItem('vendorToken');
+      if (!token) { setPlanCheckDone(true); return; }
+
+      const PLAN_LIMITS: Record<string, number | null> = {
+        free: 30, starter: 50, growth: null, pro: null, enterprise: null
+      };
+
+      try {
+        // Check sessionStorage cache first (5-min TTL)
+        const CACHE_KEY = 'vendorPlanData';
+        const CACHE_TTL = 5 * 60 * 1000;
+        let plan: string = '';
+        let total: number = 0;
+
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed.timestamp < CACHE_TTL) {
+            plan  = parsed.plan;
+            total = parsed.total;
+          } else {
+            sessionStorage.removeItem(CACHE_KEY);
+          }
+        }
+
+        if (!plan!) {
+          const [vendorRes, countRes] = await Promise.all([
+            fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }),
+            fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=1&fields=id`, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+          ]);
+          if (!vendorRes.ok || !countRes.ok) { setPlanCheckDone(true); return; }
+
+          const vendorData = await vendorRes.json();
+          const countData  = await countRes.json();
+          plan  = vendorData.vendor?.plan?.toLowerCase() || 'free';
+          total = countData.count ?? countData.total ?? countData.products?.length ?? 0;
+
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify({ plan, total, timestamp: Date.now() }));
+        }
+
+        const limit = PLAN_LIMITS[plan] ?? null;
+        setVendorPlan(plan);
+        if (limit !== null && total >= limit) setPlanBlocked(true);
+      } catch (e) {
+        console.warn('Plan check failed:', e);
+      } finally {
+        setPlanCheckDone(true);
+      }
+    };
+
+    checkPlanLimit();
+  }, []);
+
+  useEffect(() => {
     if (!productId) {
       setError({
         type: 'invalid_data',
@@ -958,6 +1020,41 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   // RENDER LOADING STATE
   // =====================================
   
+   if (!planCheckDone) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="w-8 h-8 border-b-2 border-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (planBlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="max-w-md w-full p-8 text-center bg-white rounded-2xl shadow-xl">
+          <div className="text-5xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Product limit reached</h2>
+          <p className="text-gray-600 mb-2">
+            You've reached your product limit on the <span className="font-semibold capitalize">{vendorPlan}</span> plan.
+          </p>
+          <p className="text-sm text-gray-500 mb-6">Upgrade your plan to create more products.</p>
+          <button
+            onClick={() => window.location.href = '/membership'}
+            className="w-full py-3 px-6 bg-gradient-to-r from-[#e65100] to-[#ff7043] text-white font-semibold rounded-lg hover:from-[#d84315] hover:to-[#e65100] transition-all"
+          >
+            ⬆️ Upgrade Plan
+          </button>
+          <button
+            onClick={() => window.location.href = '/dashboard'}
+            className="w-full mt-3 py-3 px-6 border border-gray-300 text-gray-600 font-semibold rounded-lg hover:bg-gray-50 transition-all"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100">

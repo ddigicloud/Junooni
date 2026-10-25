@@ -104,7 +104,18 @@ interface EnhancedCanvasProps {
 const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMode }) => {
   const navigate = useNavigate();
 
-  // ── View / tab ────────────────────────────────────────────────────────────
+  // ── URL pre-selections (passed from ProductPage) ──────────────────────────
+  const _up      = new URLSearchParams(window.location.search)
+  const _urlColor  = _up.get('color')   || undefined
+  const _urlColors: Array<{ name: string; value: string }> = (_up.get('colors') ?? '')
+    .split(',').filter(Boolean).map(entry => {
+      const i = entry.lastIndexOf(':')
+      return i > 0 ? { name: entry.slice(0, i), value: entry.slice(i + 1) } : null
+    }).filter(Boolean) as Array<{ name: string; value: string }>
+  const _urlSizes  = (_up.get('sizes')  ?? '').split(',').filter(Boolean)
+  const _urlTechId = _up.get('technology') || undefined
+
+  // ── View / tab ────
   const [activeView, setActiveView]       = useState<'design' | 'preview'>('design');
   const [activeTab, setActiveTab]         = useState<'product' | 'colors' | 'sizes' | 'upload' | 'layers' | 'pricing'>('product');
   const [isMobile, setIsMobile]           = useState(false);
@@ -117,34 +128,63 @@ const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMo
   // ── Active selections ─────────────────────────────────────────────────────
   const [activeTechnology, setActiveTechnology] = useState<string>(() =>
     juniEditMode?.initialTechnologyId
+      || _urlTechId
       || productData?.printT?.[0]?.id
       || productData?.printT?.[0]?.technologyName
       || 'dtg'
   );
+
   const [activeArea, setActiveArea] = useState<string>('front');
   const [activeColor, setActiveColor] = useState<string>(() => {
-  // JUNI edit mode: use the specific color from session
   if (juniEditMode?.initialColorHex) return juniEditMode.initialColorHex
-  const p = productData?.colorOptions?.find(c => c.isPrimary) ?? productData?.colorOptions?.[0];
-  return p?.colorHex ?? '#ffffff';
+  if (_urlColor) return _urlColor
+  const allSizes  = (productData?.sizeOptions ?? []).map((s: any) => s.sizeName)
+  const colorOpts = productData?.colorOptions ?? []
+  const isUniversal = (colorName: string) =>
+    allSizes.every((sizeName: string) => {
+      const s = productData?.sizeOptions?.find((so: any) => so.sizeName === sizeName)
+      if (!s || s.availableInAllColors !== false) return true
+      return (s.availableColors ?? []).some((c: any) => c.colorName === colorName)
+    })
+  const primary = colorOpts.find((c: any) => c.isPrimary)
+  if (primary && isUniversal(primary.colorName)) return primary.colorHex
+  const universal = colorOpts.find((c: any) => isUniversal(c.colorName))
+  if (universal) return universal.colorHex
+  return (primary ?? colorOpts[0])?.colorHex ?? '#ffffff'   // fallback: primary even if partial
 });
   const [highlightedColor, setHighlightedColor] = useState<string>(activeColor);
   const [activeSize, setActiveSize] = useState<string>(() =>
     productData?.sizeOptions?.[0]?.sizeName ?? ''
   );
   const [selectedColors, setSelectedColors] = useState<Array<{ name: string; value: string }>>(() => {
-  // JUNI edit mode: use only the colors the creator selected
   if (juniEditMode?.initialSelectedColors?.length) {
     return juniEditMode.initialSelectedColors
   }
-  const p = productData?.colorOptions?.find(c => c.isPrimary) ?? productData?.colorOptions?.[0];
-  return p ? [{ name: p.colorName, value: p.colorHex }] : [{ name: 'Default', value: '#ffffff' }];
+  if (_urlColors.length) return _urlColors
+  const allSizes  = (productData?.sizeOptions ?? []).map((s: any) => s.sizeName)
+  const colorOpts = productData?.colorOptions ?? []
+  const isUniversal = (colorName: string) =>
+    allSizes.every((sizeName: string) => {
+      const s = productData?.sizeOptions?.find((so: any) => so.sizeName === sizeName)
+      if (!s || s.availableInAllColors !== false) return true
+      return (s.availableColors ?? []).some((c: any) => c.colorName === colorName)
+    })
+  const primary = colorOpts.find((c: any) => c.isPrimary)
+  if (primary && isUniversal(primary.colorName))
+    return [{ name: primary.colorName, value: primary.colorHex }]
+  const universal = colorOpts.find((c: any) => isUniversal(c.colorName))
+  if (universal)
+    return [{ name: universal.colorName, value: universal.colorHex }]
+  const fallback = primary ?? colorOpts[0]
+  return fallback
+    ? [{ name: fallback.colorName, value: fallback.colorHex }]
+    : [{ name: 'Default', value: '#ffffff' }]
 });
 const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-  // JUNI edit mode: use only the sizes the creator selected
   if (juniEditMode?.initialSelectedSizes?.length) {
     return juniEditMode.initialSelectedSizes
   }
+  if (_urlSizes.length) return _urlSizes
   return (productData?.sizeOptions ?? []).map(s => s.sizeName)
 });
   const [selectedHeroMockup, setSelectedHeroMockup] = useState<DynamicMockupPhoto | null>(null);
@@ -246,6 +286,25 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
     return ['vinyl/heat transfer'].includes(tech?.technologyName?.toLowerCase().trim() || '');
   }, [productData, getCurrentTechnology]);
 
+  // ── Color-size availability helpers ──────────────────────────────────────
+  const getAvailableColorsForSize = useCallback((sizeName: string): string[] | null => {
+    const sizeOpt = productData?.sizeOptions?.find(
+      (s: any) => s.sizeName?.toLowerCase().trim() === sizeName?.toLowerCase().trim()
+    );
+    if (!sizeOpt || sizeOpt.availableInAllColors !== false) return null;
+    return (sizeOpt.availableColors ?? []).map((c: any) => c.colorName?.toLowerCase().trim());
+  }, [productData]);
+
+  const isColorAvailableForSize = useCallback((colorName: string, sizeName: string): boolean => {
+    const available = getAvailableColorsForSize(sizeName);
+    return available === null ? true : available.includes(colorName?.toLowerCase().trim());
+  }, [getAvailableColorsForSize]);
+
+  const isColorAvailableForAnySelectedSize = useCallback((colorName: string): boolean => {
+    if (!selectedSizes.length) return true;
+    return selectedSizes.some(s => isColorAvailableForSize(colorName, s));
+  }, [selectedSizes, isColorAvailableForSize]);
+
   const isProductMockupCompatible = useCallback((): boolean =>
     !productData?.surfConf?.No_Mockup_Compatible, [productData]);
 
@@ -334,7 +393,7 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
   );
 
   const storeImportHook = useStoreImport({
-    productData, activeTechnology, selectedColors, selectedSizes,
+    productData, activeTechnology, selectedColors, selectedSizes,isColorAvailableForSize,
     allMockups, designElements: designHook.designElements,
     getAllCanvasConfigs, getAllPrintableAreas, mockupCalculation,
     hasDesignElements: designHook.hasDesignElements,
@@ -397,6 +456,10 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
         if (next) { setHighlightedColor(next.value); startTransition(() => setActiveColor(next.value)); }
       }
     } else {
+      if (!isColorAvailableForAnySelectedSize(colorName)) {
+        setVariantLimitWarning(`"${colorName}" is not available in any of your selected sizes.`);
+        return;
+      }
       const projected = calculateProjectedVariants([...selectedColors, { name: colorName, value: colorHex }], selectedSizes);
       if (projected > VARIANT_HARD_LIMIT) {
         setVariantLimitWarning(`Adding "${colorName}" would create ${projected} variants — limit is ${VARIANT_HARD_LIMIT}.`);
@@ -428,16 +491,23 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
     const isSelected = selectedSizes.includes(sizeName);
     if (isSelected) {
       if (selectedSizes.length === 1) return;
-      setSelectedSizes(prev => prev.filter(s => s !== sizeName));
+      const newSizes = selectedSizes.filter(s => s !== sizeName);
+      setSelectedSizes(newSizes);
+      // Drop colors that have no valid size anymore
+      setSelectedColors(prev => {
+        const valid = prev.filter(c => newSizes.some(s => isColorAvailableForSize(c.name, s)));
+        return valid.length > 0 ? valid : [prev[0]];
+      });
       if (activeSize === sizeName) {
-        const remaining = selectedSizes.filter(s => s !== sizeName);
+        const remaining = newSizes;
         if (remaining.length > 0) setActiveSize(remaining[0]);
       }
     } else {
       setSelectedSizes(prev => [...prev, sizeName]);
       setActiveSize(sizeName);
+      // No need to remove colors — a color only needs 1 valid size to stay selected
     }
-  }, [selectedSizes, activeSize]);
+  }, [selectedSizes, activeSize, isColorAvailableForSize]);
 
   const handleTechnologyChange = useCallback((newTechId: string) => {
     setActiveTechnology(newTechId);
@@ -1304,28 +1374,156 @@ useEffect(() => {
     );
   }, [shouldSkipMockupGeneration, selectedColors, selectedSizes, allMockups, getAllCanvasConfigs, getAllPrintableAreas, selectedHeroMockup, activeColor, activeSize, activeArea, activeTechnology, isMobile, highlightedColor, productData, designHook, handlePreviewColorClick, determineRequiredEngine, getMockupDimensions]);
 
-  // ── renderTechnologySelector ──────────────────────────────────────────────
-  const renderTechnologySelector = () => (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Current Technology</label>
-        <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: BRAND }}>Active</span>
-      </div>
-      <select value={activeTechnology} onChange={e => handleTechnologyChange(e.target.value)}
-        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 touch-manipulation"
-        disabled={pricingHook.priceCalculationLoading}>
-        {productData?.printT?.map((tech: any) => (
-          <option key={tech.id} value={tech.id}>{tech.technologyName.toUpperCase()}</option>
-        ))}
-      </select>
-      {pricingHook.priceCalculationLoading && (
-        <div className="flex items-center gap-2 text-xs text-orange-600">
-          <div className="w-3 h-3 border-b-2 border-orange-500 rounded-full animate-spin" />
-          <span>Updating pricing...</span>
+  // AFTER
+  const TECH_INFO: Record<string, {
+    icon: string; tagline: string; best: string; notFor: string; color: string
+  }> = {
+    dtg: {
+      icon: '🖨️',
+      tagline: 'Direct-to-Garment — ink jets directly onto fabric',
+      best: 'Photographic images, complex gradients, full-colour artwork',
+      notFor: 'Very dark fabrics without white underbase',
+      color: '#2563eb',
+    },
+    embroidery: {
+      icon: '🧵',
+      tagline: 'Thread sewn directly into the fabric',
+      best: 'Logos, text, simple bold designs — premium & durable feel',
+      notFor: 'Photographic images or very fine detail',
+      color: '#7c3aed',
+    },
+    dtf: {
+      icon: '🎨',
+      tagline: 'Direct-to-Film — printed film heat-transferred onto fabric',
+      best: 'Vibrant colours on any fabric colour including black',
+      notFor: 'Very large coverage areas (cost increases)',
+      color: '#059669',
+    },
+    sublimation: {
+      icon: '🌈',
+      tagline: 'Dye infused into fabric fibres with heat',
+      best: 'All-over prints, sportswear, polyester fabrics',
+      notFor: 'Cotton or dark-coloured garments',
+      color: '#d97706',
+    },
+    'screen printing': {
+      icon: '🖼️',
+      tagline: 'Ink pushed through a mesh screen onto fabric',
+      best: 'Bulk orders, bold spot colours, long-lasting prints',
+      notFor: 'Low-quantity runs or designs with many colours',
+      color: '#dc2626',
+    },
+    'digital': {
+      icon: '🖥️',
+      tagline: 'High-resolution digital ink printed directly onto the surface',
+      best: 'Detailed full-colour artwork, small runs, personalised items',
+      notFor: 'Very textured or uneven surfaces',
+      color: '#0284c7',
+    },
+    'uv printing': {
+      icon: '🔆',
+      tagline: 'UV-cured ink bonded to the surface under ultraviolet light',
+      best: 'Hard surfaces, rigid substrates, phone cases, mugs, awards',
+      notFor: 'Soft or highly flexible garments — ink may crack',
+      color: '#7e22ce',
+    },
+    'laser engraving': {
+      icon: '🔫',
+      tagline: 'Laser beam etches the design into the material surface',
+      best: 'Wood, leather, metal, acrylic — permanent and premium feel',
+      notFor: 'Fabric, soft textiles, or multicolour designs',
+      color: '#475569',
+    },
+    'vinyl/heat transfer': {
+      icon: '✂️',
+      tagline: 'Cut vinyl film heat-pressed onto the garment',
+      best: 'Names, numbers, simple 1–2 colour designs',
+      notFor: 'Photographic or multi-colour complex artwork',
+      color: '#0891b2',
+    },
+  }
+
+  const renderTechnologySelector = () => {
+    const currentTech = getCurrentTechnology()
+    const techKey     = (currentTech?.technologyName ?? activeTechnology).toLowerCase().trim()
+    const info        = TECH_INFO[techKey] ?? null
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Printing Technology</label>
+          <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: BRAND }}>Active</span>
         </div>
-      )}
-    </div>
-  );
+
+        <select value={activeTechnology} onChange={e => handleTechnologyChange(e.target.value)}
+          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 touch-manipulation"
+          disabled={pricingHook.priceCalculationLoading}>
+          {productData?.printT?.map((tech: any) => (
+            <option key={tech.id} value={tech.id}>{tech.technologyName.toUpperCase()}</option>
+          ))}
+        </select>
+
+        {pricingHook.priceCalculationLoading && (
+          <div className="flex items-center gap-2 text-xs text-orange-600">
+            <div className="w-3 h-3 border-b-2 border-orange-500 rounded-full animate-spin" />
+            <span>Updating pricing...</span>
+          </div>
+        )}
+
+        {/* Technology info card */}
+        {info && (
+          <div className="rounded-xl overflow-hidden" style={{ border: `1.5px solid ${info.color}40` }}>
+
+            {/* Coloured header — solid tinted background */}
+            <div className="px-3 py-3 bg-white/90" style={{ borderBottom: `1.5px solid ${info.color}30` }}>
+              <div className="flex items-center gap-2.5 mb-1">
+                <span className="text-2xl leading-none">{info.icon}</span>
+                <div>
+                  <p className="text-sm font-extrabold leading-tight" style={{ color: info.color }}>
+                    {(currentTech?.technologyName ?? activeTechnology).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[11px] leading-snug font-medium" style={{ color: `${info.color}cc` }}>
+                {info.tagline}
+              </p>
+            </div>
+
+            {/* Best for */}
+            <div className="px-3 py-2.5" style={{ background: '#f0fdf4', borderBottom: '1px solid #dcfce7' }}>
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: '#16a34a' }}>
+                  <svg className="w-2.5 h-2.5" fill="none" stroke="white" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-0.5">Best for</p>
+                  <p className="text-[11px] text-green-900 leading-relaxed font-medium">{info.best}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Not ideal for */}
+            <div className="px-3 py-2.5" style={{ background: '#fff7f7' }}>
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
+                  <svg className="w-2.5 h-2.5" fill="none" stroke="white" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-0.5">Not ideal for</p>
+                  <p className="text-[11px] text-red-900 leading-relaxed font-medium">{info.notFor}</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // ── renderPricingPanel ────────────────────────────────────────────────────
   const renderPricingPanel = () => {
@@ -1427,18 +1625,63 @@ useEffect(() => {
       {designHook.uploadedFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-semibold text-gray-900">Recent Uploads ({designHook.uploadedFiles.length})</h4>
-          {designHook.uploadedFiles.map(file => (
-            <div key={file.id} className="flex items-center p-2 bg-white border border-gray-200 rounded-lg sm:p-3">
-              <img src={file.url} alt={file.name} className="object-cover w-10 h-10 mr-3 border border-gray-200 rounded-lg sm:w-12 sm:h-12" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>{file.name.length > 25 ? `${file.name.substring(0, 20)}...${file.name.split('.').pop()}` : file.name}</p>
-                <div className="flex items-center mt-1 space-x-2 text-xs text-gray-500">
-                  <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                  <span className={file.base64Data ? 'text-green-600' : 'text-orange-600'}>{file.base64Data ? 'Stored' : 'Processing'}</span>
+          {designHook.uploadedFiles.map(file => {
+              const f = file as any
+              const dpiCfg = !f.dpiQuality ? null : {
+                low:       { label: 'Low — Review',     bar: '#dc2626', text: 'text-red-600',    bg: 'bg-red-50    border-red-200',    note: 'Very likely to print blurry. Replace with a higher-res file before production.' },
+                warning:   { label: 'May Blur',         bar: '#f59e0b', text: 'text-amber-600',  bg: 'bg-amber-50  border-amber-200',  note: 'Acceptable for DTG/DTF but sharpness may be reduced at full print size.' },
+                good:      { label: 'Good',             bar: '#22c55e', text: 'text-green-600',  bg: 'bg-green-50  border-green-200',  note: null },
+                excellent: { label: 'Excellent',        bar: '#6366f1', text: 'text-violet-600', bg: 'bg-violet-50 border-violet-200', note: null },
+              }[f.dpiQuality as 'low' | 'warning' | 'good' | 'excellent']
+
+              return (
+                <div key={file.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                  {/* File row */}
+                  <div className="flex items-center p-2 sm:p-3">
+                    <img src={file.url} alt={file.name} className="object-cover w-10 h-10 mr-3 border border-gray-200 rounded-lg sm:w-12 sm:h-12 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                        {file.name.length > 25 ? `${file.name.substring(0, 20)}...${file.name.split('.').pop()}` : file.name}
+                      </p>
+                      <div className="flex items-center mt-1 space-x-2 text-xs text-gray-500">
+                        <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                        <span className={file.base64Data ? 'text-green-600' : 'text-orange-600'}>
+                          {file.base64Data ? 'Stored' : 'Processing'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DPI badge — only when available */}
+                  {dpiCfg && f.dpi && (
+                    <div className={`mx-2 mb-2 px-3 py-2 rounded-lg border ${dpiCfg.bg}`}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Print Resolution</span>
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${dpiCfg.text} bg-white border`}>
+                          {dpiCfg.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden border border-gray-100">
+                          <div className="h-full rounded-full" style={{
+                            width: `${Math.min(100, Math.round((f.dpi / 600) * 100))}%`,
+                            backgroundColor: dpiCfg.bar,
+                          }} />
+                        </div>
+                        <span className={`text-xs font-bold shrink-0 ${dpiCfg.text}`}>{f.dpi} DPI</span>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[9px] text-gray-400">300 min</span>
+                        <span className="text-[9px] text-gray-400">600+ excellent</span>
+                      </div>
+                    {dpiCfg.note && (
+                        <p className={`text-[10px] mt-1.5 leading-relaxed ${dpiCfg.text}`}>{dpiCfg.note}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-          ))}
+              )
+            })}
         </div>
       )}
     </div>
@@ -1471,7 +1714,11 @@ useEffect(() => {
             <h3 className="font-medium">Color Selection</h3>
             {/* Variant counter */}
             {(() => {
-              const current = calculateProjectedVariants(selectedColors, selectedSizes);
+              // Count actual valid color-size pairs (not a simple multiply)
+              const current = selectedColors.reduce(
+                (total, color) => total + selectedSizes.filter(s => isColorAvailableForSize(color.name, s)).length,
+                0
+              ) || 0;
               const isAtLimit  = current >= VARIANT_HARD_LIMIT;
               const isNearLimit= current >= Math.round(VARIANT_HARD_LIMIT * 0.8);
               const pct = Math.min(100, Math.round((current / VARIANT_HARD_LIMIT) * 100));
@@ -1491,13 +1738,27 @@ useEffect(() => {
             })()}
             <div className="flex flex-wrap gap-2 mb-4">
               {productData?.colorOptions?.map((color: any) => {
-                const isSelected  = selectedColors.some(c => c.value === color.colorHex);
-                const projected   = calculateProjectedVariants([...selectedColors, { name: color.colorName, value: color.colorHex }], selectedSizes);
-                const isDisabled  = !isSelected && projected > VARIANT_HARD_LIMIT;
-                const tickColor   = isLightColor(color.colorHex) ? '#000000' : '#FFFFFF';
+                const isSelected         = selectedColors.some(c => c.value === color.colorHex);
+                const notAvailableForSizes = !isSelected && !isColorAvailableForAnySelectedSize(color.colorName);
+                const projected          = calculateProjectedVariants([...selectedColors, { name: color.colorName, value: color.colorHex }], selectedSizes);
+                const isDisabled         = !isSelected && (notAvailableForSizes || projected > VARIANT_HARD_LIMIT);
+                const isPartial          = isSelected && selectedSizes.some(s => !isColorAvailableForSize(color.colorName, s));
+                const tickColor          = isLightColor(color.colorHex) ? '#000000' : '#FFFFFF';
                 return (
-                  <button key={color.colorHex} onClick={() => { if (!isDisabled) handleColorChange(color.colorHex, color.colorName); }} title={color.colorName}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 transition-all flex items-center justify-center touch-manipulation ${isSelected ? 'border-orange-500 ring-2 ring-orange-200 scale-110' : isDisabled ? 'border-gray-200 opacity-30 cursor-not-allowed' : 'border-gray-300 hover:border-gray-400 hover:scale-105'}`}
+                  <button
+                    key={color.colorHex}
+                    onClick={() => { if (!isDisabled) handleColorChange(color.colorHex, color.colorName); }}
+                    title={
+                      notAvailableForSizes ? `${color.colorName} — not available for selected sizes` :
+                      isPartial            ? `${color.colorName} — not available in all selected sizes` :
+                      color.colorName
+                    }
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 transition-all flex items-center justify-center touch-manipulation ${
+                      isPartial   ? 'border-amber-400 ring-2 ring-amber-200 scale-110' :
+                      isSelected  ? 'border-orange-500 ring-2 ring-orange-200 scale-110' :
+                      isDisabled  ? 'border-gray-200 opacity-30 cursor-not-allowed' :
+                                    'border-gray-300 hover:border-gray-400 hover:scale-105'
+                    }`}
                     style={{ backgroundColor: color.colorHex }}>
                     {isSelected && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={tickColor} width="16" height="16"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
                   </button>
@@ -1553,7 +1814,14 @@ useEffect(() => {
             <div className="space-y-2">
               {selectedSizes.map(size => (
                 <div key={size} className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100">
-                  <span className="text-sm font-medium">{size}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{size}</span>
+                    {getAvailableColorsForSize(size) !== null && (
+                      <span className="text-xs text-amber-600">
+                        {(getAvailableColorsForSize(size) ?? []).length} colors only
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     {productData?.size_Images && (
                       <button onClick={() => setActiveSize(size)} className={`p-1 rounded touch-manipulation ${activeSize === size ? 'text-orange-600 bg-orange-50' : 'text-gray-600 hover:bg-gray-200'}`}>
@@ -2300,6 +2568,8 @@ useEffect(() => {
         setActiveView={setActiveView}
         setActiveTab={setActiveTab}
       />
+
+      
 
       {/* Hidden debug toggle */}
       <button onClick={() => setDebugMode(!debugMode)} className="fixed w-4 h-4 transition-opacity opacity-0 bottom-4 right-4 hover:opacity-100" />

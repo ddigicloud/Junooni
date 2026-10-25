@@ -722,7 +722,8 @@ const DashboardPage = () => {
         const defer = window.requestIdleCallback || ((fn: () => void) => setTimeout(fn, 200));
         defer(() => {
           if (cancelled) return;
-          if (daysSinceCreation <= 3) setShowTour(true);
+          const tourAlreadySeen = localStorage.getItem("dashboard_tour_done") === "true";
+          if (daysSinceCreation <= 3 && !tourAlreadySeen) setShowTour(true);
           if (isNewVendor) setShowStoreTypeModal(true);
         });
       }

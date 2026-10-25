@@ -68,6 +68,25 @@ export const validateImageFile = (file: File): { valid: boolean; error?: string 
   return { valid: true };
 };
 
+export const calculateImageDPI = (
+  imageWidth: number,
+  imageHeight: number,
+  printableWidthInches: number,
+  printableHeightInches: number
+): number => {
+  if (!printableWidthInches || !printableHeightInches) return 0;
+  const dpiX = imageWidth  / printableWidthInches;
+  const dpiY = imageHeight / printableHeightInches;
+  return Math.round(Math.min(dpiX, dpiY));
+};
+
+export const getDpiTier = (dpi: number): 'excellent' | 'good' | 'warning' | 'low' => {
+  if (dpi >= 600) return 'excellent';
+  if (dpi >= 300) return 'good';
+  if (dpi >= 150) return 'warning';
+  return 'low';
+};
+
 // ── Base64 helpers ────────────────────────────────────────────────────────────
 export const convertFileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {

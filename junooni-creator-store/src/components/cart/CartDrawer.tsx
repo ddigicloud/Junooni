@@ -67,7 +67,6 @@ export default function CartDrawer({
   const handleCheckout = () => {
     closeCart()
     router.push(`/checkout?step=address`)
-    //router.push(`/${handle}/checkout?step=address`)
   }
 
   const codFeeAmount = cart?.items?.find((i: any) => i.metadata?.is_cod_fee)?.unit_price ?? 0

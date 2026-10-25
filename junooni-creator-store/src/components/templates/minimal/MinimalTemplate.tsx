@@ -39,6 +39,7 @@ interface Props {
   products: Product[]
   categories: CategoryMeta[]
   collections: CollectionMeta[]
+  totalProducts?: number
 }
 
 // ADD right before: export default function MinimalTemplate(
@@ -202,7 +203,7 @@ function PlaceholderFeaturedProduct({ brandPrimary, sectionBg, sectionText, imag
   )
 }
 
-export default function MinimalTemplate({ vendor, store: initialStore, products, categories, collections }: Props) {
+export default function MinimalTemplate({ vendor, store: initialStore, products, categories, collections, totalProducts }: Props) {
   const [liveStore, setLiveStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [isEditorMode, setIsEditorMode] = useState(false)
@@ -279,6 +280,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
         categories={categories}
         collections={collections}
         products={products}
+        totalProducts={totalProducts}
       />
 
       {/* ── PAGE SECTIONS ── */}

@@ -53,6 +53,7 @@ interface Props {
   products: any[]
   categories: any[]
   collections: any[]
+  totalProducts?: number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -249,7 +250,7 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor, accordionTe
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function ProductPageClient({
-  vendor, initialStore, product, products, categories, collections,
+  vendor, initialStore, product, products, categories, collections, totalProducts: initialTotalProducts,
 }: Props) {
   const [store, setStore] = useState(initialStore)
   const [productDetail, setProductDetail] = useState<any>(initialStore?.product_detail ?? {})
@@ -411,6 +412,7 @@ const elementOrder: string[] = storedOrder.length === 0
     const selectedEntries = Object.entries(opts).filter(([, val]) => !!val)
     if (selectedEntries.length === 0) return product.variants[0]
 
+    const allSelected = selectedEntries.length >= productOpts.length
     return product.variants.find((v: any) => {
       const vOpts: any[] = v.options ?? []
       return selectedEntries.every(([optionTitle, selectedVal]) =>
@@ -420,7 +422,7 @@ const elementOrder: string[] = storedOrder.length === 0
           return thisTitle === optionTitle && thisVal === selectedVal.toLowerCase()
         })
       )
-    }) ?? product.variants[0]
+    }) ?? (allSelected ? null : product.variants[0])
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -440,10 +442,28 @@ const elementOrder: string[] = storedOrder.length === 0
   // convenience aliases for backward compat
   const selectedColor = selectedOptions["color"] ?? selectedOptions["colour"] ?? ""
   const selectedSize  = selectedOptions["size"]  ?? ""
-  const setSelectedColor = (v: string) => setSelectedOptions(prev => ({
-    ...prev,
-    ...(prev["color"] !== undefined ? { color: v } : { colour: v })
-  }))
+  const setSelectedColor = (v: string) => setSelectedOptions(prev => {
+    const currentSize = prev["size"] ?? ""
+    // Check if the currently selected size has a variant for the new color
+    const sizeStillValid = !currentSize || product.variants?.some((variant: any) => {
+      const vOpts: any[] = variant.options ?? []
+      const hasColor = vOpts.some((o: any) =>
+        (o.option?.title ?? "").toLowerCase().includes("color") &&
+        (o.value ?? "").toLowerCase() === v.toLowerCase()
+      )
+      const hasSize = vOpts.some((o: any) =>
+        (o.option?.title ?? "").toLowerCase() === "size" &&
+        (o.value ?? "").toLowerCase() === currentSize.toLowerCase()
+      )
+      return hasColor && hasSize
+    })
+    return {
+      ...prev,
+      ...(prev["color"] !== undefined ? { color: v } : { colour: v }),
+      // Clear size if it's not available in the new color
+      ...(sizeStillValid ? {} : { size: "" }),
+    }
+  })
   const setSelectedSize = (v: string) => setSelectedOptions(prev => ({ ...prev, size: v }))
   const [quantity,   setQuantity]  = useState(1)
   const [isAdding,   setIsAdding]  = useState(false)
@@ -463,8 +483,13 @@ const elementOrder: string[] = storedOrder.length === 0
   const displayImage = variantImages[0]?.url ?? product?.thumbnail ?? null
 
   // ── Variant resolution ─────────────────────────────────────────────────────
-    // ── Variant resolution — reuse getVariantForOptions ───────────────────────
-  const selectedVariant = getVariantForOptions(selectedOptions) ?? product?.variants?.[0]
+    // ── Variant resolution — null when all options selected but combo doesn't exist ──
+  const allOptionsSelected = productOpts.every(
+    (o: any) => !!selectedOptions[o.title.toLowerCase()]
+  )
+  const selectedVariant = allOptionsSelected
+    ? getVariantForOptions(selectedOptions)
+    : (getVariantForOptions(selectedOptions) ?? product?.variants?.[0])
 
   // console.log('[debug] selectedVariant:', JSON.stringify(selectedVariant, null, 2))
   // console.log('[debug] inventory_quantity:', selectedVariant?.inventory_quantity)
@@ -485,7 +510,8 @@ const elementOrder: string[] = storedOrder.length === 0
       }, 0)
     }, 0)
   })()
-  const isOutOfStock = inventoryQuantity <= 0
+  const variantNotAvailable = allOptionsSelected && selectedVariant === null
+  const isOutOfStock = variantNotAvailable || inventoryQuantity <= 0
 
   // ── Price ──────────────────────────────────────────────────────────────────
   const getPrice = (): string => {
@@ -530,6 +556,7 @@ const elementOrder: string[] = storedOrder.length === 0
 
   // ── Lazy-load related products client-side ─────────────────────────────
 const [relatedProducts, setRelatedProducts] = useState<any[]>(products)
+const [totalProducts, setTotalProducts] = useState<number | undefined>(initialTotalProducts)
 
 useEffect(() => {
   if (relatedProducts.length > 0) {
@@ -543,6 +570,7 @@ useEffect(() => {
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (data?.products?.length) setRelatedProducts(data.products)
+      if (data?.pagination?.total) setTotalProducts(data.pagination.total)
       setRelatedLoading(false)
     })
     .catch(() => setRelatedLoading(false))
@@ -597,6 +625,23 @@ useEffect(() => {
   console.log('🖼️ selectedOptions:', selectedOptions)
   console.log('🖼️ currentImages count:', currentImages.length, currentImages.map(i => i.url))
   console.log('🖼️ selectedVariant:', selectedVariant?.title, '| variant images:', selectedVariant?.images?.length)
+
+  // ── Check if a size has a variant for the currently selected color ─────────
+  const isSizeAvailableForColor = (sizeName: string): boolean => {
+    if (!selectedColor) return true
+    return product.variants?.some((v: any) => {
+      const vOpts: any[] = v.options ?? []
+      const hasColor = vOpts.some((o: any) =>
+        ((o.option?.title ?? "").toLowerCase().includes("color")) &&
+        (o.value ?? "").toLowerCase() === selectedColor.toLowerCase()
+      )
+      const hasSize = vOpts.some((o: any) =>
+        (o.option?.title ?? "").toLowerCase() === "size" &&
+        (o.value ?? "").toLowerCase() === sizeName.toLowerCase()
+      )
+      return hasColor && hasSize
+    }) ?? true
+  }
 
   // ── Render element by key ──────────────────────────────────────────────────
   const renderElement = (el: string) => {
@@ -719,29 +764,39 @@ useEffect(() => {
             <div className="flex flex-wrap items-center gap-2">
               {sizeNames.map(size => {
                 const isSelected = selectedSize === size
+                const isAvailable = isSizeAvailableForColor(size)
                 const style = pd.size_style ?? "pill"
                 return (
                   <button
                     key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`transition-all text-sm font-semibold ${
+                    onClick={() => { if (isAvailable) setSelectedSize(size) }}
+                    title={!isAvailable ? `${size} not available in ${selectedColor}` : size}
+                    disabled={!isAvailable}
+                    className={`transition-all text-sm font-semibold relative ${
                       style === "box"
                         ? "px-3 py-1.5 rounded-lg border-2"
                         : style === "underline"
                           ? "px-2 py-1 border-b-2 bg-transparent rounded-none"
                           : "px-4 py-1.5 rounded-full border-2"
-                    }`}
+                    } ${!isAvailable ? "opacity-35 cursor-not-allowed" : ""}`}
                     style={{
-                      borderColor: isSelected
-                        ? (pdEx.size_selected_border_color ?? brandPrimary)
-                        : (pdEx.size_border_color ?? `${brandPrimary}30`),
-                      backgroundColor: isSelected && style !== "underline"
-                        ? (pdEx.size_selected_bg_color ?? brandPrimary)
-                        : (pdEx.size_bg_color ?? "transparent"),
-                      color: isSelected && style !== "underline"
-                        ? (pdEx.size_selected_text_color ?? "#ffffff")
-                        : (pdEx.size_text_color ?? (isDark ? "#ffffff" : "#374151")),
-                      transform: isSelected ? "scale(1.05)" : "scale(1)",
+                      borderColor: !isAvailable
+                        ? (isDark ? "rgba(255,255,255,0.15)" : "#d1d5db")
+                        : isSelected
+                          ? (pdEx.size_selected_border_color ?? brandPrimary)
+                          : (pdEx.size_border_color ?? `${brandPrimary}30`),
+                      backgroundColor: !isAvailable
+                        ? "transparent"
+                        : isSelected && style !== "underline"
+                          ? (pdEx.size_selected_bg_color ?? brandPrimary)
+                          : (pdEx.size_bg_color ?? "transparent"),
+                      color: !isAvailable
+                        ? (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af")
+                        : isSelected && style !== "underline"
+                          ? (pdEx.size_selected_text_color ?? "#ffffff")
+                          : (pdEx.size_text_color ?? (isDark ? "#ffffff" : "#374151")),
+                      transform: isSelected && isAvailable ? "scale(1.05)" : "scale(1)",
+                      textDecoration: !isAvailable ? "line-through" : "none",
                     }}
                   >
                     {size}
@@ -841,9 +896,14 @@ useEffect(() => {
               )}
             </button>
 
-            {isOutOfStock && (
+            {variantNotAvailable && (
               <p className={`mt-2 text-xs text-center ${isDark ? "text-white/40" : "text-gray-400"}`}>
-                This variant is currently unavailable
+                This color + size combination is not available
+              </p>
+            )}
+            {!variantNotAvailable && isOutOfStock && (
+              <p className={`mt-2 text-xs text-center ${isDark ? "text-white/40" : "text-gray-400"}`}>
+                This variant is currently out of stock
               </p>
             )}
           </div>
@@ -935,19 +995,30 @@ useEffect(() => {
             <div className="flex flex-wrap items-center gap-2">
               {optionValues.map(size => {
                 const isSelected = selectedSize === size
+                const isAvailable = isSizeAvailableForColor(size)
                 const style = pd.size_style ?? "pill"
                 return (
-                  <button key={size} onClick={() => setSelectedSize(size)}
+                  <button key={size}
+                    onClick={() => { if (isAvailable) setSelectedSize(size) }}
+                    title={!isAvailable ? `${size} not available in ${selectedColor}` : size}
+                    disabled={!isAvailable}
                     className={`transition-all text-sm font-semibold ${
                       style === "box" ? "px-3 py-1.5 rounded-lg border-2" :
                       style === "underline" ? "px-2 py-1 border-b-2 bg-transparent rounded-none" :
                       "px-4 py-1.5 rounded-full border-2"
-                    }`}
+                    } ${!isAvailable ? "opacity-35 cursor-not-allowed" : ""}`}
                     style={{
-                      borderColor: isSelected ? brandPrimary : `${brandPrimary}30`,
-                      backgroundColor: isSelected && style !== "underline" ? brandPrimary : "transparent",
-                      color: isSelected && style !== "underline" ? "#ffffff" : (isDark ? "#ffffff" : "#374151"),
-                      transform: isSelected ? "scale(1.05)" : "scale(1)",
+                      borderColor: !isAvailable
+                        ? (isDark ? "rgba(255,255,255,0.15)" : "#d1d5db")
+                        : isSelected ? brandPrimary : `${brandPrimary}30`,
+                      backgroundColor: !isAvailable
+                        ? "transparent"
+                        : isSelected && style !== "underline" ? brandPrimary : "transparent",
+                      color: !isAvailable
+                        ? (isDark ? "rgba(255,255,255,0.3)" : "#9ca3af")
+                        : isSelected && style !== "underline" ? "#ffffff" : (isDark ? "#ffffff" : "#374151"),
+                      transform: isSelected && isAvailable ? "scale(1.05)" : "scale(1)",
+                      textDecoration: !isAvailable ? "line-through" : "none",
                     }}>
                     {size}
                   </button>
@@ -980,21 +1051,24 @@ useEffect(() => {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              {optionValues.map(val => {
+                            {optionValues.map(val => {
                 const isSelected = selectedVal === val
+                const isAvailable = isSizeAvailableForColor(val)
                 return (
                   <button key={val}
-                    onClick={() => setSelectedOptions(prev => ({
-                      ...prev,
-                      [matchedOption.title.toLowerCase()]: val
-                    }))}
+                    onClick={() => {
+                      if (!isAvailable) return
+                      setSelectedOptions(prev => ({
+                        ...prev,
+                        [matchedOption.title.toLowerCase()]: val
+                      }))
+                    }}
+                    title={!isAvailable ? `${val} not available in ${selectedColor}` : val}
                     className={`transition-all text-sm font-semibold ${
-                      style === "box"
-                        ? "px-3 py-1.5 rounded-lg border-2"
-                        : style === "underline"
-                          ? "px-2 py-1 border-b-2 bg-transparent rounded-none"
-                          : "px-4 py-1.5 rounded-full border-2"
-                    }`}
+                      style === "box" ? "px-3 py-1.5 rounded-lg border-2" :
+                      style === "underline" ? "px-2 py-1 border-b-2 bg-transparent rounded-none" :
+                      "px-4 py-1.5 rounded-full border-2"
+                    } ${!isAvailable ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                     style={{
                       borderColor: isSelected ? brandPrimary : `${brandPrimary}30`,
                       backgroundColor: isSelected && style !== "underline" ? brandPrimary : "transparent",
@@ -1418,6 +1492,7 @@ useEffect(() => {
         categories={categories}
         collections={collections}
         products={relatedProducts}
+        totalProducts={totalProducts}
         // products={products}
       />
 

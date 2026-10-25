@@ -6,8 +6,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import type { DesignElement, UploadedFile, PayloadProductData } from '../types';
-import { validateImageFile, optimizeImage, cropTransparentPixels, convertImageToBase64 } from '../utils';
-
+import { validateImageFile, optimizeImage, cropTransparentPixels, convertImageToBase64, calculateImageDPI, getDpiTier } from '../utils';
 interface UseDesignElementsOptions {
   activeArea: string;
   activeColor: string;
@@ -35,6 +34,9 @@ export const useDesignElements = ({
   const [imageProcessingPct, setImageProcessingPct] = useState(0);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
+  // const [dpiError, setDpiError] = useState<{
+  //   fileName: string; detectedDPI: number; minDPI: number; minPxW: number; minPxH: number
+  // } | null>(null);
 
   const designElementsRef = useRef<Record<string, DesignElement[]>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -190,6 +192,27 @@ export const useDesignElements = ({
           reader.readAsDataURL(file);
         });
 
+        // ── DPI check — reject before any further processing ──────────────
+        setImageProcessingStep('Checking image resolution...');
+        setImageProcessingPct(30);
+        await new Promise(r => setTimeout(r, 16));
+
+        const imageDims = await new Promise<{ width: number; height: number }>((res, rej) => {
+          const tempImg = new Image();
+          tempImg.onload  = () => res({ width: tempImg.naturalWidth || tempImg.width, height: tempImg.naturalHeight || tempImg.height });
+          tempImg.onerror = () => rej(new Error('Could not read image dimensions'));
+          tempImg.src = base64Data;
+        });
+
+        const canvasCfg        = getCanvasConfig(activeArea);
+        const printable        = getPrintableAreaFromPhoto(activeArea, activeColor);
+        const printableWInches = (printable.width  / canvasCfg.width)  * canvasCfg.realWorldWidth;
+        const printableHInches = (printable.height / canvasCfg.height) * canvasCfg.realWorldHeight;
+        const dpi              = calculateImageDPI(imageDims.width, imageDims.height, printableWInches, printableHInches);
+
+        // ── End DPI check ──────────────────────────────────────────────────
+        const dpiQuality = getDpiTier(dpi)
+
         setImageProcessingStep('Processing...');
         setImageProcessingPct(40);
         await new Promise(r => setTimeout(r, 16));
@@ -200,6 +223,7 @@ export const useDesignElements = ({
         setUploadedFiles(prev => [...prev, {
           id: uniqueId, file, url: blobUrl, base64Data, name: file.name,
           size: file.size, type: file.type, uploadProgress: 100, isUploading: false, targetArea: activeArea,
+          dpi, dpiQuality,
         }]);
 
         await addImageToCanvas(base64Data, file.name, activeArea, base64Data, true);
@@ -337,6 +361,7 @@ export const useDesignElements = ({
 
   return {
     // State
+    // dpiError, setDpiError,
     designElements, setDesignElements,
     selectedId, setSelectedId,
     uploadedFiles, setUploadedFiles,
