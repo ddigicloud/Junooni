@@ -16,7 +16,6 @@
  */
 
 import { MedusaRequest, MedusaResponse }         from "@medusajs/framework/http"
-import { ContainerRegistrationKeys }              from "@medusajs/framework/utils"
 import { redeemAuthCode, generateAccessToken, saveAccessToken } from "../../../../lib/mcp/tokenStore"
 
 const CORS = {
@@ -74,10 +73,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   // ── Issue access token ──────────────────────────────────────────────────────
   const accessToken = generateAccessToken()
-  const pgClient    = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+  const mcpService  = req.scope.resolve("mcpModule")
 
   try {
-    await saveAccessToken(pgClient, entry.vendorId, accessToken, entry.scope, `claude-connector`)
+    await saveAccessToken(mcpService, entry.vendorId, accessToken, entry.scope, `claude-connector`)
     console.log(`[MCP token] Issued token for vendor=${entry.vendorId} scope=${entry.scope} client=${client_id}`)
   } catch (err) {
     console.error("[MCP token] Failed to save access token:", err)

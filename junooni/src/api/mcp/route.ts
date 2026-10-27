@@ -11,7 +11,6 @@
  */
 
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys }      from "@medusajs/framework/utils"
 
 import { validateAccessToken }     from "../../lib/mcp/tokenStore"
 import { getVendorContext }        from "../../lib/ai/vendorContext"
@@ -405,8 +404,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     })
   }
 
-  const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
-  const authInfo = await validateAccessToken(pgClient, token)
+  const mcpService = req.scope.resolve("mcpModule")
+  const authInfo   = await validateAccessToken(mcpService, token)
   if (!authInfo) {
     return res.status(401).json({
       jsonrpc: "2.0", id: null,

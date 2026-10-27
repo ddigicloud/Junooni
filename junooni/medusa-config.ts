@@ -163,6 +163,7 @@ module.exports = defineConfig({
     // ─── Custom modules ────────────────────────────────────────────────────────
     { resolve: "./src/modules/marketplace" },
     { resolve: "./src/modules/otp" },
+    { resolve: "./src/modules/mcp"},
     { resolve: "./src/modules/brand" },
     { resolve: "./src/modules/blank" },
     { resolve: "./src/modules/size-chart" },

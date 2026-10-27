@@ -126,7 +126,7 @@ export const TEMPLATES = [
   { id: "editorial", name: "Editorial", desc: "Magazine style"   },
 ]
 
-const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:inherit;max-width:600px;margin:0 auto;padding:8px 0">
+const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:inherit;max-width:600px;margin:0 auto;padding:8px 12px">
 
 <style>
 #junooni-contact-wrap h2{font-size:1.75rem;font-weight:700;margin-bottom:8px;color:inherit}

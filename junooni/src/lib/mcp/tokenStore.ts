@@ -2,21 +2,10 @@
  * JUNOONI MCP Token Store
  *
  * Two-layer auth:
- *   1. Auth codes  — in-memory, 15-min TTL  (OAuth Authorization Code flow)
- *   2. Access tokens — Postgres via pgClient.raw  (persistent, revocable)
+ *   1. Auth codes   — in-memory, 15-min TTL  (OAuth Authorization Code flow)
+ *   2. Access tokens — Medusa module service  (persistent, revocable)
  *
- * Table (run once in psql / migration):
- *   CREATE TABLE IF NOT EXISTS mcp_access_tokens (
- *     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
- *     vendor_id     VARCHAR NOT NULL,
- *     access_token  VARCHAR UNIQUE NOT NULL,
- *     scope         VARCHAR NOT NULL DEFAULT 'read',
- *     label         VARCHAR,
- *     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
- *     last_used_at  TIMESTAMPTZ
- *   );
- *   CREATE INDEX IF NOT EXISTS idx_mcp_tokens_token
- *     ON mcp_access_tokens (access_token);
+ * Pass `req.scope.resolve("mcpModule")` from your route wherever mcpService is needed.
  */
 
 import crypto from "crypto"
@@ -69,42 +58,46 @@ export function generateAccessToken(): string {
 }
 
 /**
- * Persist a new access token to Postgres.
- * Call this after a successful code exchange.
+ * Persist a new access token via the MCP module service.
+ * Usage: const mcpService = req.scope.resolve("mcpModule")
  */
 export async function saveAccessToken(
-  pgClient:  any,
-  vendorId:  string,
-  token:     string,
-  scope:     string,
-  label?:    string,
+  mcpService: any,
+  vendorId:   string,
+  token:      string,
+  scope:      string,
+  label?:     string,
 ): Promise<void> {
-  await pgClient.raw(
-    `INSERT INTO mcp_access_tokens (vendor_id, access_token, scope, label)
-     VALUES (?, ?, ?, ?)`,
-    [vendorId, token, scope, label ?? null],
-  )
+  await mcpService.createMcpAccessTokens({
+    vendor_id:    vendorId,
+    access_token: token,
+    scope,
+    label:        label ?? null,
+  })
 }
 
 /**
  * Validate a Bearer token and return { vendorId, scope } or null.
- * Also bumps last_used_at.
+ * Also bumps last_used_at (fire-and-forget).
  */
 export async function validateAccessToken(
-  pgClient: any,
-  token:    string,
+  mcpService: any,
+  token:      string,
 ): Promise<{ vendorId: string; scope: string } | null> {
   try {
-    const result = await pgClient.raw(
-      `UPDATE mcp_access_tokens
-          SET last_used_at = NOW()
-        WHERE access_token = ?
-       RETURNING vendor_id, scope`,
-      [token],
+    const [record] = await mcpService.listMcpAccessTokens(
+      { access_token: token },
+      { take: 1 },
     )
-    const row = result.rows?.[0] ?? result[0]?.[0]
-    if (!row) return null
-    return { vendorId: row.vendor_id, scope: row.scope }
+    if (!record) return null
+
+    // Bump last_used_at — fire-and-forget
+    mcpService.updateMcpAccessTokens(
+      { id: record.id },
+      { last_used_at: new Date() },
+    ).catch(() => {})
+
+    return { vendorId: record.vendor_id, scope: record.scope }
   } catch {
     return null
   }
@@ -114,19 +107,12 @@ export async function validateAccessToken(
  * List all active tokens for a vendor (for the Studio "Connected apps" page).
  */
 export async function listVendorTokens(
-  pgClient:  any,
-  vendorId:  string,
-): Promise<Array<{ id: string; scope: string; label: string | null; createdAt: string; lastUsedAt: string | null }>> {
+  mcpService: any,
+  vendorId:   string,
+): Promise<Array<{ id: string; scope: string; label: string | null; createdAt: Date; lastUsedAt: Date | null }>> {
   try {
-    const result = await pgClient.raw(
-      `SELECT id, scope, label, created_at, last_used_at
-         FROM mcp_access_tokens
-        WHERE vendor_id = ?
-        ORDER BY created_at DESC`,
-      [vendorId],
-    )
-    const rows = result.rows ?? result[0] ?? []
-    return rows.map((r: any) => ({
+    const records = await mcpService.listMcpAccessTokens({ vendor_id: vendorId })
+    return records.map((r: any) => ({
       id:         r.id,
       scope:      r.scope,
       label:      r.label ?? null,
@@ -138,18 +124,20 @@ export async function listVendorTokens(
 
 /**
  * Revoke a token by ID (not by token value, to avoid leaking it in URLs).
+ * vendorId check ensures a creator can only revoke their own tokens.
  */
 export async function revokeToken(
-  pgClient: any,
-  id:       string,
-  vendorId: string,
+  mcpService: any,
+  id:         string,
+  vendorId:   string,
 ): Promise<boolean> {
   try {
-    const result = await pgClient.raw(
-      `DELETE FROM mcp_access_tokens WHERE id = ? AND vendor_id = ? RETURNING id`,
-      [id, vendorId],
+    const [record] = await mcpService.listMcpAccessTokens(
+      { id, vendor_id: vendorId },
+      { take: 1 },
     )
-    const rows = result.rows ?? result[0] ?? []
-    return rows.length > 0
+    if (!record) return false
+    await mcpService.deleteMcpAccessTokens([id])
+    return true
   } catch { return false }
 }

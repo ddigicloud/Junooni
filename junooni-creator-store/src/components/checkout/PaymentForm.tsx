@@ -51,9 +51,8 @@ export default function PaymentForm({
   const hasCreatorFulfillment = (cart?.items ?? []).some(
     (item: any) => !item.metadata?.is_cod_fee && isCreatorFulfilled(item)
   )
-  const availableMethods = hasCreatorFulfillment
-    ? (paymentMethods ?? []).filter((m: any) => m.id !== "pp_system_default")
-    : (paymentMethods ?? [])
+  const availableMethods = (paymentMethods ?? []).filter((m: any) => m.id !== "pp_system_default")
+  
   const [selected, setSelected] = useState<string>(
     availableMethods.find((m: any) => m.id === activeSession?.provider_id)?.id
       ?? availableMethods[0]?.id
