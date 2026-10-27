@@ -124,6 +124,7 @@ const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMo
   const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
   const [debugMode, setDebugMode]         = useState(false);
   const [isSavingToJuni, setIsSavingToJuni] = useState(false)
+  const [showTechCompare, setShowTechCompare] = useState(false);
 
   // ── Active selections ─────────────────────────────────────────────────────
   const [activeTechnology, setActiveTechnology] = useState<string>(() =>
@@ -1376,154 +1377,195 @@ useEffect(() => {
 
   // AFTER
   const TECH_INFO: Record<string, {
-    icon: string; tagline: string; best: string; notFor: string; color: string
-  }> = {
-    dtg: {
-      icon: '🖨️',
-      tagline: 'Direct-to-Garment — ink jets directly onto fabric',
-      best: 'Photographic images, complex gradients, full-colour artwork',
-      notFor: 'Very dark fabrics without white underbase',
-      color: '#2563eb',
-    },
-    embroidery: {
-      icon: '🧵',
-      tagline: 'Thread sewn directly into the fabric',
-      best: 'Logos, text, simple bold designs — premium & durable feel',
-      notFor: 'Photographic images or very fine detail',
-      color: '#7c3aed',
-    },
-    dtf: {
-      icon: '🎨',
-      tagline: 'Direct-to-Film — printed film heat-transferred onto fabric',
-      best: 'Vibrant colours on any fabric colour including black',
-      notFor: 'Very large coverage areas (cost increases)',
-      color: '#059669',
-    },
-    sublimation: {
-      icon: '🌈',
-      tagline: 'Dye infused into fabric fibres with heat',
-      best: 'All-over prints, sportswear, polyester fabrics',
-      notFor: 'Cotton or dark-coloured garments',
-      color: '#d97706',
-    },
-    'screen printing': {
-      icon: '🖼️',
-      tagline: 'Ink pushed through a mesh screen onto fabric',
-      best: 'Bulk orders, bold spot colours, long-lasting prints',
-      notFor: 'Low-quantity runs or designs with many colours',
-      color: '#dc2626',
-    },
-    'digital': {
-      icon: '🖥️',
-      tagline: 'High-resolution digital ink printed directly onto the surface',
-      best: 'Detailed full-colour artwork, small runs, personalised items',
-      notFor: 'Very textured or uneven surfaces',
-      color: '#0284c7',
-    },
-    'uv printing': {
-      icon: '🔆',
-      tagline: 'UV-cured ink bonded to the surface under ultraviolet light',
-      best: 'Hard surfaces, rigid substrates, phone cases, mugs, awards',
-      notFor: 'Soft or highly flexible garments — ink may crack',
-      color: '#7e22ce',
-    },
-    'laser engraving': {
-      icon: '🔫',
-      tagline: 'Laser beam etches the design into the material surface',
-      best: 'Wood, leather, metal, acrylic — permanent and premium feel',
-      notFor: 'Fabric, soft textiles, or multicolour designs',
-      color: '#475569',
-    },
-    'vinyl/heat transfer': {
-      icon: '✂️',
-      tagline: 'Cut vinyl film heat-pressed onto the garment',
-      best: 'Names, numbers, simple 1–2 colour designs',
-      notFor: 'Photographic or multi-colour complex artwork',
-      color: '#0891b2',
-    },
-  }
+  icon: string; tagline: string; best: string; notFor: string; color: string; tags: string[]
+}> = {
+  dtg: {
+    icon: '🖨️',
+    tagline: 'Best for detailed, full-colour artwork.',
+    best: 'Photographic images, complex gradients, full-colour artwork',
+    notFor: 'Very dark fabrics without white underbase',
+    color: '#2563eb',
+    tags: ['Full colour', 'Soft feel'],
+  },
+  embroidery: {
+    icon: '🧵',
+    tagline: 'Premium thread stitched directly into fabric.',
+    best: 'Logos, text, simple bold designs — premium & durable feel',
+    notFor: 'Photographic images or very fine detail',
+    color: '#7c3aed',
+    tags: ['Premium feel', 'Durable'],
+  },
+  dtf: {
+    icon: '🎨',
+    tagline: 'Versatile on many fabrics.',
+    best: 'Vibrant colours on any fabric colour including black',
+    notFor: 'Very large coverage areas (cost increases)',
+    color: '#059669',
+    tags: ['Vibrant colour', 'Broad compatibility'],
+  },
+  sublimation: {
+    icon: '🌈',
+    tagline: 'Great for all-over and sportswear prints.',
+    best: 'All-over prints, sportswear, polyester fabrics',
+    notFor: 'Cotton or dark-coloured garments',
+    color: '#d97706',
+    tags: ['All-over print', 'Sportswear'],
+  },
+  'screen printing': {
+    icon: '🖼️',
+    tagline: 'Best for bulk orders with bold spot colours.',
+    best: 'Bulk orders, bold spot colours, long-lasting prints',
+    notFor: 'Low-quantity runs or designs with many colours',
+    color: '#dc2626',
+    tags: ['Bulk orders', 'Long-lasting'],
+  },
+  'digital': {
+    icon: '🖥️',
+    tagline: 'Great for smooth gradients and detailed art.',
+    best: 'Detailed full-colour artwork, small runs, personalised items',
+    notFor: 'Very textured or uneven surfaces',
+    color: '#0284c7',
+    tags: ['Fine detail', 'Colour-rich'],
+  },
+  'uv printing': {
+    icon: '🔆',
+    tagline: 'UV-cured ink for hard surfaces and rigid items.',
+    best: 'Hard surfaces, rigid substrates, phone cases, mugs, awards',
+    notFor: 'Soft or highly flexible garments — ink may crack',
+    color: '#7e22ce',
+    tags: ['Hard surfaces', 'Premium finish'],
+  },
+  'laser engraving': {
+    icon: '✏️',
+    tagline: 'Permanent laser-etched design into the material.',
+    best: 'Wood, leather, metal, acrylic — permanent and premium feel',
+    notFor: 'Fabric, soft textiles, or multicolour designs',
+    color: '#475569',
+    tags: ['Permanent', 'Premium materials'],
+  },
+  'vinyl/heat transfer': {
+    icon: '✂️',
+    tagline: 'Cut vinyl heat-pressed onto the garment.',
+    best: 'Names, numbers, simple 1–2 colour designs',
+    notFor: 'Photographic or multi-colour complex artwork',
+    color: '#0891b2',
+    tags: ['Names & numbers', 'Simple designs'],
+  },
+}
 
-  const renderTechnologySelector = () => {
-    const currentTech = getCurrentTechnology()
-    const techKey     = (currentTech?.technologyName ?? activeTechnology).toLowerCase().trim()
-    const info        = TECH_INFO[techKey] ?? null
+const renderTechnologySelector = () => {
+  const technologies    = productData?.printT ?? []
+  const recommendedTech = technologies[0]
+  const recommendedKey  = recommendedTech?.technologyName?.toLowerCase().trim() ?? ''
+  const recommendedInfo = TECH_INFO[recommendedKey]
 
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Printing Technology</label>
-          <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: BRAND }}>Active</span>
+  return (
+    <div className="space-y-3">
+      <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">
+        Printing Technology
+      </label>
+
+      {pricingHook.priceCalculationLoading && (
+        <div className="flex items-center gap-2 text-xs text-orange-600">
+          <div className="w-3 h-3 border-b-2 border-orange-500 rounded-full animate-spin" />
+          <span>Updating pricing...</span>
         </div>
+      )}
 
-        <select value={activeTechnology} onChange={e => handleTechnologyChange(e.target.value)}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 touch-manipulation"
-          disabled={pricingHook.priceCalculationLoading}>
-          {productData?.printT?.map((tech: any) => (
-            <option key={tech.id} value={tech.id}>{tech.technologyName.toUpperCase()}</option>
-          ))}
-        </select>
+      {/* ── Technology cards ── */}
+      <div className="space-y-2">
+        {technologies.map((tech: any) => {
+          const techKey  = tech.technologyName?.toLowerCase().trim() ?? ''
+          const info     = TECH_INFO[techKey] ?? null
+          const isActive = activeTechnology === tech.id || activeTechnology === tech.technologyName
 
-        {pricingHook.priceCalculationLoading && (
-          <div className="flex items-center gap-2 text-xs text-orange-600">
-            <div className="w-3 h-3 border-b-2 border-orange-500 rounded-full animate-spin" />
-            <span>Updating pricing...</span>
-          </div>
-        )}
+          return (
+            <button
+              key={tech.id}
+              onClick={() => handleTechnologyChange(tech.id)}
+              disabled={pricingHook.priceCalculationLoading}
+              className={`w-full text-left p-3 rounded-xl border-2 transition-all touch-manipulation ${
+                isActive
+                  ? 'border-orange-500 bg-orange-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* Icon */}
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-xl ${
+                    isActive ? 'bg-orange-100' : 'bg-gray-100'
+                  }`}>
+                    {info?.icon ?? '🖨️'}
+                  </div>
 
-        {/* Technology info card */}
-        {info && (
-          <div className="rounded-xl overflow-hidden" style={{ border: `1.5px solid ${info.color}40` }}>
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-bold leading-tight ${
+                      isActive ? 'text-orange-700' : 'text-gray-900'
+                    }`}>
+                      {tech.technologyName}
+                    </p>
+                    {info?.tagline && (
+                      <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+                        {info.tagline}
+                      </p>
+                    )}
+                    {/* Feature tags */}
+                    {info?.tags?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {info.tags.map(tag => (
+                          <span
+                            key={tag}
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                              isActive
+                                ? 'bg-orange-200 text-orange-800'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-            {/* Coloured header — solid tinted background */}
-            <div className="px-3 py-3 bg-white/90" style={{ borderBottom: `1.5px solid ${info.color}30` }}>
-              <div className="flex items-center gap-2.5 mb-1">
-                <span className="text-2xl leading-none">{info.icon}</span>
-                <div>
-                  <p className="text-sm font-extrabold leading-tight" style={{ color: info.color }}>
-                    {(currentTech?.technologyName ?? activeTechnology).toUpperCase()}
-                  </p>
+                {/* Radio circle */}
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                  isActive ? 'border-orange-500 bg-orange-500' : 'border-gray-300 bg-white'
+                }`}>
+                  {isActive && <div className="w-2 h-2 rounded-full bg-white" />}
                 </div>
               </div>
-              <p className="text-[11px] leading-snug font-medium" style={{ color: `${info.color}cc` }}>
-                {info.tagline}
-              </p>
-            </div>
-
-            {/* Best for */}
-            <div className="px-3 py-2.5" style={{ background: '#f0fdf4', borderBottom: '1px solid #dcfce7' }}>
-              <div className="flex items-start gap-2">
-                <div className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: '#16a34a' }}>
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="white" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-0.5">Best for</p>
-                  <p className="text-[11px] text-green-900 leading-relaxed font-medium">{info.best}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Not ideal for */}
-            <div className="px-3 py-2.5" style={{ background: '#fff7f7' }}>
-              <div className="flex items-start gap-2">
-                <div className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: '#dc2626' }}>
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="white" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-0.5">Not ideal for</p>
-                  <p className="text-[11px] text-red-900 leading-relaxed font-medium">{info.notFor}</p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        )}
+            </button>
+          )
+        })}
       </div>
-    )
-  }
+
+     
+
+      {/* ── Compare methods button — opens modal ── */}
+      {technologies.length > 1 && (
+        <button
+          onClick={() => setShowTechCompare(true)}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-all touch-manipulation"
+        >
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Compare methods</span>
+          </div>
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
 
   // ── renderPricingPanel ────────────────────────────────────────────────────
   const renderPricingPanel = () => {
@@ -2570,6 +2612,154 @@ useEffect(() => {
       />
 
       
+      {/* ── Technology Compare Modal ── */}
+      {showTechCompare && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowTechCompare(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Compare printing methods</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {(productData?.printT ?? []).length} methods available for this product
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTechCompare(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable table */}
+            <div className="overflow-auto flex-1 p-6">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="w-28" />
+                    {(productData?.printT ?? []).map((tech: any) => {
+                      const key      = tech.technologyName?.toLowerCase().trim() ?? ''
+                      const info     = TECH_INFO[key]
+                      const isActive = activeTechnology === tech.id || activeTechnology === tech.technologyName
+                      return (
+                        <th key={tech.id} className="pb-4 px-3 align-top">
+                          <div className={`rounded-xl p-3 border-2 text-center transition-all ${
+                            isActive ? 'border-orange-400 bg-orange-50' : 'border-gray-100 bg-gray-50'
+                          }`}>
+                            <div className="text-2xl mb-1">{info?.icon ?? '🖨️'}</div>
+                            <div className={`text-sm font-bold ${isActive ? 'text-orange-700' : 'text-gray-800'}`}>
+                              {tech.technologyName}
+                            </div>
+                            {isActive ? (
+                              <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[10px] font-semibold">
+                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                                Currently selected
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => { handleTechnologyChange(tech.id); setShowTechCompare(false); }}
+                                className="mt-1.5 text-[10px] text-orange-500 font-semibold hover:underline"
+                              >
+                                Select →
+                              </button>
+                            )}
+                          </div>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-100">
+                  {/* Feature tags row */}
+                  <tr className="align-top">
+                    <td className="py-4 pr-4">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Features</span>
+                    </td>
+                    {(productData?.printT ?? []).map((tech: any) => {
+                      const info = TECH_INFO[tech.technologyName?.toLowerCase().trim() ?? '']
+                      return (
+                        <td key={tech.id} className="py-4 px-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {(info?.tags ?? []).map(tag => (
+                              <span key={tag} className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+
+                  {/* Best for row */}
+                  <tr className="align-top">
+                    <td className="py-4 pr-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                          <svg className="w-3 h-3" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <span className="text-xs font-bold text-green-700 uppercase tracking-wider">Best for</span>
+                      </div>
+                    </td>
+                    {(productData?.printT ?? []).map((tech: any) => {
+                      const info = TECH_INFO[tech.technologyName?.toLowerCase().trim() ?? '']
+                      return (
+                        <td key={tech.id} className="py-4 px-3">
+                          <p className="text-sm text-green-900 leading-relaxed bg-green-50 rounded-lg p-3">
+                            {info?.best ?? '—'}
+                          </p>
+                        </td>
+                      )
+                    })}
+                  </tr>
+
+                  {/* Not ideal row */}
+                  <tr className="align-top">
+                    <td className="py-4 pr-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                          <svg className="w-3 h-3" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                        <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Not ideal</span>
+                      </div>
+                    </td>
+                    {(productData?.printT ?? []).map((tech: any) => {
+                      const info = TECH_INFO[tech.technologyName?.toLowerCase().trim() ?? '']
+                      return (
+                        <td key={tech.id} className="py-4 px-3">
+                          <p className="text-sm text-red-900 leading-relaxed bg-red-50 rounded-lg p-3">
+                            {info?.notFor ?? '—'}
+                          </p>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+              <p className="text-xs text-gray-400 text-center">
+                Click outside or press × to close · Click "Select →" on any method to switch
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden debug toggle */}
       <button onClick={() => setDebugMode(!debugMode)} className="fixed w-4 h-4 transition-opacity opacity-0 bottom-4 right-4 hover:opacity-100" />

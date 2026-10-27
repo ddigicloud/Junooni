@@ -358,6 +358,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 <FormLabel className="text-sm font-semibold text-gray-700">Password</FormLabel>
                 <FormControl>
                   <PasswordInput placeholder='Create a strong password' {...field}
+                    onFocus={() => onEmailBlur(form.getValues('email'))}
                     className="h-10 px-0 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white" />
                 </FormControl>
                 <FormMessage className="text-sm text-red-500" />
@@ -369,6 +370,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 <FormLabel className="text-sm font-semibold text-gray-700">Confirm Password</FormLabel>
                 <FormControl>
                   <PasswordInput placeholder='Confirm your password' {...field}
+                    onFocus={() => onEmailBlur(form.getValues('email'))}
                     className="h-10 px-0 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-[#e65100]/10 transition-all duration-200 bg-white" />
                 </FormControl>
                 <FormMessage className="text-sm text-red-500" />

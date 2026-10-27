@@ -265,11 +265,11 @@ export default function ProductGrid({
     [products]
   )
   const globalMin = allPrices.length ? Math.floor(Math.min(...allPrices)) : 0
-  const globalMax = allPrices.length ? Math.ceil(Math.max(...allPrices)) : 10000
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
+  const globalMax = allPrices.length ? Math.ceil(Math.max(...allPrices)) : null
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0])
 
   useEffect(() => {
-    setPriceRange([globalMin, globalMax])
+    if (globalMax !== null) setPriceRange([globalMin, globalMax])
   }, [globalMin, globalMax])
 
   const filtered = useMemo(() => {
@@ -319,7 +319,7 @@ export default function ProductGrid({
   const clearAll = useCallback(() => {
     setSelectedCategories([])
     setSelectedCollections([])
-    setPriceRange([globalMin, globalMax])
+    setPriceRange([globalMin, globalMax ?? 10000])
   }, [globalMin, globalMax])
 
   const activeFilters =
@@ -361,7 +361,7 @@ export default function ProductGrid({
           </div>
         )
 
-        if (id === "price" && showPriceFilter && allPrices.length > 0) return (
+        if (id === "price" && showPriceFilter && globalMax !== null) return (
           <div key="price">
             <button onClick={() => setPriceExpanded(v => !v)}
               className={`w-full flex items-center justify-between text-xs uppercase tracking-widest font-semibold mb-3 ${labelColor}`}>
@@ -372,7 +372,7 @@ export default function ProductGrid({
               <PriceRangeSlider
                 priceRange={priceRange}
                 globalMin={globalMin}
-                globalMax={globalMax}
+                globalMax={globalMax ?? 0}
                 brandPrimary={brandPrimary}
                 isDark={isDark}
                 textColor={textColor}
