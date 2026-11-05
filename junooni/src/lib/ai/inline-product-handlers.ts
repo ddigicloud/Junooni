@@ -27,8 +27,9 @@ const designFileStore = new Map<string, {
 // Mockup base64 never goes in POST body — stored here, retrieved via GET by session ID
 const mockupPreviewStore = new Map<string, {
   base64:     string
-  area?:      string   // which print area this mockup was generated for
-  colorName?: string   // which color variant this mockup is for
+  area?:      string
+  colorName?: string
+  colorHex?:  string
   createdAt:  Date
 }>()
 
@@ -67,9 +68,9 @@ export function clearVendorMockupSessions(vendorId: string): void {
   vendorMockupRegistry.delete(vendorId)
 }
 
-export function storeMockupPreview(vendorId: string, base64: string, area?: string, colorName?: string): string {
+export function storeMockupPreview(vendorId: string, base64: string, area?: string, colorName?: string, colorHex?: string): string {
   const sessionId = `mockup_${vendorId}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`
-  mockupPreviewStore.set(sessionId, { base64, area, colorName, createdAt: new Date() })
+  mockupPreviewStore.set(sessionId, { base64, area, colorName, colorHex, createdAt: new Date() })
   // Register in vendor registry so create_product_from_chat can find all color sessions
   // even when it runs in a later POST request than when mockups were generated
   registerMockupSession(vendorId, sessionId)
@@ -100,6 +101,10 @@ export function getMockupArea(sessionId: string): string | null {
 
 export function getMockupColorName(sessionId: string): string | null {
   return mockupPreviewStore.get(sessionId)?.colorName ?? null
+}
+
+export function getMockupColorHex(sessionId: string): string | null {
+  return mockupPreviewStore.get(sessionId)?.colorHex ?? null
 }
 
 export function storeDesignFile(
@@ -239,8 +244,11 @@ function buildPayloadProductTypeUrl(baseUrl: string, collection: string, term: s
 
 function mapDoc(doc: any): any {
   const firstTech   = doc.printT?.[0]
-  const firstMockup = firstTech?.mockupPhotos?.[0]
-  const mockupUrl   = firstMockup?.photo?.url ? `${PAYLOAD_API}${firstMockup.photo.url}` : null
+const firstMockup = firstTech?.mockupPhotos?.[0]
+const firstDisplayImage = doc.displayImages?.[0]?.image
+const mockupUrl = firstDisplayImage?.url
+  ? `${PAYLOAD_API}${firstDisplayImage.sizes?.square?.url || firstDisplayImage.sizes?.small?.url || firstDisplayImage.url}`
+  : (firstMockup?.photo?.url ? `${PAYLOAD_API}${firstMockup.photo.url}` : null)
   return {
     id:               doc.id,
     name:             doc.name,
@@ -255,8 +263,8 @@ function mapDoc(doc: any): any {
   }
 }
 
-export async function handleSearchBlanks(args: { query: string; limit?: number }) {
-  const limit      = Math.min(args.limit ?? 4, 4)
+export async function handleSearchBlanks(args: { query: string; limit?: number; inline_images?: boolean }) {
+  const limit      = Math.min(args.limit ?? 50, 50)
   const COLLECTION = process.env.PAYLOAD_BLANKS_COLLECTION ?? "blank-products"
   const headers    = PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {}
 
@@ -274,16 +282,39 @@ export async function handleSearchBlanks(args: { query: string; limit?: number }
       if (docs.length > 0) break
     }
     if (docs.length === 0) {
-      const allUrl = buildPayloadListUrl(PAYLOAD_API, COLLECTION, 12)
+      const allUrl = buildPayloadListUrl(PAYLOAD_API, COLLECTION, 100)
       const { data: allData } = await axios.get(allUrl, { headers })
       docs = allData?.docs ?? []
     }
+
+    const products = args.inline_images
+      ? await Promise.all(docs.map(async (doc: any) => {
+          const m = mapDoc(doc)
+          // if (m.first_mockup_url) {
+          //   try {
+          //     const resp    = await axios.get(m.first_mockup_url, { responseType: "arraybuffer", timeout: 4000 })
+          //     const resized = await sharp(Buffer.from(resp.data))
+          //       .resize(240, 240, { fit: "inside" })
+          //       .webp({ quality: 70 })
+          //       .toBuffer()
+          //     m.first_mockup_url = `data:image/webp;base64,${resized.toString("base64")}`
+          //   } catch (imgErr: any) {
+          //     console.warn(`[search_blanks] image fetch failed for ${m.name}: ${imgErr.message}`)
+          //     m.first_mockup_url = null
+          //   }
+          // }
+          return m
+        }))
+      : docs.map(mapDoc)
+
     return {
       ok: true,
       data: {
-        count: docs.length, search_query: args.query,
-        products: docs.map(mapDoc), render_type: "PRODUCT_CARD_LIST",
-        note: docs.length > 4 ? "Full catalog shown — pick the most relevant" : undefined,
+        count:  products.length,
+        search_query: args.query,
+        products,
+        render_type: "PRODUCT_CARD_LIST",
+        note: products.length > 4 ? "Full catalog shown — pick the most relevant" : undefined,
       },
     }
   } catch (err: any) {
@@ -300,23 +331,43 @@ export async function handleGetBlankDetails(args: { blank_id: string }) {
     const { data: doc } = await axios.get(url, {
       headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {},
     })
-    const tech = doc.printT?.[0]
+
+    const allTechs: any[] = doc.printT ?? []
+    const primaryTech = allTechs[0]   // used for backward-compat single fields + default print_areas
     const cost = doc.cost ?? 0
+
+    // Build technologies array — one entry per tech with its own print areas
+    const technologies = allTechs.map((t: any) => ({
+      id:          t.id,
+      name:        t.technologyName ?? "DTG",
+      print_areas: (t.custAreas ?? []).map((a: any) => a.areaName).filter(Boolean),
+    }))
+
+    // print_areas from first tech (or union of all if only one tech)
+    const primaryAreas = (primaryTech?.custAreas ?? []).map((a: any) => a.areaName).filter(Boolean)
+
     return {
       ok: true,
       data: {
         id: doc.id, name: doc.name, product_type: doc.productType, base_cost: cost,
         colors: (doc.colorOptions ?? []).map((c: any) => ({ id: c.id, name: c.colorName, hex: c.colorHex, is_primary: c.isPrimary ?? false })),
         sizes:  (doc.sizeOptions ?? []).map((s: any) => ({ id: s.id, name: s.sizeName })),
-        technology_id:   tech?.id ?? null,
-        technology_name: tech?.technologyName ?? "DTG",
-        print_areas:     (tech?.custAreas ?? []).map((a: any) => a.areaName).filter(Boolean),
+
+        // Single-tech backward compat (used by existing generate_mockup calls)
+        technology_id:   primaryTech?.id   ?? null,
+        technology_name: primaryTech?.technologyName ?? "DTG",
+        print_areas:     primaryAreas,
+
+        // NEW — full list so Claude can ask which tech + show per-tech areas
+        technologies,
+        technology_count: technologies.length,
+        print_area_count: primaryAreas.length,
+
         price_guidance: {
           minimum:     Math.ceil(cost * 1.5 / 10) * 10,
           recommended: Math.ceil(cost * 2.2 / 10) * 10,
           premium:     Math.ceil(cost * 2.8 / 10) * 10,
         },
-        // Pass full blank data to frontend for client-side mockup generation via JuniMockupBridge
         render_type: "BLANK_DETAILS",
         blankData:   doc,
       },
@@ -338,7 +389,7 @@ export function handleSuggestPrice(args: { base_cost: number; product_type: stri
     const profit = Math.round(price * (1 - 0.05) * (1 - comm) - cost)
     return { label: ["minimum", "recommended", "premium"][i], price, profit }
   })
-  return { ok: true, data: { base_cost: cost, commission_note: "0% commission", tiers, recommended: tiers[1] } }
+  return { ok: true, data: { base_cost: cost, product_type: args.product_type, commission_note: "0% commission", tiers, recommended: tiers[1] } }
 }
 
 // ─── generate_inline_mockup ───────────────────────────────────────────────────
@@ -659,7 +710,7 @@ export async function handleCreateProductFromChat(
     const vendorResult = await query.graph({ entity: "vendor", fields: ["name"], filters: { id: vendorId } })
     const vendorName   = vendorResult.data?.[0]?.name ?? "store"
 
-    const priceInCents = Math.round(args.selling_price * 100)
+    const priceInCents = Math.round(args.selling_price)
     const fulfillType  = args.fulfillment_type === "junooni" ? "JUNOONI-fulfillment" : "Creator-fulfillment"
 
     // ── Find print technology ─────────────────────────────────────────────────
@@ -1793,5 +1844,986 @@ export async function handleRemoveBackground(args: { design_session_id: string; 
   } catch (err: any) {
     console.error(`[remove_background] Error:`, err.message)
     return { ok: true, data: { design_session_id: args.design_session_id, message: `Background removal skipped: ${err.message}` } }
+  }
+}
+
+
+// ─── create_product  (MCP / Claude tool) ────────────────────────────────────
+//
+// Simpler than create_product_from_chat — no design, no colors, no mockups.
+// Creates a draft scaffold the creator then finishes in Creator Studio.
+// Lives here (not a separate file) to reuse the vendor-linking SQL above.
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REPLACEMENT for handleCreateProduct in src/lib/ai/inline-product-handlers.ts
+//
+//  CHANGES vs old version:
+//    • Accepts color_names (string[]) + backward-compat color_name (single)
+//    • Accepts mockup_session_ids (string[]) + backward-compat mockup_session_id
+//    • Multi-color × multi-size variants (like handleCreateProductFromChat)
+//    • Rich variant metadata: cost_price, manufacturer_sku
+//    • Rich product metadata: payload_integration, color_hex_values,
+//      variant_specific_image_option, product_details, care_instructions
+//    • Per-color garment images: front-design mockup + back/left/right tinted
+//    • Variant image assignment via vendor HTTP route (needs vendorToken arg)
+//    • Inventory levels via createInventoryLevelsWorkflow
+//    • 4th param vendorToken?: string — passed from route via extractBearer
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function handleCreateProduct(
+  args:         Record<string, any>,
+  vendorId:     string,
+  scope:        any,
+  vendorToken?: string,             // NEW — Bearer token for vendor HTTP route calls
+): Promise<{ ok: boolean; data?: Record<string, any>; error?: string }> {
+
+  // ── Parse args ──────────────────────────────────────────────────────────────
+  const title        = String(args.title ?? "").trim()
+  const blankId      = String(args.blank_id ?? "").trim()
+  const sellingPrice = Number(args.selling_price ?? 0)
+  const description  = String(args.description ?? "").trim() || null
+  const salesChannel = (args.sales_channel ?? "marketplace") as "marketplace" | "own_store" | "both"
+  const sizes: string[] = Array.isArray(args.sizes) && args.sizes.length > 0
+    ? args.sizes
+    : ["S", "M", "L", "XL", "XXL"]
+
+  // Multi-color: color_names (array) > color_name (single) > empty
+  const rawColorNames: string[] = Array.isArray(args.color_names) && args.color_names.length > 0
+    ? args.color_names
+    : (args.color_name ? [String(args.color_name).trim()] : [])
+  const colorNames = rawColorNames.filter(Boolean)
+
+  // Multi-mockup: mockup_session_ids (array) > mockup_session_id (single)
+  // Also pull any sessions stored in the vendor's registry (covers every generate_mockup call)
+  const explicitSessionIds: string[] = Array.isArray(args.mockup_session_ids) && args.mockup_session_ids.length > 0
+    ? args.mockup_session_ids.filter(Boolean)
+    : (args.mockup_session_id ? [String(args.mockup_session_id).trim()] : [])
+
+  // Merge vendor registry sessions (dedup)
+  const registryIds = getVendorMockupSessions(vendorId).filter(
+    s => getMockupColorName(s) !== "canvas-layout"   // exclude canvas-layout entries
+  )
+  const allSessionIds = [...new Set([...explicitSessionIds, ...registryIds])]
+
+  // Clean title: strip any " - ColorName" suffix accidentally appended by AI
+  let cleanTitle = title
+  for (const cn of colorNames) {
+    const suffix = `- ${cn.toLowerCase()}`
+    if (cleanTitle.toLowerCase().endsWith(suffix)) {
+      cleanTitle = cleanTitle.slice(0, cleanTitle.length - suffix.length).trimEnd()
+    }
+  }
+
+  if (!title)            return { ok: false, error: "title is required" }
+  if (!blankId)          return { ok: false, error: "blank_id is required" }
+  if (sellingPrice <= 0) return { ok: false, error: "selling_price must be a positive number in INR" }
+
+  const query      = scope.resolve(ContainerRegistrationKeys.QUERY)
+  const remoteLink = scope.resolve(ContainerRegistrationKeys.LINK)
+  const pgClient   = scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+
+  // ── 1. Fetch blank from PayloadCMS ─────────────────────────────────────────
+  let blank: any
+  try {
+    const { data } = await axios.get(
+      `${PAYLOAD_API}/api/${process.env.PAYLOAD_BLANKS_COLLECTION ?? "blank-products"}/${blankId}?depth=2`,
+      { headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {} },
+    )
+    blank = data
+  } catch (err: any) {
+    if (err?.response?.status === 404)
+      return { ok: false, error: `blank_id "${blankId}" not found in catalogue` }
+    return { ok: false, error: `Catalogue lookup failed: ${err.message}` }
+  }
+
+  const tech         = blank?.printT?.[0]
+  const baseCost     = blank?.cost ?? 0
+  const colorOptions = blank.colorOptions ?? []
+  const sizeOptions  = blank.sizeOptions  ?? []
+  const baseSku      = blank["Manufacturer sku"] ?? ""
+
+  // Resolve each color name → { name, hex }
+   const selectedColors: Array<{ name: string; hex: string }> = colorNames.map(cn => {
+    // Use hex from mockup session — this is the exact hex Claude used when
+    // generating the front mockup, so back/left/right tinting matches
+    const session = getVendorMockupSessions(vendorId).find(sid =>
+      getMockupColorName(sid)?.toLowerCase() === cn.toLowerCase()
+    )
+    const sessionHex = session ? getMockupColorHex(session) : null
+
+    // Fall back to colorOptions if no session hex
+    const match = colorOptions.find((c: any) => c.colorName?.toLowerCase() === cn.toLowerCase())
+    const resolvedHex = sessionHex ?? match?.colorHex ?? "#ffffff"
+
+    console.log(`[handleCreateProduct] Color "${cn}": sessionHex=${sessionHex ?? "none"}, colorOptionsHex=${match?.colorHex ?? "none"}, using=${resolvedHex}`)
+    return { name: cn, hex: resolvedHex }
+  })
+
+  // ── 2. Resolve sales channels ──────────────────────────────────────────────
+  const channelIds: string[] = []
+  try {
+    const vendorFull = await query.graph({
+      entity:  "vendor",
+      fields:  ["id", "sell_on_marketplace", "sell_on_own_store", "marketplace_status"],
+      filters: { id: vendorId },
+    })
+    const v = vendorFull.data?.[0] as any
+    const sellMarketplace     = !!(v?.sell_on_marketplace)
+    const sellOwnStore        = !!(v?.sell_on_own_store)
+    const marketplaceApproved = v?.marketplace_status === "approved"
+
+    const wantsMarketplace = salesChannel === "marketplace" || salesChannel === "both"
+    const wantsOwnStore    = salesChannel === "own_store"   || salesChannel === "both"
+
+    if (wantsMarketplace && sellMarketplace && marketplaceApproved && MARKETPLACE_SC)
+      channelIds.push(MARKETPLACE_SC)
+    if (wantsOwnStore && sellOwnStore && OWN_STORE_SC)
+      channelIds.push(OWN_STORE_SC)
+    if (channelIds.length === 0 && MARKETPLACE_SC)
+      channelIds.push(MARKETPLACE_SC)
+  } catch {
+    if (MARKETPLACE_SC) channelIds.push(MARKETPLACE_SC)
+  }
+
+  // ── 3. Build variants ─────────────────────────────────────────────────────
+  const handle = cleanTitle.toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+    + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8)
+
+  const priceInCents = Math.round(sellingPrice)
+
+  // Color option comes first so "Lavender / S" reads naturally in storefront
+  const productOptions = selectedColors.length > 0
+    ? [
+        { title: "Color", values: colorNames },
+        { title: "Size",  values: sizes },
+      ]
+    : [{ title: "Size", values: sizes }]
+
+  // colorsToProcess: at least one entry so we always get size variants
+  const colorsToProcess = selectedColors.length > 0 ? selectedColors : [{ name: "", hex: "#ffffff" }]
+
+  const variants: any[] = []
+  for (const color of colorsToProcess) {
+    for (const size of sizes) {
+      const dateStr = new Date()
+        .toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })
+        .replace(/\//g, "")
+      const sku = color.name
+        ? [
+            "JUNI",
+            blankId,
+            color.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+            size.toLowerCase(),
+            dateStr,
+            Math.random().toString(36).slice(2, 8).toUpperCase(),
+          ].join("-")
+        : `JUNI-${blankId}-${size}-${Date.now().toString(36).toUpperCase()}`
+
+      // cost_price: full real cost (printing + GST + blank + shipping)
+      // Same calculation as Canvas.tsx pricing panel
+      const matchingSize = sizeOptions.find(
+        (s: any) => s.sizeName?.toLowerCase() === size.toLowerCase()
+      )
+      let sizeExtraCost = 0
+      if (matchingSize?.ExtraCost) {
+        const extra = parseFloat(matchingSize.ExtraCost)
+        if (!isNaN(extra) && extra > 0) sizeExtraCost = extra
+      }
+      let costPrice = baseCost + sizeExtraCost
+      try {
+        const realPrice = await calculateRealCostPrice(blankId, tech?.id ?? "", ["front"])
+        costPrice = Number((realPrice.total_cost_price + sizeExtraCost).toFixed(2))
+      } catch (priceErr: any) {
+        console.warn(`[handleCreateProduct] Real price calc failed, using baseCost fallback: ${priceErr.message}`)
+      }
+
+      // manufacturer_sku: baseSku + colorSku + sizeSku
+      const matchingColor = color.name
+        ? colorOptions.find((c: any) => c.colorName?.toLowerCase() === color.name.toLowerCase())
+        : null
+      const manufacturerSku =
+        baseSku + (matchingColor?.colorSku ?? "") + (matchingSize?.sizeSku ?? "")
+
+      const variantMetadata: Record<string, any> = {}
+      if (costPrice > 0)       variantMetadata.cost_price        = costPrice
+      if (manufacturerSku)     variantMetadata.manufacturer_sku  = manufacturerSku
+
+      variants.push({
+        title:            color.name ? `${color.name} / ${size}` : size,
+        sku,
+        manage_inventory: true,
+        allow_backorder:  false,
+        origin_country:   "IN",
+        ...(blank?.HSNCode             ? { hs_code: blank.HSNCode }              : {}),
+        ...(blank?.materials?.material ? { material: blank.materials.material }  : {}),
+        prices:   [{ amount: priceInCents, currency_code: "inr" }],
+        options:  color.name ? { Color: color.name, Size: size } : { Size: size },
+        metadata: variantMetadata,
+      })
+    }
+  }
+
+  // ── 4. Build rich product metadata ────────────────────────────────────────
+  const productMetadata: Record<string, any> = {
+    payload_product_name:  blank.name ?? blankId,
+    print_technology_id:   tech?.id ?? "",
+    print_technology_name: (tech?.technologyName ?? "dtg").toLowerCase(),
+    created_via:           "mcp_claude",
+    vendor_id:             vendorId,
+
+    fulfillment_type: JSON.stringify({
+      type:          "JUNOONI-fulfillment",
+      shipping_time: blank?.shippingInfo?.shippingTime  ?? "2-3 business days",
+      handling_time: blank?.shippingInfo?.handlingTime  ?? "3-4 business days",
+    }),
+
+    payload_integration: JSON.stringify({
+      source_product_id: blank.id,
+      base_cost:         baseCost,
+      image_settings:    {
+        color_Images:    true,
+        size_Images:     false,
+        material_Images: false,
+        style_Images:    false,
+      },
+      imported_at: new Date().toISOString(),
+    }),
+  }
+
+  if (selectedColors.length > 0) {
+    productMetadata.color_hex_values = JSON.stringify(
+      selectedColors.map(c => ({ name: c.name, hex: c.hex }))
+    )
+    productMetadata.variant_specific_image_option = JSON.stringify([
+      { option_name: "Color", enabled: true  },
+      { option_name: "Size",  enabled: false },
+    ])
+  }
+
+  // product_details from materials
+  const productDetails: string[] = []
+  if (blank?.materials?.material) productDetails.push(blank.materials.material)
+  if (blank?.materials?.gsm)      productDetails.push(`${blank.materials.gsm} GSM`)
+  if (blank?.materials?.quality)  productDetails.push(blank.materials.quality)
+  if (blank?.materials?.type)     productDetails.push(blank.materials.type)
+  if (productDetails.length > 0) {
+    productMetadata.product_details = JSON.stringify(productDetails)
+  }
+
+  // care_instructions
+  if (Array.isArray(blank.careInstructions) && blank.careInstructions.length > 0) {
+    productMetadata.care_instructions = JSON.stringify(
+      blank.careInstructions.map((c: any) => ({
+        id:          c.id,
+        instruction: c.instruction,
+        icon:        c.icon ?? null,
+      }))
+    )
+  }
+
+  // ── 5. Create product ──────────────────────────────────────────────────────
+  let product: any
+  try {
+    const { result } = await createProductsWorkflow(scope).run({
+      input: {
+        products: [{
+          title:          cleanTitle,
+          handle,
+          description:    description ?? undefined,
+          status:         "draft",
+          discountable:   true,
+          origin_country: "IN",
+          ...(blank?.productData?.weight ? { weight: parseInt(blank.productData.weight) } : {}),
+          ...(blank?.productData?.length ? { length: parseInt(blank.productData.length) } : {}),
+          ...(blank?.productData?.width  ? { width:  parseInt(blank.productData.width)  } : {}),
+          ...(blank?.productData?.height ? { height: parseInt(blank.productData.height) } : {}),
+          ...(blank?.HSNCode             ? { hs_code:  blank.HSNCode }                    : {}),
+          ...(blank?.materials?.material ? { material: blank.materials.material }         : {}),
+          ...(blank?.shippingInfo?.shippingProfileID
+            ? { shipping_profile_id: blank.shippingInfo.shippingProfileID } : {}),
+          options:        productOptions,
+          variants,
+          sales_channels: channelIds.map(id => ({ id })),
+          metadata:       productMetadata,
+        }],
+      },
+    })
+    product = result?.[0]
+    if (!product?.id) return { ok: false, error: "Product workflow returned no product" }
+  } catch (err: any) {
+    return { ok: false, error: `Product creation failed: ${err.message}` }
+  }
+
+  // ── 6. Generate & upload images per color ─────────────────────────────────
+  // Helper: find the right mockup photo for a given area + hex color
+  const allMockupPhotos: any[] = tech?.mockupPhotos ?? []
+
+  function findPhoto(photos: any[], areaTarget: string, hexColor: string): any {
+    const colorLower = hexColor.toLowerCase()
+    const areaNorm   = areaTarget.toLowerCase().replace(/[_-]/g, "")
+    const bounded    = (a: string, b: string) =>
+      a === b ||
+      (a.startsWith(b) && (a.length === b.length || !/[a-z]/.test(a[b.length] ?? ""))) ||
+      (b.startsWith(a) && (b.length === a.length || !/[a-z]/.test(b[a.length] ?? "")))
+
+    const pool = photos.filter(p => {
+      const va = (p.viewAngle ?? "").toLowerCase().replace(/[_-]/g, "")
+      const an = (p.area?.[0]?.areaName ?? "").toLowerCase().replace(/[_-]/g, "")
+      return bounded(va, areaNorm) || bounded(an, areaNorm)
+    })
+    const src = pool.length > 0 ? pool : photos
+    return (
+      src.find((p: any) => p.photoColor?.toLowerCase() === colorLower) ??
+      src.find((p: any) => p.photoColor === "#00000000" || !p.photoColor) ??
+      src[0] ?? null
+    )
+  }
+
+  // Build ordered image list across all colors
+  // Per color: front-design-mockup (from session) + back + left + right (tinted garment)
+  const imagesToUpload: Array<{
+    filename: string; mimeType: string; content: string; access: "public"
+  }> = []
+
+  for (let ci = 0; ci < colorsToProcess.length; ci++) {
+    const color      = colorsToProcess[ci]
+    const colorNorm  = (color.name || "default").toLowerCase()
+      .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+    const { r, g, b } = hexToRgb(color.hex)
+
+    // (i) Front design mockup — find session matching this color
+    const sessionForColor =
+      // By color name stored in session
+      allSessionIds.find(sid => {
+        const cn = getMockupColorName(sid)
+        return cn && cn.toLowerCase() === color.name.toLowerCase()
+      }) ??
+      // Fallback: by index order (first session → first color)
+      (ci < explicitSessionIds.length ? explicitSessionIds[ci] : undefined) ??
+      // Last fallback: use the first session for the first color only
+      (ci === 0 ? allSessionIds[0] : undefined)
+
+    if (sessionForColor) {
+      try {
+        const b64url = getMockupPreview(sessionForColor)
+        if (b64url && b64url.length > 100) {
+          const [header, b64] = b64url.split(",")
+          const mimeType      = header.replace("data:", "").replace(";base64", "")
+          const ext           = mimeType.split("/")[1]?.split("+")[0] ?? "webp"
+          imagesToUpload.push({
+            filename: `mockup-${colorNorm}-front-design-${ci}.${ext}`,
+            mimeType,
+            content:  b64,
+            access:   "public",
+          })
+          console.log(`[handleCreateProduct] ${color.name}: front-design from session ${sessionForColor}`)
+        }
+      } catch (e: any) {
+        console.warn(`[handleCreateProduct] ${color.name} front mockup read failed (non-fatal):`, e.message)
+      }
+    }
+
+    // (ii) Back, left, right — download plain garment photo + tint if transparent
+    for (const area of ["back", "left", "right"] as const) {
+      const photo = findPhoto(allMockupPhotos, area, color.hex)
+      if (!photo?.photo?.url) continue
+
+      try {
+        const resp = await axios.get(
+          `${PAYLOAD_API}${photo.photo.url}`,
+          {
+            responseType: "arraybuffer",
+            headers:      PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {},
+            timeout:      15000,
+          }
+        )
+        const buf = Buffer.from(resp.data)
+        if (buf.length < 1000) {
+          console.warn(`[handleCreateProduct] ${color.name} ${area}: garment photo too small, skipping`)
+          continue
+        }
+
+        let finalBuf: Buffer
+        const needsTinting = photo.requiresColorMasking ||
+          photo.photoColor === "#00000000" || !photo.photoColor
+
+        if (needsTinting) {
+          // Multiply + screen blend for realistic garment tinting
+          const resized  = await sharp(buf, { failOn: "none" })
+            .resize(OUTPUT_SIZE, OUTPUT_SIZE, { fit: "cover" })
+            .ensureAlpha().png().toBuffer()
+          const colored  = await sharp({
+            create: { width: OUTPUT_SIZE, height: OUTPUT_SIZE, channels: 4,
+                      background: { r, g, b, alpha: 1 } }
+          }).png().toBuffer()
+          const textured = await sharp(colored)
+            .composite([{ input: resized, blend: "multiply" }]).png().toBuffer()
+          finalBuf       = await sharp(textured)
+            .composite([{ input: resized, blend: "screen" }])
+            .webp({ quality: 85 }).toBuffer()
+        } else {
+          finalBuf = await sharp(buf, { failOn: "none" })
+            .resize(OUTPUT_SIZE, OUTPUT_SIZE, { fit: "cover" })
+            .webp({ quality: 85 }).toBuffer()
+        }
+
+        imagesToUpload.push({
+          filename: `mockup-${colorNorm}-${area}-${ci}.webp`,
+          mimeType: "image/webp",
+          content:  finalBuf.toString("base64"),
+          access:   "public",
+        })
+        console.log(`[handleCreateProduct] ${color.name} ${area}: garment photo ✓`)
+      } catch (e: any) {
+        console.warn(`[handleCreateProduct] ${color.name} ${area}: garment photo failed (non-fatal):`, e.message)
+      }
+    }
+  }
+
+  // Upload all images
+  let uploadedFileMeta: Array<{ id: string; url: string; filename: string }> = []
+  let uploadedImageUrls: string[] = []
+
+  if (imagesToUpload.length > 0) {
+    try {
+      const { result: uploaded } = await uploadFilesWorkflow(scope).run({
+        input: { files: imagesToUpload },
+      })
+      uploadedFileMeta = (uploaded as any[])
+        .map((f: any, idx: number) => ({
+          id:       f?.id   ?? "",
+          url:      f?.url  ?? "",
+          filename: imagesToUpload[idx]?.filename ?? "",
+        }))
+        .filter(f => f.id && f.url)
+      uploadedImageUrls = uploadedFileMeta.map(f => f.url)
+      console.log(`[handleCreateProduct] ✅ Uploaded ${uploadedImageUrls.length} images`)
+    } catch (e: any) {
+      console.warn("[handleCreateProduct] Image upload failed (non-fatal):", e.message)
+    }
+  }
+
+  // Attach all images to product + set thumbnail from first color's first image
+  if (uploadedImageUrls.length > 0) {
+    try {
+      const firstColorNorm = (colorsToProcess[0]?.name || "default")
+        .toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+      const thumbnailMeta =
+        uploadedFileMeta.find(f => f.filename.startsWith(`mockup-${firstColorNorm}-front`)) ??
+        uploadedFileMeta[0]
+
+      await updateProductsWorkflow(scope).run({
+        input: {
+          products: [{
+            id:        product.id,
+            images:    uploadedImageUrls.map(url => ({ url })),
+            thumbnail: thumbnailMeta.url,
+          }],
+        },
+      })
+      console.log(`[handleCreateProduct] ✅ ${uploadedImageUrls.length} images attached to product`)
+    } catch (e: any) {
+      console.warn("[handleCreateProduct] Product image update failed (non-fatal):", e.message)
+    }
+  }
+
+  // ── 7. Assign variant images (per color) ──────────────────────────────────
+  if (uploadedFileMeta.length > 0) {
+    try {
+      // Wait briefly for DB to commit images before querying them back
+      await new Promise(resolve => setTimeout(resolve, 600))
+
+      const [imgResult, varResult] = await Promise.all([
+        query.graph({
+          entity:  "product",
+          fields:  ["images.id", "images.url"],
+          filters: { id: product.id },
+        }),
+        query.graph({
+          entity:  "product_variant",
+          fields:  ["id", "title", "options.value", "options.option.title"],
+          filters: { product_id: product.id },
+        }),
+      ])
+
+      const productImgs: Array<{ id: string; url: string }> =
+        (imgResult.data?.[0] as any)?.images ?? []
+      const dbVariants: any[] = varResult.data ?? []
+
+      const normalizeStr = (s: string) =>
+        s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+
+      const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL ?? "http://localhost:9000"
+
+      for (const variant of dbVariants) {
+        const opts      = (variant.options ?? []) as any[]
+        const colorOpt  = opts.find((o: any) =>
+          o.option?.title?.toLowerCase() === "color" ||
+          o.option?.title?.toLowerCase() === "colour"
+        )
+        if (!colorOpt?.value) continue
+        const variantColorNorm = normalizeStr(colorOpt.value)
+
+        const matchingImgs = productImgs.filter((img: any) => {
+          const fn = (img.url ?? "").toLowerCase().split("/").pop() ?? ""
+          return (
+            fn.includes(`-${variantColorNorm}-`) ||
+            fn.includes(`-${variantColorNorm}.`) ||
+            fn.startsWith(`mockup-${variantColorNorm}-`)
+          )
+        })
+        if (matchingImgs.length === 0) continue
+
+        // Use the front-design image as thumbnail if available
+        const frontImg =
+          matchingImgs.find((img: any) =>
+            (img.url ?? "").toLowerCase().split("/").pop()?.includes("front")
+          ) ?? matchingImgs[0]
+        const thumbnailUrl = frontImg.url
+
+        console.log(
+          `[handleCreateProduct] Assigning ${matchingImgs.length} images` +
+          ` to variant "${variant.title}" (${colorOpt.value})`
+        )
+
+        // Try vendor HTTP route first (needs vendorToken)
+        let assigned = false
+        try {
+          for (const img of matchingImgs) {
+            const chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+            let t = Date.now(), timeStr = ""
+            for (let i = 9; i >= 0; i--) { timeStr = chars[t % 32] + timeStr; t = Math.floor(t / 32) }
+            let rand = ""
+            for (let i = 0; i < 16; i++) rand += chars[Math.floor(Math.random() * 32)]
+            const newId = "pvpi_" + (timeStr + rand).slice(0, 26)
+
+            await pgClient.raw(
+              `INSERT INTO "product_variant_product_image" (id, variant_id, image_id)
+               VALUES (?, ?, ?)
+               ON CONFLICT DO NOTHING`,
+              [newId, variant.id, img.id]
+            )
+          }
+          assigned = true
+          console.log(`[handleCreateProduct] ✅ Variant "${variant.title}": ${matchingImgs.length} images via product_variant_product_image`)
+
+          // Set thumbnail on the variant
+          await pgClient.raw(
+            `UPDATE product_variant SET thumbnail = ? WHERE id = ?`,
+            [thumbnailUrl, variant.id]
+          )
+          console.log(`[handleCreateProduct] ✅ Variant "${variant.title}" thumbnail set: ${thumbnailUrl.split("/").pop()}`)
+        } catch (e: any) {
+          console.warn(`[handleCreateProduct] product_variant_product_image insert failed: ${e.message}`)
+        }
+
+        if (!assigned) {
+          try {
+            await pgClient.raw(
+              `UPDATE product_variant
+               SET metadata = COALESCE(metadata, '{}'::jsonb) || ?::jsonb
+               WHERE id = ?`,
+              [
+                JSON.stringify({
+                  images:        matchingImgs.map((img: any) => ({ id: img.id, url: img.url })),
+                  thumbnail_url: thumbnailUrl,
+                }),
+                variant.id,
+              ]
+            )
+            console.log(`[handleCreateProduct] ✅ Variant "${variant.title}" images via metadata fallback`)
+          } catch (e2: any) {
+            console.warn(`[handleCreateProduct] Metadata fallback failed:`, e2.message)
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn("[handleCreateProduct] Variant image assignment failed (non-fatal):", e.message)
+    }
+  }
+
+  // ── 8. Inventory levels ────────────────────────────────────────────────────
+  const locationId: string =
+    blank?.shippingInfo?.shippingLocationID || DEFAULT_LOCATION_ID
+  if (locationId) {
+    try {
+      const invRows = await pgClient.raw(
+        `SELECT pv.id as variant_id, ii.id as inventory_item_id
+         FROM product_variant pv
+         JOIN product_variant_inventory_item pvii ON pvii.variant_id = pv.id
+         JOIN inventory_item ii ON ii.id = pvii.inventory_item_id
+         WHERE pv.product_id = ? AND pv.deleted_at IS NULL AND ii.deleted_at IS NULL`,
+        [product.id]
+      )
+      const rows: any[] = invRows.rows ?? invRows[0] ?? []
+      const inventoryLevels = rows.map(row => ({
+        inventory_item_id: row.inventory_item_id,
+        location_id:       locationId,
+        stocked_quantity:  10,
+      }))
+      if (inventoryLevels.length > 0) {
+        await createInventoryLevelsWorkflow(scope).run({
+          input: { inventory_levels: inventoryLevels },
+        })
+        console.log(`[handleCreateProduct] ✅ Inventory: ${inventoryLevels.length} levels created`)
+      }
+    } catch (e: any) {
+      console.warn("[handleCreateProduct] Inventory levels failed (non-fatal):", e.message)
+    }
+  }
+
+  // Clear vendor mockup registry now that we've consumed the sessions
+  clearVendorMockupSessions(vendorId)
+
+  // ── 8b. Create artwork record ──────────────────────────────────────────────
+  // Upload design file + approved mockup, create vendor_artwork, link to product
+    try {
+    const artworkFiles: Array<{ filename: string; mimeType: string; content: string; access: "private" | "public" }> = []
+    // Tracks what each file is, so descriptions/categories don't depend on array position
+    const artworkFileKinds: Array<"design" | "mockup"> = []
+
+    // Declared up front so the description can be used later without `var`
+    let mockupDescription: string | undefined
+
+    // Design pixel sizes (original upload vs. trimmed ink), used for consumed-area math
+    let designOrigW = 0, designOrigH = 0
+    let designTrimW = 0, designTrimH = 0
+
+    // File 1: Original design file from session
+    const designFile = getDesignFile(args.design_session_id ?? "")
+    if (designFile && designFile.base64.length > 100) {
+      let artworkContent = designFile.base64.replace(/^data:[^;]+;base64,/, "")
+      const originalBuffer = Buffer.from(artworkContent, "base64")
+
+      try {
+        const origMeta = await sharp(originalBuffer).metadata()
+        designOrigW = origMeta.width  ?? 0
+        designOrigH = origMeta.height ?? 0
+      } catch { /* handled by fallback below */ }
+
+      try {
+        const { data: trimmed, info } = await sharp(originalBuffer)
+          .trim()
+          .png()
+          .toBuffer({ resolveWithObject: true })
+        artworkContent = trimmed.toString("base64")
+        designTrimW = info.width
+        designTrimH = info.height
+        console.log(`[handleCreateProduct] ✅ Artwork trimmed: ${designOrigW}x${designOrigH} → ${designTrimW}x${designTrimH}`)
+      } catch (trimErr: any) {
+        console.warn(`[handleCreateProduct] Trim failed (using original): ${trimErr.message}`)
+        designTrimW = designOrigW
+        designTrimH = designOrigH
+      }
+
+      artworkFiles.push({
+        filename: designFile.filename ?? "design.png",
+        mimeType: "image/png",
+        content:  artworkContent,
+        access:   "private",
+      })
+      artworkFileKinds.push("design")
+    }
+
+        // File 2: Approved front mockup (first session for first color)
+    const firstSession = allSessionIds[0]
+    const mockupBase64 = firstSession ? getMockupPreview(firstSession) : null
+    if (mockupBase64 && mockupBase64.length > 100) {
+      const custArea   = tech?.custAreas?.[0]
+      const canvasPixW = custArea?.canvasDim?.canvasPixWid    ?? 800
+      const canvasPixH = custArea?.canvasDim?.canvasPixHeight ?? 800
+      const realWorldW = custArea?.canvasDim?.widthInch       ?? 14
+      const realWorldH = custArea?.canvasDim?.heightInch      ?? 16
+
+      // ── 1. PRINTABLE AREA (real-world inches) ─────────────────────────────
+      // widthInch/heightInch already describe the printable rectangle itself
+      const printAreaW = realWorldW
+      const printAreaH = realWorldH
+
+      const rawCoord = custArea?.designCanvasPhotos?.[0]?.printAreaCoord ?? { x: 0, y: 0, width: 1, height: 1 }
+      const isNorm   = rawCoord.x <= 1 && rawCoord.y <= 1 && rawCoord.width <= 1 && rawCoord.height <= 1
+
+      // Print rectangle as a fraction of the canvas photo (used only for the fit math)
+      const printFracW = isNorm ? rawCoord.width  : rawCoord.width  / canvasPixW
+      const printFracH = isNorm ? rawCoord.height : rawCoord.height / canvasPixH
+
+      // ── 2. CONSUMED DESIGN AREA (real-world inches) ───────────────────────
+      let designFracW = 1
+      let designFracH = 1
+
+      if (designOrigW > 0 && designOrigH > 0) {
+        const printPxW = printFracW * OUTPUT_SIZE
+        const printPxH = printFracH * OUTPUT_SIZE
+
+        const fitScale = Math.min(
+          (printPxW * 0.85) / designOrigW,
+          (printPxH * 0.85) / designOrigH,
+        )
+
+        let placedPxW = designOrigW * fitScale
+        let placedPxH = designOrigH * fitScale
+
+        if (designTrimW > 0 && designTrimH > 0) {
+          placedPxW *= designTrimW / designOrigW
+          placedPxH *= designTrimH / designOrigH
+        }
+
+        designFracW = Math.min(1, placedPxW / printPxW)
+        designFracH = Math.min(1, placedPxH / printPxH)
+      }
+
+      const designW = Number((designFracW * printAreaW).toFixed(2))
+      const designH = Number((designFracH * printAreaH).toFixed(2))
+
+      // Effective resolution of the trimmed artwork at that physical size
+      const effectiveDpi = designW > 0 && designTrimW > 0
+        ? Math.round(designTrimW / designW)
+        : null
+
+      const mockupMeta = mockupPreviewStore.get(firstSession)
+      const colorName  = mockupMeta?.colorName ?? colorNames[0] ?? "default"
+
+      artworkFiles.push({
+        filename: `mockup-${colorName.toLowerCase().replace(/\s+/g, "-")}-front.webp`,
+        mimeType: "image/webp",
+        content:  mockupBase64.replace(/^data:[^;]+;base64,/, ""),
+        access:   "public",
+      })
+      artworkFileKinds.push("mockup")
+
+      mockupDescription = [
+        `DESIGNED MOCKUP - FRONT AREA`,
+        ``,
+        `Color: ${colorName}`,
+        ``,
+        `CANVAS SPECIFICATIONS:`,
+        `- Canvas Image:     ${canvasPixW} × ${canvasPixH} pixels`,
+        `- Max Print Area:   ${realWorldW}" × ${realWorldH}"`,
+        ``,
+        `PRINT AREA DIMENSIONS (real world):`,
+        `- Printable Width:  ${printAreaW}"`,
+        `- Printable Height: ${printAreaH}"`,
+        ``,
+        `CONSUMED DESIGN AREA (real world):`,
+        `- Design Width:     ${designW}"`,
+        `- Design Height:    ${designH}"`,
+        `- Design Size:      ${designW}" × ${designH}"`,
+        ...(effectiveDpi
+          ? [`- Artwork File:     ${designTrimW} × ${designTrimH} px (~${effectiveDpi} DPI at this size)`]
+          : []),
+        ``,
+        `Generated via JUNOONI MCP — ${new Date().toISOString()}`,
+      ].join("\n")
+    }
+
+    if (artworkFiles.length > 0) {
+      const { result: artworkUploads } = await uploadFilesWorkflow(scope).run({
+        input: { files: artworkFiles },
+      })
+
+      const artworkMedias = artworkUploads.map((uploaded: any, idx: number) => {
+        const isDesign = artworkFileKinds[idx] === "design"
+        return {
+          image_url:        uploaded.url,
+          filename:         artworkFiles[idx]?.filename ?? `file-${idx}`,
+          mime_type:        artworkFiles[idx]?.mimeType ?? "image/png",
+          file_id:          uploaded.id,
+          file_type:        "image",
+          file_description: isDesign
+            ? `Design artwork file — ${artworkFiles[idx]?.filename}`
+            : (mockupDescription ?? "Designed mockup front view"),
+          design_area:      "front",
+          file_category:    isDesign ? "design_element" : "mockup_preview",
+          fileId:           uploaded.id,
+          mimeType:         artworkFiles[idx]?.mimeType ?? "image/png",
+        }
+      })
+
+      let artworkId: string | null = null
+      try {
+        const { result: artworkResult } = await CreateArtworkWorkflow(scope).run({
+          input: {
+            vendor_artwork: {
+              name:        `${cleanTitle} - Design & Mockup`,
+              description: `Design artwork and approved mockup for ${cleanTitle}`,
+              medias:      artworkMedias,
+            },
+          },
+        })
+        artworkId = artworkResult?.vendor_artwork?.id ?? null
+        console.log(`[handleCreateProduct] ✅ Artwork created: id=${artworkId}`)
+      } catch (artworkErr: any) {
+        console.warn(`[handleCreateProduct] Artwork workflow failed (non-fatal): ${artworkErr.message}`)
+      }
+
+      // Add design_artwork to product metadata (same key as canvas products)
+      if (artworkId) {
+        const designArtworkPayload = [{
+          artwork_data:            { vendor_artwork: { id: artworkId, name: `${cleanTitle} - Design & Mockup` } },
+          design_areas:            ["front"],
+          image_count:             artworkFiles.length,
+          design_elements_count:   1,
+          canvas_images_count:     1,
+          is_combined_artwork:     true,
+          artwork_id:              artworkId,
+          contains_canvas_layouts: true,
+        }]
+
+        try {
+          await updateProductsWorkflow(scope).run({
+            input: {
+              products: [{
+                id:       product.id,
+                metadata: {
+                  ...productMetadata,
+                  design_artwork: JSON.stringify(designArtworkPayload),
+                },
+              }],
+            },
+          })
+          console.log(`[handleCreateProduct] ✅ design_artwork added to product metadata`)
+        } catch (metaErr: any) {
+          console.warn(`[handleCreateProduct] metadata update failed (non-fatal): ${metaErr.message}`)
+        }
+      }
+
+      // Link artwork to product
+      if (artworkId && product.id) {
+        try {
+          await remoteLink.create([{
+            product:             { product_id:        product.id },
+            vendorArtworkModule: { vendor_artwork_id: artworkId  },
+          }])
+          console.log(`[handleCreateProduct] ✅ Artwork linked via remoteLink`)
+        } catch {
+          try {
+            const linkId = "link_" + Array.from({ length: 26 }, () =>
+              "0123456789ABCDEFGHJKMNPQRSTVWXYZ"[Math.floor(Math.random() * 32)]
+            ).join("")
+            await pgClient.raw(
+              `INSERT INTO product_product_vendorartworkmodule_vendor_artwork
+               (id, product_id, vendor_artwork_id, created_at, deleted_at)
+               VALUES (?, ?, ?, NOW(), NULL) ON CONFLICT DO NOTHING`,
+              [linkId, product.id, artworkId]
+            )
+            console.log(`[handleCreateProduct] ✅ Artwork linked via direct DB`)
+          } catch (dbErr: any) {
+            console.warn(`[handleCreateProduct] Artwork link failed (non-fatal): ${dbErr.message}`)
+          }
+        }
+      }
+    }
+  } catch (artworkErr: any) {
+    console.warn(`[handleCreateProduct] Artwork creation failed (non-fatal): ${artworkErr.message}`)
+  }
+
+
+  // ── 9. Link vendor ─────────────────────────────────────────────────────────
+  try {
+    await remoteLink.create([{
+      vendor:  { vendor_id: vendorId },
+      product: { product_id: product.id },
+    }])
+  } catch {
+    // remoteLink failed — fall back to direct multi-table insert
+    try {
+      const chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+      let t = Date.now(), timeStr = ""
+      for (let i = 9; i >= 0; i--) { timeStr = chars[t % 32] + timeStr; t = Math.floor(t / 32) }
+      let rand = ""
+      for (let i = 0; i < 16; i++) rand += chars[Math.floor(Math.random() * 32)]
+      const linkId   = "link_" + (timeStr + rand).slice(0, 26)
+      const linkData = JSON.stringify({ id: linkId, vendor_id: vendorId, product_id: product.id })
+      const tsv = `'${vendorId.toLowerCase()}':3 '${product.id.toLowerCase().replace("prod_", "")}':5 '${linkId.toLowerCase().replace("link_", "")}':2 'link':1 'prod':4`
+
+      await pgClient.raw(
+        `INSERT INTO "marketplacemodule_vendor_product_product"
+           (id, vendor_id, product_id, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, NOW(), NOW(), NULL) ON CONFLICT DO NOTHING`,
+        [linkId, vendorId, product.id],
+      )
+      await pgClient.raw(
+        `INSERT INTO "cat_linkmarketplacemodulevendorproductproduct"
+           (id, name, data, created_at, updated_at, deleted_at, staled_at, document_tsv)
+         VALUES (?, ?, ?::jsonb, NOW(), NOW(), NULL, NULL, ?::tsvector) ON CONFLICT DO NOTHING`,
+        [linkId, "LinkMarketplaceModuleVendorProductProduct", linkData, tsv],
+      )
+      await pgClient.raw(
+        `INSERT INTO "cat_pivot_vendorlinkmarketplacemodulevendorproductproduct"
+           (pivot, parent_id, parent_name, child_id, child_name, created_at, updated_at, deleted_at, staled_at)
+         VALUES (?, ?, ?, ?, ?, NOW(), NOW(), NULL, NULL) ON CONFLICT DO NOTHING`,
+        ["Vendor-LinkMarketplaceModuleVendorProductProduct", vendorId, "Vendor", linkId, "LinkMarketplaceModuleVendorProductProduct"],
+      )
+      await pgClient.raw(
+        `INSERT INTO "cat_pivot_linkmarketplacemodulevendorproductproductproduct"
+           (pivot, parent_id, parent_name, child_id, child_name, created_at, updated_at, deleted_at, staled_at)
+         VALUES (?, ?, ?, ?, ?, NOW(), NOW(), NULL, NULL) ON CONFLICT DO NOTHING`,
+        ["LinkMarketplaceModuleVendorProductProduct-Product", linkId, "LinkMarketplaceModuleVendorProductProduct", product.id, "Product"],
+      )
+    } catch (dbErr: any) {
+      console.warn("[handleCreateProduct] vendor link failed (non-fatal):", dbErr.message)
+    }
+  }
+
+  // ── 10. Return result ──────────────────────────────────────────────────────
+  return {
+    ok: true,
+    data: {
+      id:                product.id,
+      title:             cleanTitle,
+      handle:            product.handle,
+      status:            "draft",
+      blank_id:          blankId,
+      blank_name:        blank.name ?? blankId,
+      colors:            colorNames,
+      color_count:       colorNames.length,
+      sizes,
+      variant_count:     variants.length,
+      image_count:       uploadedImageUrls.length,
+      selling_price_inr: `₹${sellingPrice.toFixed(0)}`,
+      on_marketplace:    channelIds.includes(MARKETPLACE_SC),
+      on_own_store:      OWN_STORE_SC ? channelIds.includes(OWN_STORE_SC) : false,
+      studio_url:        `https://studio.junooni.com/products/${product.id}`,
+      next_step:         colorNames.length > 1
+        ? `Product created as Draft with ${colorNames.length} color variants. Review and publish from your JUNOONI dashboard.`
+        : "Product created as Draft. Review and publish from your JUNOONI dashboard.",
+    },
+  }
+}
+
+
+// ─── upload_artwork (MCP) ─────────────────────────────────────────────────────
+
+export async function handleUploadArtworkFromUrl(
+  args: { artwork_url: string; filename?: string },
+  vendorId: string
+): Promise<{ ok: boolean; data?: any; error?: string }> {
+  try {
+    const response = await axios.get(args.artwork_url, {
+      responseType: "arraybuffer",
+      timeout: 15000,
+    })
+    const buffer      = Buffer.from(response.data)
+    const contentType = (response.headers["content-type"] ?? "image/png").split(";")[0].trim()
+    const ext         = contentType.split("/")[1] ?? "png"
+    const filename    = args.filename ?? `artwork-${Date.now()}.${ext}`
+    const base64      = `data:${contentType};base64,${buffer.toString("base64")}`
+    const meta        = await sharp(buffer).metadata()
+    const sessionId   = storeDesignFile(vendorId, base64, filename, contentType)
+
+    return {
+      ok: true,
+      data: {
+        design_session_id: sessionId,
+        filename,
+        width:      meta.width  ?? 0,
+        height:     meta.height ?? 0,
+        size_bytes: buffer.length,
+        message:    "Artwork stored. Use design_session_id in generate_mockup then create_product.",
+      },
+    }
+  } catch (err: any) {
+    return { ok: false, error: `Failed to download artwork: ${err.message}` }
   }
 }

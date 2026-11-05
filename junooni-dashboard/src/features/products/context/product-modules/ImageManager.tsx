@@ -100,18 +100,28 @@ export const StreamlinedImageManager: React.FC<{
   }, [associationMode, imageAssociatedOptions.map(opt => opt.title).join(','), variants]);
 
   // Function to filter images based on selected criteria
+    // Function to filter images based on selected criteria
   const getFilteredImages = useCallback(() => {
   if (associationMode === 'none') {
+    console.log('🖼️ [ImageFilter] mode=none → returning ALL', mediaItems.length, 'items');
     return mediaItems;
   } else if (associationMode === 'single') {
     const option = imageAssociatedOptions[0];
     const value = selectedOptionValues[option?.title];
-    
-    if (!value) return [];
 
-    return mediaItems.filter(item => {
+    console.log('🖼️ [ImageFilter] mode=single | optionTitle=', option?.title, '| selected value=', value, '| selectedOptionValues=', JSON.stringify(selectedOptionValues));
+    console.log('🖼️ [ImageFilter] mediaItems count=', mediaItems.length);
+    mediaItems.forEach((item, i) => {
+      console.log(`   item[${i}] url=${item.url.slice(0,60)} | variantInfo.optionName=${item.variantInfo?.optionName} | variantInfo.optionValues=${JSON.stringify(item.variantInfo?.optionValues)} | colorValue=${item.colorValue} | extractedColorName=${item.metadata?.extractedColorName}`);
+    });
+
+    if (!value) {
+      console.log('🖼️ [ImageFilter] value is empty → returning []');
+      return [];
+    }
+
+    const result = mediaItems.filter(item => {
       // PRIORITY 1: Native variant association — img.variants[] contains variant IDs
-      // Check if any variant associated with this image has the matching color/option value
       if ((item as any).variants && Array.isArray((item as any).variants)) {
         const associatedVariantIds = (item as any).variants.map((v: any) => v.id);
         const matchingVariant = variants.find(v =>
@@ -121,7 +131,10 @@ export const StreamlinedImageManager: React.FC<{
             ov.value?.toLowerCase() === value.toLowerCase()
           )
         );
-        if (matchingVariant) return true;
+        if (matchingVariant) {
+          console.log('   ✅ P1 (.variants) match:', item.url.slice(0,60));
+          return true;
+        }
       }
 
       // PRIORITY 2: URL-based matching (color name in filename)
@@ -135,20 +148,34 @@ export const StreamlinedImageManager: React.FC<{
             otherColor.includes(valueDash) &&
             urlLower.includes(otherColor)
           );
-          if (!matchesMoreSpecificColor) return true;
+          if (!matchesMoreSpecificColor) {
+            console.log('   ✅ P2 (URL) match:', item.url.slice(0,60));
+            return true;
+          }
         }
       }
 
-     // PRIORITY 3: variantInfo metadata + colorValue shorthand
-    if (
-      item.variantInfo?.optionName?.toLowerCase() === option.title?.toLowerCase() &&
-      item.variantInfo?.optionValues?.some(v => v.toLowerCase() === value.toLowerCase())
-    ) return true;
+      // PRIORITY 3: variantInfo metadata
+      if (
+        item.variantInfo?.optionName?.toLowerCase() === option.title?.toLowerCase() &&
+        item.variantInfo?.optionValues?.some(v => v.toLowerCase() === value.toLowerCase())
+      ) {
+        console.log('   ✅ P3 (variantInfo) match:', item.url.slice(0,60), '| optionValues=', JSON.stringify(item.variantInfo?.optionValues));
+        return true;
+      }
 
-    if (isColorOption(option.title) && item.colorValue?.toLowerCase() === value.toLowerCase()) return true;
+      // PRIORITY 4: colorValue shorthand
+      if (isColorOption(option.title) && item.colorValue?.toLowerCase() === value.toLowerCase()) {
+        console.log('   ✅ P4 (colorValue) match:', item.url.slice(0,60), '| colorValue=', item.colorValue);
+        return true;
+      }
 
-    return false;
+      console.log('   ❌ NO match:', item.url.slice(0,60), '| variantInfo.optionValues=', JSON.stringify(item.variantInfo?.optionValues), '| colorValue=', item.colorValue);
+      return false;
     });
+
+    console.log('🖼️ [ImageFilter] result:', result.length, 'images matched for', value);
+    return result;
 
   } else if (associationMode === 'combination' && selectedVariantId) {
   const variant = variants.find(v => v.id === selectedVariantId);
@@ -664,7 +691,7 @@ const countImagesForVariant = (variantId: string): number => {
       
     return (
       <div className="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredImages.sort((a, b) => a.rank - b.rank).map((item, index) => {
+        {displayImages.sort((a, b) => a.rank - b.rank).map((item, index) => {
           // Find the original index in the mediaItems array for remove/move operations
           const originalIndex = mediaItems.findIndex(mi => mi === item);
           

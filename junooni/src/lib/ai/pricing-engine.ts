@@ -75,10 +75,11 @@ export async function calculateRealCostPrice(
 ): Promise<RealPriceBreakdown> {
 
   // 1. Fetch blank from PayloadCMS (same depth=2 as Canvas.tsx uses)
-  const { data: doc } = await axios.get(`${PAYLOAD_API}/api/products/${blankId}`, {
-    headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {},
-    params: { depth: 2 },
-  })
+  const COLLECTION = process.env.PAYLOAD_BLANKS_COLLECTION ?? "blank-products"
+  const { data: doc } = await axios.get(
+    `${PAYLOAD_API}/api/${COLLECTION}/${blankId}?depth=2`,
+    { headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {} }
+  )
 
   // 2. Find the technology
   const tech = doc.printT?.find(

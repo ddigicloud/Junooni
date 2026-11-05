@@ -8,6 +8,7 @@ import { useState, useCallback } from 'react';
 import type { StoreImportData, ImageGenerationProgress, MockupCalculationResult, PayloadProductData, DesignElement } from '../types';
 import { saveToSessionStorage } from '../utils';
 import { getMockupsForColor, getProductColorForMockup } from '../mockup-engine-utils';
+import { useRouter } from '@tanstack/react-router';
 
 interface UseStoreImportOptions {
   productData: PayloadProductData;
@@ -33,6 +34,15 @@ interface UseStoreImportOptions {
   shouldSkipMockupGeneration: () => boolean;
 }
 
+const toCloneable = <T,>(value: T): T =>
+  JSON.parse(
+    JSON.stringify(value, (_key, v) => {
+      if (typeof HTMLElement !== 'undefined' && v instanceof HTMLElement) return undefined;
+      if (typeof v === 'function') return undefined;
+      return v;
+    })
+  );
+
 export const useStoreImport = ({
   productData,
   activeTechnology,
@@ -53,13 +63,13 @@ export const useStoreImport = ({
   calculateTotalPricing,
   generateDetailedAreaAnalysis,
   mockupGenerator,
-  navigate,
   shouldSkipMockupGeneration,
 }: UseStoreImportOptions) => {
   const [isGeneratingForStore, setIsGeneratingForStore] = useState(false);
   const [storeImportData, setStoreImportData] = useState<StoreImportData | null>(null);
   const [showStoreImportModal, setShowStoreImportModal] = useState(false);
   const [storeGenerationProgress, setStoreGenerationProgress] = useState<ImageGenerationProgress | null>(null);
+  const router = useRouter();
 
   // ── Calculate price from cost (markup) ───────────────────────────────────
   const calculatePriceFromCost = (cost: number): number => Math.round(cost + cost * 0.5 + 100);
@@ -86,6 +96,7 @@ export const useStoreImport = ({
   // ✅ FIX: Save canvas images to sessionStorage AND keep a reference
   const canvasToSave = transformedData.canvasImages || [];
   const saved3 = saveToSessionStorage(`${sessionKey}_canvasImages`, canvasToSave);
+  const saved4 = saveToSessionStorage(`${sessionKey}_uploadQualityColorSpecificImages`, uploadQualityImages);
 
   console.log('🔍 navigateToCreatePage canvas images:', {
     count: canvasToSave.length,
@@ -93,18 +104,21 @@ export const useStoreImport = ({
     firstItemValid: canvasToSave[0]?.image_data?.startsWith?.('data:image/') ?? false,
   });
 
-  navigate({
+  console.log('🚀 Navigating to /designer/create now');
+
+
+  router.navigate({
     to: '/designer/create',
-    state: {
+    state: toCloneable({
       sessionKey,
       designData: {
         ...transformedData.designData,
         mockupData: { ...transformedData.designData?.mockupData, colorSpecificMockups: [], mockupPreview: null },
       },
       mockupImages: {},
-      colorSpecificImages: saved1 ? {} : transferQualityImages,
+      colorSpecificImages: {},
       validColorSizePairs: transformedData.validColorSizePairs ?? null,
-      uploadQualityColorSpecificImages: uploadQualityImages,
+      uploadQualityColorSpecificImages: {},
       designImages: transformedData.designImages || [],
       enhancedProductData: transformedData.enhancedProductData,
       filteredProductData: transformedData.filteredProductData,
@@ -115,10 +129,10 @@ export const useStoreImport = ({
       detailedAreaAnalysis: transformedData.detailedAreaAnalysis,
       enhancedImageAreaAnalysis: transformedData.enhancedImageAreaAnalysis,
       designMetrics: transformedData.designMetrics,
-      storeMetadata: transformedData.storeMetadata,
+      storeMetadata: { ...transformedData.storeMetadata, mockup_variants: [] },
       // ✅ FIX: Pass canvas images directly in state as fallback
       // if sessionStorage failed (data too large) they still arrive here
-      canvasImages: saved3 ? [] : canvasToSave,
+      canvasImages: [],
       navigationContext: {
         sourceComponent: 'EnhancedCanvas',
         importTimestamp: new Date().toISOString(),
@@ -128,9 +142,9 @@ export const useStoreImport = ({
         canvasImagesCount: canvasToSave.length,
         canvasSavedToSession: saved3,
       },
-    },
+    }),
   });
-}, [navigate]);
+}, [router]);
 
 
   // ── Transform store data for Create page ─────────────────────────────────

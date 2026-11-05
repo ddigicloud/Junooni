@@ -7,6 +7,7 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import RefinementList from "@modules/store/components/refinement-list"
 import SortWrapper from "@modules/store/components/refinement-list/sort-wrapper"
 import PaginatedProductsDisplay from "@modules/store/components/paginated-products-display"
+import { useMobileFilter } from "@modules/store/components/mobile-filter-context"
 import { X } from "lucide-react"
 
 const PRODUCT_LIMIT = 20
@@ -382,6 +383,26 @@ export default function ClientStoreShell({
     maxPrice: globalPriceRange.maxPrice,
   }
 
+  const { setFilterContent } = useMobileFilter()
+
+  useEffect(() => {
+    setFilterContent(
+      <RefinementList
+        sortBy={sortBy}
+        vendors={vendorsData}
+        categories={categoriesData}
+        products={allProducts}
+        availableColors={availableColors}
+        dynamicPriceRange={dynamicPriceRange}
+        selectedVendors={selectedVendors}
+        selectedColors={selectedColors}
+        selectedCollections={selectedCollections}
+        selectedCategories={selectedCategories}
+        setQueryParams={setQueryParams}
+      />
+    )
+  }, [sortBy, allProducts, selectedVendors, selectedColors, selectedCollections, selectedCategories, minPrice, maxPrice])
+
   return (
     <div className="flex flex-col px-0 py-0 small:py-6 small:px-6 small:flex-row small:items-start content-container">
 
@@ -411,7 +432,7 @@ export default function ClientStoreShell({
         {/* Sort + active filters row */}
         <div className="flex flex-col gap-3 mt-4 mb-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <div className="order-1 md:order-2 px-2 md:px-0">
+            <div className="order-1 md:order-2 px-2 md:px-0 hidden md:block">
               <SortWrapper
                 sortBy={sortBy}
                 data-testid="sort-above-grid"

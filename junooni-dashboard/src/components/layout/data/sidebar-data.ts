@@ -6,6 +6,7 @@ import {
   IconFolderOpen,
   IconCrown,
   IconEdit,
+  IconPlugConnected,
 } from '@tabler/icons-react'
 import { type SidebarData } from '../types'
 
@@ -56,6 +57,11 @@ export const getSidebarData = (vendorId?: string): SidebarData => {
             title: 'Membership',
             url: '/membership',
             icon: IconCrown,
+          },
+          {
+            title: 'Integrations',
+            url: '/integrations',
+            icon: IconPlugConnected,
           },
         ],
       },

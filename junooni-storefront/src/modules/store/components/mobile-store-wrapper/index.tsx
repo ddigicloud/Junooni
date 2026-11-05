@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { MobileFilterProvider, useMobileFilter } from '../mobile-filter-context'
 import { Filter, ArrowUpDown, X, Check } from 'lucide-react'
 import { SortOptions } from '@modules/store/components/refinement-list/sort-products'
 
@@ -171,8 +172,28 @@ export default function MobileStoreWrapper({
   count: number
   filterContent: React.ReactNode
 }) {
+  return (
+    <MobileFilterProvider>
+      <MobileStoreWrapperInner sortBy={sortBy} hasActiveFilters={hasActiveFilters} count={count}>
+        {children}
+      </MobileStoreWrapperInner>
+    </MobileFilterProvider>
+  )
+}
+
+function MobileStoreWrapperInner({
+  children,
+  sortBy,
+  hasActiveFilters,
+  count,
+}: {
+  children: React.ReactNode
+  sortBy: SortOptions
+  hasActiveFilters: boolean
+  count: number
+}) {
   const [isSortModalOpen, setIsSortModalOpen] = useState(false)
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const { filterContent, isOpen, openFilter, closeFilter } = useMobileFilter()
   const scrollDirection = useScrollDirection()
 
   // Handle sort change
@@ -226,7 +247,8 @@ export default function MobileStoreWrapper({
               <span className="font-medium">SORT</span>
             </button>
             <button
-              onClick={() => setIsFilterModalOpen(true)}
+              //onClick={() => setIsFilterModalOpen(true)}
+              onClick={openFilter}
               className="flex-1 flex items-center justify-center gap-2 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors relative"
             >
               <Filter size={18} />
@@ -261,8 +283,8 @@ export default function MobileStoreWrapper({
 
       {/* Mobile Filter Modal */}
       <MobileFilterModal
-        isOpen={isFilterModalOpen}
-        onClose={() => setIsFilterModalOpen(false)}
+        isOpen={isOpen}
+        onClose={closeFilter}
       >
         {filterContent}
       </MobileFilterModal>

@@ -126,12 +126,12 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
               </div>
             </div>
 
-            {layer.element.type === 'image' && (
+            {/* {layer.element.type === 'image' && (
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-600">Print quality:</span>
                 <span className={`font-medium ${layer.printQualityColor}`}>{layer.printQuality} / {layer.dpi} DPI</span>
               </div>
-            )}
+            )} */}
           </div>
         ))}
       </div>

@@ -1082,7 +1082,7 @@ export default function AIAssistant({ vendorId }: Props) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       credentials: "include",
       body: JSON.stringify({
-        messages: msgs,
+        messages: msgs.map(m => ({ role: m.role, content: m.content })),
         vendorId,
         currentPage: window.location.pathname,
         approvedMockupSessionId: approvedMockupSessionIdRef.current || undefined,
@@ -1515,7 +1515,7 @@ export default function AIAssistant({ vendorId }: Props) {
       )}
 
       {open && (
-        <div className="juni-panel" style={{ position:"fixed", bottom:"88px", right:"24px", width:"380px", height:"520px", background:"#fff", borderRadius:"20px", boxShadow:"0 12px 48px rgba(0,0,0,0.16)", zIndex:9998, display:"flex", flexDirection:"column", overflow:"hidden", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", border:"1px solid rgba(0,0,0,0.06)" }}>
+        <div className="juni-panel" style={{ position:"fixed", bottom:"88px", right:"24px", width:"340px", height:"460px", background:"#fff", borderRadius:"20px", boxShadow:"0 12px 48px rgba(0,0,0,0.16)", zIndex:9998, display:"flex", flexDirection:"column", overflow:"hidden", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", border:"1px solid rgba(0,0,0,0.06)" }}>
 
           {/* Header */}
           <div style={{ background:"linear-gradient(135deg,#FF7A35 0%,#E8621A 60%,#c94e10 100%)", padding:"14px 16px", display:"flex", alignItems:"center", gap:"12px", flexShrink:0, position:"relative", overflow:"hidden" }}>

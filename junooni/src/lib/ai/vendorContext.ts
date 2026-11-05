@@ -203,25 +203,69 @@ export async function getVendorContext(scope: any, vendorId: string) {
     }
   } catch (e) { console.error("[vendorContext] vendor store fetch error:", e) }
 
+  // ── Products — fetch full details for per-product listing ──────────────────
   let productCount = 0, marketplaceCount = 0, ownStoreCount = 0, bothChannelsCount = 0
+  let allProducts: any[] = []
   try {
     const { data: vendorProducts } = await query.graph({
       entity: "vendor",
-      fields: ["products.id", "products.status", "products.sales_channels.id"],
+      fields: [
+        "products.id",
+        "products.status",
+        "products.handle",
+        "products.title",
+        "products.thumbnail",
+        "products.description",
+        "products.sales_channels.id",
+        "products.sales_channels.name",
+        "products.variants.id",
+        "products.variants.title",
+        "products.variants.sku",
+        "products.collection.id",
+        "products.collection.title",
+        "products.tags.value",
+      ],
       filters: { id: vendorId },
     })
-    const allProducts = (vendorProducts?.[0]?.products ?? []).filter((p: any) => p.status === "published")
-    productCount = allProducts.length
-    for (const product of allProducts) {
+
+    const rawProducts = (vendorProducts?.[0]?.products ?? []).filter((p: any) => p.status === "published")
+    productCount = rawProducts.length
+
+    for (const product of rawProducts) {
       const channelIds: string[] = (product.sales_channels ?? []).map((sc: any) => sc.id)
       const onMarketplace = MARKETPLACE_SC_ID ? channelIds.includes(MARKETPLACE_SC_ID) : false
       const onOwnStore    = OWN_STORE_SC_ID   ? channelIds.includes(OWN_STORE_SC_ID)   : false
+
       if (onMarketplace && onOwnStore)   { bothChannelsCount++; marketplaceCount++; ownStoreCount++ }
       else if (onMarketplace)            marketplaceCount++
       else if (onOwnStore)               ownStoreCount++
-    }
-  } catch (e) { console.error("[vendorContext] product count error:", e) }
 
+      allProducts.push({
+        id:            product.id,
+        title:         product.title,
+        handle:        product.handle,
+        thumbnail:     product.thumbnail ?? null,
+        description:   product.description ?? null,
+        collection:    product.collection?.title ?? null,
+        tags:          (product.tags ?? []).map((t: any) => t.value),
+        variant_count: (product.variants ?? []).length,
+        variants:      (product.variants ?? []).map((v: any) => ({
+          id:    v.id,
+          title: v.title,
+          sku:   v.sku ?? null,
+        })),
+        channels: {
+          on_marketplace: onMarketplace,
+          on_own_store:   onOwnStore,
+        },
+        marketplace_url: onMarketplace
+          ? `junooni.com/@${vendor?.handle ?? ""}/${product.handle}`
+          : null,
+      })
+    }
+  } catch (e) { console.error("[vendorContext] product fetch error:", e) }
+
+  // ── Orders ─────────────────────────────────────────────────────────────────
   let pendingOrders: any[] = [], recentOrders: any[] = [], allOrdersMapped: any[] = []
   try {
     const { data: vendorData } = await query.graph({
@@ -237,6 +281,7 @@ export async function getVendorContext(scope: any, vendorId: string) {
             "created_at", "total", "metadata",
             "items.id", "items.title", "items.unit_price", "items.quantity", "items.tax_total",
             "customer.first_name", "customer.last_name", "customer.email",
+            "shipping_address.city", "shipping_address.province",
             "fulfillments.id", "fulfillments.packed_at", "fulfillments.shipped_at",
             "fulfillments.delivered_at", "fulfillments.canceled_at",
             "fulfillments.items.line_item_id", "fulfillments.items.item_id", "fulfillments.items.quantity",
@@ -258,6 +303,8 @@ export async function getVendorContext(scope: any, vendorId: string) {
           id: "#" + (o.display_id ?? o.id?.slice(-6)),
           customerName: ((o.customer?.first_name ?? "") + " " + (o.customer?.last_name ?? "")).trim()
             || o.customer?.email?.split("@")[0] || "Customer",
+          customerCity: o.shipping_address?.city ?? null,
+          customerState: o.shipping_address?.province ?? null,
           total: Number(o.total) ?? 0,
           payout: finalPayout, processingFee, paymentMethod,
           displayStatus: deriveDisplayStatus(o.status ?? "", vendorFulfillmentStatus),
@@ -278,6 +325,7 @@ export async function getVendorContext(scope: any, vendorId: string) {
     }
   } catch (e) { console.error("[vendorContext] orders fetch error:", e) }
 
+  // ── Wallet / earnings ──────────────────────────────────────────────────────
   let walletBalance = 0, totalEarned = 0
   try {
     const payoutResult = await pgClient.raw(
@@ -298,6 +346,7 @@ export async function getVendorContext(scope: any, vendorId: string) {
     planBillingCycle: vendor?.plan_billing_cycle ?? null,
     planActivatedAt:  vendor?.plan_activated_at ?? null,
     productCount, marketplaceCount, ownStoreCount, bothChannelsCount,
+    allProducts,                             // ← full product list with details
     pendingOrders:    pendingOrders.length,
     walletBalance, totalEarned, revenueLastFive,
     recentOrders, allOrders: allOrdersMapped, vendorStore,

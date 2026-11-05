@@ -3,8 +3,28 @@
 // Each handler receives the pre-built VendorContext and tool args,
 // returns a plain object that gets sent back to Gemini as the tool result.
 // No DB calls here — all data comes from VendorContext already fetched.
+//
+// NOTE: create_product is async (needs Medusa workflows + DB) so it lives in
+//       createProductHandler.ts and is routed directly in mcp/route.ts.
 
 import { VendorContext } from "./buildSystemPrompt"
+
+// Extend the base type with allProducts (added to vendorContext return)
+type VendorCtx = VendorContext & {
+  allProducts?: Array<{
+    id: string
+    title: string
+    handle: string
+    thumbnail: string | null
+    description: string | null
+    collection: string | null
+    tags: string[]
+    variant_count: number
+    variants: Array<{ id: string; title: string; sku: string | null }>
+    channels: { on_marketplace: boolean; on_own_store: boolean }
+    marketplace_url: string | null
+  }>
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +48,7 @@ export type ToolResult =
 export function handleTool(
   name: ToolName,
   args: ToolArgs,
-  vendor: VendorContext
+  vendor: VendorCtx
 ): ToolResult {
   try {
     switch (name) {
@@ -49,7 +69,7 @@ export function handleTool(
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-function getStoreOverview(vendor: VendorContext): ToolResult {
+function getStoreOverview(vendor: VendorCtx): ToolResult {
   return {
     ok: true,
     data: {
@@ -74,9 +94,9 @@ function getStoreOverview(vendor: VendorContext): ToolResult {
   }
 }
 
-function getOrders(args: ToolArgs, vendor: VendorContext): ToolResult {
+function getOrders(args: ToolArgs, vendor: VendorCtx): ToolResult {
   const status = args.status ?? "all"
-  const limit  = Math.min(Number(args.limit ?? 10), 50)
+  const limit  = Math.min(Number(args.limit ?? 20), 50)
 
   let orders = vendor.allOrders ?? []
 
@@ -94,6 +114,8 @@ function getOrders(args: ToolArgs, vendor: VendorContext): ToolResult {
       orders: orders.map((o) => ({
         id:             o.id,
         customer:       o.customerName,
+        customer_city:  o.customerCity ?? null,
+        customer_state: o.customerState ?? null,
         order_total:    `₹${o.total.toFixed(0)}`,
         your_payout:    `₹${o.payout.toFixed(2)}`,
         processing_fee: `₹${o.processingFee.toFixed(2)}`,
@@ -110,7 +132,7 @@ function getOrders(args: ToolArgs, vendor: VendorContext): ToolResult {
   }
 }
 
-function getEarnings(args: ToolArgs, vendor: VendorContext): ToolResult {
+function getEarnings(args: ToolArgs, vendor: VendorCtx): ToolResult {
   const includeBreakdown = args.include_order_breakdown ?? false
 
   const totalPayoutFromOrders = (vendor.allOrders ?? []).reduce(
@@ -140,8 +162,18 @@ function getEarnings(args: ToolArgs, vendor: VendorContext): ToolResult {
   return { ok: true, data: result }
 }
 
-function getProducts(args: ToolArgs, vendor: VendorContext): ToolResult {
-  const channel = args.channel ?? "all"
+function getProducts(args: ToolArgs, vendor: VendorCtx): ToolResult {
+  const channel     = args.channel ?? "all"
+  const allProducts = vendor.allProducts ?? []
+
+  // Filter by channel
+  let filtered = allProducts
+  if (channel === "marketplace")
+    filtered = allProducts.filter(p => p.channels.on_marketplace)
+  else if (channel === "own_store")
+    filtered = allProducts.filter(p => p.channels.on_own_store)
+  else if (channel === "both")
+    filtered = allProducts.filter(p => p.channels.on_marketplace && p.channels.on_own_store)
 
   const counts: Record<string, any> = {
     total_published: vendor.productCount,
@@ -153,13 +185,13 @@ function getProducts(args: ToolArgs, vendor: VendorContext): ToolResult {
   let summary = ""
   switch (channel) {
     case "marketplace":
-      summary = `${vendor.marketplaceCount} products on JUNOONI Marketplace`
+      summary = `${filtered.length} products on JUNOONI Marketplace`
       break
     case "own_store":
-      summary = `${vendor.ownStoreCount} products on own store (${vendor.vendorStore?.storeUrl ?? "not set up"})`
+      summary = `${filtered.length} products on own store (${vendor.vendorStore?.storeUrl ?? "not set up"})`
       break
     case "both":
-      summary = `${vendor.bothChannelsCount} products live on both Marketplace and Own Store`
+      summary = `${filtered.length} products live on both Marketplace and Own Store`
       break
     default:
       summary = `${vendor.productCount} total published products`
@@ -171,6 +203,18 @@ function getProducts(args: ToolArgs, vendor: VendorContext): ToolResult {
       summary,
       channel_filter: channel,
       counts,
+      products: filtered.map(p => ({
+        id:             p.id,
+        title:          p.title,
+        handle:         p.handle,
+        collection:     p.collection,
+        tags:           p.tags,
+        variant_count:  p.variant_count,
+        variants:       p.variants,          // [{ id, title, sku }]
+        on_marketplace: p.channels.on_marketplace,
+        on_own_store:   p.channels.on_own_store,
+        marketplace_url: p.marketplace_url,
+      })),
       channel_guide: {
         marketplace: "junooni.com — shared marketplace, all creators",
         own_store:   vendor.vendorStore?.storeUrl ?? "not configured yet",
@@ -179,7 +223,7 @@ function getProducts(args: ToolArgs, vendor: VendorContext): ToolResult {
   }
 }
 
-function getOrderDetail(args: ToolArgs, vendor: VendorContext): ToolResult {
+function getOrderDetail(args: ToolArgs, vendor: VendorCtx): ToolResult {
   const rawId = String(args.order_id ?? "").replace(/^#/, "").trim()
   if (!rawId) return { ok: false, error: "order_id is required" }
 
@@ -202,6 +246,8 @@ function getOrderDetail(args: ToolArgs, vendor: VendorContext): ToolResult {
     data: {
       id:             order.id,
       customer:       order.customerName,
+      customer_city:  order.customerCity ?? null,
+      customer_state: order.customerState ?? null,
       order_total:    `₹${order.total.toFixed(0)}`,
       your_payout:    `₹${order.payout.toFixed(2)}`,
       processing_fee: `₹${order.processingFee.toFixed(2)}`,
@@ -217,7 +263,7 @@ function getOrderDetail(args: ToolArgs, vendor: VendorContext): ToolResult {
   }
 }
 
-function getOwnStore(vendor: VendorContext): ToolResult {
+function getOwnStore(vendor: VendorCtx): ToolResult {
   if (!vendor.vendorStore) {
     return {
       ok: true,
@@ -260,7 +306,7 @@ function getOwnStore(vendor: VendorContext): ToolResult {
   }
 }
 
-function getPendingActions(vendor: VendorContext): ToolResult {
+function getPendingActions(vendor: VendorCtx): ToolResult {
   const actions: string[] = []
 
   if (vendor.pendingOrders > 0) {

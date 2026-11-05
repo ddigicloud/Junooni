@@ -20,6 +20,7 @@ import { Route as authSignInImport } from './routes/(auth)/sign-in'
 import { Route as authOtpImport } from './routes/(auth)/otp'
 import { Route as auth500Import } from './routes/(auth)/500'
 import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership/route'
+import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations/route'
 import { Route as AuthenticatedStoreEditorRouteImport } from './routes/_authenticated/store/editor/route'
 import { Route as AuthenticatedStoreCollectionsRouteImport } from './routes/_authenticated/store/collections/route'
 import { Route as AuthenticatedStoreBillingHistoryIndexImport } from './routes/_authenticated/store/billing-history/index'
@@ -85,6 +86,9 @@ const AuthenticatedOrdersIndexLazyImport = createFileRoute(
 )()
 const AuthenticatedMembershipIndexLazyImport = createFileRoute(
   '/_authenticated/membership/',
+)()
+const AuthenticatedIntegrationsIndexLazyImport = createFileRoute(
+  '/_authenticated/integrations/',
 )()
 const AuthenticatedHelpCenterIndexLazyImport = createFileRoute(
   '/_authenticated/help-center/',
@@ -308,6 +312,13 @@ const AuthenticatedMembershipRouteRoute =
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
+const AuthenticatedIntegrationsRouteRoute =
+  AuthenticatedIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+
 const PagesPrivacyIndexLazyRoute = PagesPrivacyIndexLazyImport.update({
   id: '/pages/privacy/',
   path: '/pages/privacy/',
@@ -449,6 +460,17 @@ const AuthenticatedMembershipIndexLazyRoute =
     getParentRoute: () => AuthenticatedMembershipRouteRoute,
   } as any).lazy(() =>
     import('./routes/_authenticated/membership/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const AuthenticatedIntegrationsIndexLazyRoute =
+  AuthenticatedIntegrationsIndexLazyImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedIntegrationsRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/integrations/index.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -693,6 +715,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRoute
+    }
+    '/_authenticated/integrations': {
+      id: '/_authenticated/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof AuthenticatedIntegrationsRouteImport
+      parentRoute: typeof AuthenticatedRouteImport
     }
     '/_authenticated/membership': {
       id: '/_authenticated/membership'
@@ -946,6 +975,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexLazyImport
       parentRoute: typeof AuthenticatedRouteImport
     }
+    '/_authenticated/integrations/': {
+      id: '/_authenticated/integrations/'
+      path: '/'
+      fullPath: '/integrations/'
+      preLoaderRoute: typeof AuthenticatedIntegrationsIndexLazyImport
+      parentRoute: typeof AuthenticatedIntegrationsRouteImport
+    }
     '/_authenticated/membership/': {
       id: '/_authenticated/membership/'
       path: '/'
@@ -1112,6 +1148,21 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
+interface AuthenticatedIntegrationsRouteRouteChildren {
+  AuthenticatedIntegrationsIndexLazyRoute: typeof AuthenticatedIntegrationsIndexLazyRoute
+}
+
+const AuthenticatedIntegrationsRouteRouteChildren: AuthenticatedIntegrationsRouteRouteChildren =
+  {
+    AuthenticatedIntegrationsIndexLazyRoute:
+      AuthenticatedIntegrationsIndexLazyRoute,
+  }
+
+const AuthenticatedIntegrationsRouteRouteWithChildren =
+  AuthenticatedIntegrationsRouteRoute._addFileChildren(
+    AuthenticatedIntegrationsRouteRouteChildren,
+  )
+
 interface AuthenticatedMembershipRouteRouteChildren {
   AuthenticatedMembershipIndexLazyRoute: typeof AuthenticatedMembershipIndexLazyRoute
 }
@@ -1184,6 +1235,7 @@ const AuthenticatedStoreEditorRouteRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedIntegrationsRouteRoute: typeof AuthenticatedIntegrationsRouteRouteWithChildren
   AuthenticatedMembershipRouteRoute: typeof AuthenticatedMembershipRouteRouteWithChildren
   AuthenticatedSettingsRouteLazyRoute: typeof AuthenticatedSettingsRouteLazyRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -1212,6 +1264,8 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedIntegrationsRouteRoute:
+    AuthenticatedIntegrationsRouteRouteWithChildren,
   AuthenticatedMembershipRouteRoute:
     AuthenticatedMembershipRouteRouteWithChildren,
   AuthenticatedSettingsRouteLazyRoute:
@@ -1256,6 +1310,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '': typeof AuthenticatedRouteRouteWithChildren
+  '/integrations': typeof AuthenticatedIntegrationsRouteRouteWithChildren
   '/membership': typeof AuthenticatedMembershipRouteRouteWithChildren
   '/500': typeof errors500LazyRoute
   '/otp': typeof authOtpRoute
@@ -1291,6 +1346,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof AuthenticatedCustomersIndexLazyRoute
   '/dashboard': typeof AuthenticatedDashboardIndexLazyRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexLazyRoute
+  '/integrations/': typeof AuthenticatedIntegrationsIndexLazyRoute
   '/membership/': typeof AuthenticatedMembershipIndexLazyRoute
   '/orders': typeof AuthenticatedOrdersIndexLazyRoute
   '/payouts': typeof AuthenticatedPayoutsIndexLazyRoute
@@ -1348,6 +1404,7 @@ export interface FileRoutesByTo {
   '/customers': typeof AuthenticatedCustomersIndexLazyRoute
   '/dashboard': typeof AuthenticatedDashboardIndexLazyRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexLazyRoute
+  '/integrations': typeof AuthenticatedIntegrationsIndexLazyRoute
   '/membership': typeof AuthenticatedMembershipIndexLazyRoute
   '/orders': typeof AuthenticatedOrdersIndexLazyRoute
   '/payouts': typeof AuthenticatedPayoutsIndexLazyRoute
@@ -1376,6 +1433,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/_authenticated/integrations': typeof AuthenticatedIntegrationsRouteRouteWithChildren
   '/_authenticated/membership': typeof AuthenticatedMembershipRouteRouteWithChildren
   '/(auth)/500': typeof auth500Route
   '/(auth)/otp': typeof authOtpRoute
@@ -1412,6 +1470,7 @@ export interface FileRoutesById {
   '/_authenticated/customers/': typeof AuthenticatedCustomersIndexLazyRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexLazyRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexLazyRoute
+  '/_authenticated/integrations/': typeof AuthenticatedIntegrationsIndexLazyRoute
   '/_authenticated/membership/': typeof AuthenticatedMembershipIndexLazyRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexLazyRoute
   '/_authenticated/payouts/': typeof AuthenticatedPayoutsIndexLazyRoute
@@ -1441,6 +1500,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | ''
+    | '/integrations'
     | '/membership'
     | '/500'
     | '/otp'
@@ -1476,6 +1536,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/help-center'
+    | '/integrations/'
     | '/membership/'
     | '/orders'
     | '/payouts'
@@ -1532,6 +1593,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/dashboard'
     | '/help-center'
+    | '/integrations'
     | '/membership'
     | '/orders'
     | '/payouts'
@@ -1558,6 +1620,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/_authenticated/integrations'
     | '/_authenticated/membership'
     | '/(auth)/500'
     | '/(auth)/otp'
@@ -1594,6 +1657,7 @@ export interface FileRouteTypes {
     | '/_authenticated/customers/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/help-center/'
+    | '/_authenticated/integrations/'
     | '/_authenticated/membership/'
     | '/_authenticated/orders/'
     | '/_authenticated/payouts/'
@@ -1722,6 +1786,7 @@ export const routeTree = rootRoute
     "/_authenticated": {
       "filePath": "_authenticated/route.tsx",
       "children": [
+        "/_authenticated/integrations",
         "/_authenticated/membership",
         "/_authenticated/settings",
         "/_authenticated/",
@@ -1747,6 +1812,13 @@ export const routeTree = rootRoute
         "/_authenticated/productCatalog/products/",
         "/_authenticated/productCatalog/category/$slug/$id",
         "/_authenticated/productCatalog/category/$slug/"
+      ]
+    },
+    "/_authenticated/integrations": {
+      "filePath": "_authenticated/integrations/route.tsx",
+      "parent": "/_authenticated",
+      "children": [
+        "/_authenticated/integrations/"
       ]
     },
     "/_authenticated/membership": {
@@ -1891,6 +1963,10 @@ export const routeTree = rootRoute
     "/_authenticated/help-center/": {
       "filePath": "_authenticated/help-center/index.lazy.tsx",
       "parent": "/_authenticated"
+    },
+    "/_authenticated/integrations/": {
+      "filePath": "_authenticated/integrations/index.lazy.tsx",
+      "parent": "/_authenticated/integrations"
     },
     "/_authenticated/membership/": {
       "filePath": "_authenticated/membership/index.lazy.tsx",

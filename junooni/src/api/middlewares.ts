@@ -651,6 +651,29 @@ export default defineMiddlewares({
         size_chart_id: z.string().optional(),
         artwork_id: z.string().optional(),
       },
-    }
+    },
+    {
+      matcher: "/.well-known/oauth-authorization-server",
+      method: ["GET", "OPTIONS"],
+      middlewares: [
+        (req, res) => {
+          res.setHeader("Access-Control-Allow-Origin", "*")
+          res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS")
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          const BASE = process.env.BACKEND_URL ?? "https://api.junooni.com"
+          res.json({
+            issuer:                                BASE,
+            authorization_endpoint:                `${BASE}/authorize`,
+            token_endpoint:                        `${BASE}/token`,
+            registration_endpoint:                 `${BASE}/mcp/auth/register`,
+            scopes_supported:                      ["read", "read+write"],
+            response_types_supported:              ["code"],
+            grant_types_supported:                 ["authorization_code"],
+            token_endpoint_auth_methods_supported: ["none"],
+            code_challenge_methods_supported:      ["S256"],
+          })
+        },
+      ],
+    },
   ],
 });

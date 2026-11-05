@@ -2067,7 +2067,9 @@ if (!mergedLocationStateRef.current && location.state) {
       const mockupImages = (location.state as any)?.mockupImages || {};
       const designImages = (location.state as any)?.designImages || [];
       const uploadQualityColorSpecificImages =
-        (location.state as any)?.uploadQualityColorSpecificImages || {};
+        loadChunked(`${sessionKey}_uploadQualityColorSpecificImages`,
+          (location.state as any)?.uploadQualityColorSpecificImages || {}
+        );
 
       const finalColorSpecificImages = Object.keys(colorSpecificImagesFromStorage).length > 0
         ? colorSpecificImagesFromStorage
@@ -6817,12 +6819,24 @@ if (!printTechId || !printTechName) {
               await batchUpdateInventoryLevels({ create: inventoryCreations });
             }
 
-             // STEP B: Associate variant images natively using real Medusa image IDs
+            // STEP B: Associate variant images natively using real Medusa image IDs
+
+            // FIX: Medusa admin API does NOT populate o.option on variant options by default.
+            // So o.option?.title is always undefined → colorOpt = undefined → variantColorNorm = ""
+            // → !variantColorNorm = true → every image matches every variant → all colors mixed.
+            // Fix: build option_id→title from completeProduct.options (always has id+title).
+            const optionTitleById: Record<string, string> = {};
+            (completeProduct.options || []).forEach((opt: any) => {
+              if (opt.id) optionTitleById[opt.id] = (opt.title || '').toLowerCase();
+            });
+
             for (const completedVariant of completeProduct.variants) {
-              const colorOpt = completedVariant.options?.find(o =>
+              const colorOpt = completedVariant.options?.find((o: any) =>
+                optionTitleById[o.option_id] === 'color' ||
                 o.option?.title?.toLowerCase() === 'color'
               );
-              const sizeOpt = completedVariant.options?.find(o =>
+              const sizeOpt = completedVariant.options?.find((o: any) =>
+                optionTitleById[o.option_id] === 'size' ||
                 o.option?.title?.toLowerCase() === 'size'
               );
 
@@ -6839,8 +6853,11 @@ if (!printTechId || !printTechName) {
               // Build list of all color norms to detect ambiguous substring matches
               const allColorNorms = completeProduct.variants
                 .flatMap(v => v.options
-                  ?.filter(o => o.option?.title?.toLowerCase() === 'color')
-                  .map(o => normalize(o.value)) || []
+                  ?.filter((o: any) =>
+                    optionTitleById[o.option_id] === 'color' ||
+                    o.option?.title?.toLowerCase() === 'color'
+                  )
+                  .map((o: any) => normalize(o.value)) || []
                 )
                 .filter((v, i, arr) => arr.indexOf(v) === i);
 
