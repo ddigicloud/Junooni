@@ -652,6 +652,21 @@ export default defineMiddlewares({
         artwork_id: z.string().optional(),
       },
     },
+     {
+      matcher: "/api/mcp/upload-artwork-file",
+      method: ["POST", "OPTIONS"],
+      middlewares: [
+        (req: any, res: any, next: any) => {
+          res.setHeader("Access-Control-Allow-Origin",  "*")
+          res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+          res.setHeader("Access-Control-Allow-Headers",
+            "Content-Type, ngrok-skip-browser-warning")
+          if (req.method === "OPTIONS") { return res.status(204).end() }
+          next()
+        },
+        upload.single("file"),
+      ],
+    },
     {
       matcher: "/.well-known/oauth-authorization-server",
       method: ["GET", "OPTIONS"],

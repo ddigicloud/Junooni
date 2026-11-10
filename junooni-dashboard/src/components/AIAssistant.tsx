@@ -1076,7 +1076,7 @@ export default function AIAssistant({ vendorId }: Props) {
   const sendToBackend = async (msgs: Message[], extra?: Record<string, any>) => {
     const token   = localStorage.getItem("vendorToken") ?? ""
     const session = productSessionRef.current
-    console.log('[sendToBackend] session.designBase64 length:', session.designBase64?.length)
+    const { blankData: _bd, designBase64: _d64, designsByArea: _dba, ...sessionForBackend } = session
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1087,11 +1087,10 @@ export default function AIAssistant({ vendorId }: Props) {
         currentPage: window.location.pathname,
         approvedMockupSessionId: approvedMockupSessionIdRef.current || undefined,
         productSession: {
-          ...session,
+          ...sessionForBackend,
           confirmedTitle: (session as any)._confirmedTitle || undefined,
-          artworkByArea:   (session as any).artworkByArea || undefined, 
+          artworkByArea:   (session as any).artworkByArea || undefined,
         },
-        // Design context passed separately so Gemini gets it without it appearing in chat
         designContext: session.designSessionId ? {
           sessionId: session.designSessionId,
           area:      session.area,

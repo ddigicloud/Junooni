@@ -679,7 +679,7 @@ const countImagesForVariant = (variantId: string): number => {
     const imagesForSelection = getFilteredImages();
     
     // If no images match the current selection, show all images as fallback
-    const displayImages = imagesForSelection.length > 0 ? imagesForSelection : mediaItems;
+    const displayImages = imagesForSelection;
     
     if (displayImages.length === 0) {
       return (

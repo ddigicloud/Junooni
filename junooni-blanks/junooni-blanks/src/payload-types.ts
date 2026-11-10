@@ -739,6 +739,10 @@ export interface BlankProduct {
               photoColor: string;
               photoSize?: string | null;
               /**
+               * Use "under" for pillows, cushions — products where design is embedded in the surface.
+               */
+              designLayerMode?: ('over' | 'under') | null;
+              /**
                * Displacement maps for curved surfaces (mugs, bottles, curved products)
                */
               dispMaps?:
@@ -1132,6 +1136,10 @@ export interface BlankProduct {
                * Base color of the product in this mockup
                */
               photoColor: string;
+              /**
+               * Use "under" for pillows, cushions — products where design is embedded in the surface.
+               */
+              designLayerMode?: ('over' | 'under') | null;
               /**
                * Automatically populated by AI image analysis
                */
@@ -2520,6 +2528,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
               mockupType?: T;
               photoColor?: T;
               photoSize?: T;
+              designLayerMode?: T;
               dispMaps?:
                 | T
                 | {
@@ -2807,6 +2816,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
               view?: T;
               mock?: T;
               photoColor?: T;
+              designLayerMode?: T;
               Anl?:
                 | T
                 | {

@@ -2060,9 +2060,24 @@ if (!mergedLocationStateRef.current && location.state) {
       const allKeys = Object.keys(sessionStorage).filter(k => k.startsWith(sessionKey));
       console.log(`🔑 sessionStorage keys for "${sessionKey}":`, allKeys);
 
-      const colorSpecificImagesFromStorage = loadChunked(`${sessionKey}_colorSpecificImages`, {});
+      // Prefer window global (set by useStoreImport for large data that exceeds sessionStorage quota)
+      const windowImport = (window as any).__junooniStoreImport;
+      const colorSpecificImages = (windowImport?.sessionKey === sessionKey && windowImport.colorSpecificImages)
+        ? (() => {
+            console.log(`✅ colorSpecificImages from window: ${Object.keys(windowImport.colorSpecificImages).length} colors`);
+            return windowImport.colorSpecificImages;
+          })()
+        : (loadChunked(`${sessionKey}_colorSpecificImages`, {}) || {});
       const colorSpecificMockups = loadChunked(`${sessionKey}_colorSpecificMockups`, []);
-      const canvasImages = loadChunked(`${sessionKey}_canvasImages`, null); // ← null not []
+
+      const canvasImages = (windowImport?.sessionKey === sessionKey && windowImport.canvasImages)
+        ? windowImport.canvasImages
+        : (loadChunked(`${sessionKey}_canvasImages`, []) || []);
+
+      // Clear window global after reading to free memory
+      if (windowImport?.sessionKey === sessionKey) {
+        delete (window as any).__junooniStoreImport;
+      }
 
       const mockupImages = (location.state as any)?.mockupImages || {};
       const designImages = (location.state as any)?.designImages || [];
@@ -2071,8 +2086,8 @@ if (!mergedLocationStateRef.current && location.state) {
           (location.state as any)?.uploadQualityColorSpecificImages || {}
         );
 
-      const finalColorSpecificImages = Object.keys(colorSpecificImagesFromStorage).length > 0
-        ? colorSpecificImagesFromStorage
+      const finalColorSpecificImages = Object.keys(colorSpecificImages).length > 0
+        ? colorSpecificImages
         : ((location.state as any)?.colorSpecificImages || {});
 
       // Canvas images: prefer sessionStorage, fall back to navigation state, then null
@@ -2534,7 +2549,7 @@ useEffect(() => {
     if (mergedLocationStateRef.current) {
       isProcessing = true;
       const locationState = mergedLocationStateRef.current;
-       //console.log("Location state", locationState);
+       console.log("Location state", locationState);
       
       // STEP 1: Extract and store pre-generated images FIRST
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);

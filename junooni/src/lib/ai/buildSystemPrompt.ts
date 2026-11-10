@@ -83,8 +83,13 @@ export function buildSystemPrompt(vendor: VendorContext, currentPage?: string): 
     ? vendor.recentOrders.map(formatOrderLine).join("\n")
     : "No recent orders yet."
 
-  const allOrdersText = vendor.allOrders?.length
-    ? vendor.allOrders.map(formatOrderLine).join("\n")
+  const MAX_ORDERS_IN_PROMPT = 20
+  const ordersForPrompt = (vendor.allOrders ?? []).slice(0, MAX_ORDERS_IN_PROMPT)
+  const allOrdersText = ordersForPrompt.length
+    ? ordersForPrompt.map(formatOrderLine).join("\n")
+      + (vendor.allOrders.length > MAX_ORDERS_IN_PROMPT
+          ? `\n(${vendor.allOrders.length - MAX_ORDERS_IN_PROMPT} older orders not shown — use get_orders tool if needed)`
+          : "")
     : "No orders yet."
 
   const planActiveSince = vendor.planActivatedAt

@@ -580,7 +580,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         const responseForGemini = toolResult?.ok
           ? (() => {
               const d = { ...(toolResult.data ?? toolResult) }
-              delete d.preview_base64  // strip the large field
+              delete d.preview_base64   // strip mockup images
+              delete d.blankData        // strip full Payload CMS doc
               return d
             })()
           : { error: toolResult?.error ?? "Tool failed" }

@@ -64,12 +64,16 @@ export const renderMockupDirectly = async (
         mockup.requiresColorMasking === true ||
         mockup.photoColor?.toLowerCase() === '#00000000';
       const maskColor = mockup.maskColor || productColor || '#ffffff';
+      const isDesignUnder = mockup.designLayerMode === 'under';
 
       const mockupBaseImg = await _loadImageCached(resolveImageUrl(mockup.photo.url));
 
-
-      // ─── Normal path: draw base photo (with optional colour masking) ──────
-      if (requiresColorMasking) {
+      // ─── Draw base: for 'under' mode, only fill background (photo drawn after design) ──
+      if (isDesignUnder) {
+        // Design goes first → photo overlays it in Step 2.5
+        ctx.fillStyle = productColor || '#ffffff';
+        ctx.fillRect(0, 0, renderRes, renderRes);
+      } else if (requiresColorMasking) {
         ctx.fillStyle = productColor || '#ffffff';
         ctx.fillRect(0, 0, renderRes, renderRes);
         ctx.drawImage(mockupBaseImg, 0, 0, renderRes, renderRes);
@@ -259,6 +263,14 @@ export const renderMockupDirectly = async (
         ctx.globalCompositeOperation = areaBlendMode ?? 'source-over';
         ctx.globalAlpha = areaOpacity ?? 1.0;
         ctx.drawImage(maskedDesignCanvas, 0, 0);
+        ctx.restore();
+      }
+
+      if (isDesignUnder) {
+        ctx.save();
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(mockupBaseImg, 0, 0, renderRes, renderRes);
         ctx.restore();
       }
 

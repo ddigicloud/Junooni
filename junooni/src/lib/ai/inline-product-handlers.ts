@@ -492,15 +492,21 @@ export async function handleGenerateInlineMockup(args: {
     const printX = Math.round(coord.x * outW), printY = Math.round(coord.y * outH)
     const printW = Math.round(coord.width * outW), printH = Math.round(coord.height * outH)
 
-    const designBuffer = base64ToBuffer(design.base64)
-    const designMeta   = await sharp(designBuffer).metadata()
+    const rawDesignBuffer = base64ToBuffer(design.base64)
+    let designBuffer: Buffer
+    try {
+      designBuffer = await sharp(rawDesignBuffer, { failOnError: false }).ensureAlpha().webp().toBuffer()
+    } catch {
+      designBuffer = rawDesignBuffer
+    }
+    const designMeta   = await sharp(designBuffer, { failOnError: false }).metadata()
     const dOrigW = designMeta.width ?? 400, dOrigH = designMeta.height ?? 400
     const scale  = Math.min(Math.round(printW * 0.85) / dOrigW, Math.round(printH * 0.85) / dOrigH)
     const dFinalW = Math.max(1, Math.round(dOrigW * scale)), dFinalH = Math.max(1, Math.round(dOrigH * scale))
 
-    const designResized = await sharp(designBuffer)
+    const designResized = await sharp(designBuffer, { failOnError: false })
       .resize(dFinalW, dFinalH, { fit: "inside", withoutEnlargement: false })
-      .png().toBuffer()
+      .webp().toBuffer()
 
     const position = args.position ?? "center"
     const [vPos, hPos] = (() => {
@@ -556,7 +562,7 @@ async function compositeOnColor(opts: {
 }): Promise<string> {
   const { r, g, b } = hexToRgb(opts.colorHex)
   // Ensure design has alpha channel for clean compositing
-  const designWithAlpha = await sharp(opts.designBuffer).ensureAlpha().png().toBuffer()
+  const designWithAlpha = await sharp(opts.designBuffer).ensureAlpha().webp({ lossless: true }).toBuffer()
   const result = await sharp({
     create: { width: opts.outW, height: opts.outH, channels: 4, background: { r, g, b, alpha: 1 } },
   })
@@ -585,7 +591,7 @@ async function compositeWithMockup(opts: {
   const mockupResized = await sharp(opts.mockupBuffer, { failOn: "none" })
     .resize(opts.outW, opts.outH, { fit: "cover" })
     .ensureAlpha()
-    .png()
+    .webp({ lossless: true })
     .toBuffer()
 
   if (opts.requiresColorMasking) {
@@ -600,7 +606,7 @@ async function compositeWithMockup(opts: {
     // Step 1: Create solid color canvas
     const colorCanvas = await sharp({
       create: { width: opts.outW, height: opts.outH, channels: 4, background: { r, g, b, alpha: 1 } }
-    }).png().toBuffer()
+    }).webp({ lossless: true }).toBuffer()
 
     // Step 2: Apply fabric texture from the neutral mockup using multiply blend
     // This darkens the color where the fabric has shadows/folds, keeping correct hue
@@ -610,7 +616,7 @@ async function compositeWithMockup(opts: {
         blend: "multiply",  // darkens the color with the grey texture = realistic fabric look
         left: 0, top: 0,
       }])
-      .png()
+      .webp({ lossless: true })
       .toBuffer()
 
     // Step 3: Composite design onto the textured color garment
@@ -621,7 +627,7 @@ async function compositeWithMockup(opts: {
         top:   Math.max(0, opts.designTop),
         blend: "over",
       }])
-      .png()
+      .webp({ lossless: true })
       .toBuffer()
 
     // Step 4: Add final shadow/edge detail from the mockup photo (screen blend preserves highlights)

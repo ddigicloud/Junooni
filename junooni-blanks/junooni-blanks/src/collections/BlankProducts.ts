@@ -1319,11 +1319,23 @@ export const BlankProducts: CollectionConfig = {
                       label: 'Product Color (Hex)',
                       required: true,
                     },
-                     {
+                    {
                       name: 'photoSize',
                       type: 'text',
                       //dbName: 'photo_color',
                       label: 'Product Size'
+                    },
+                    {
+                      name: 'designLayerMode',
+                      type: 'select',
+                      defaultValue: 'over',
+                      options: [
+                        { label: 'Design Over Mockup (default)', value: 'over' },
+                        { label: 'Design Under Mockup', value: 'under' },
+                      ],
+                      admin: {
+                        description: 'Use "under" for pillows, cushions — products where design is embedded in the surface.',
+                      },
                     },
                     {
       name: 'dispMaps',
@@ -2825,6 +2837,18 @@ export const BlankProducts: CollectionConfig = {
                       required: true,
                       admin: {
                         description: 'Base color of the product in this mockup',
+                      },
+                    },
+                    {
+                      name: 'designLayerMode',
+                      type: 'select',
+                      defaultValue: 'over',
+                      options: [
+                        { label: 'Design Over Mockup (default)', value: 'over' },
+                        { label: 'Design Under Mockup', value: 'under' },
+                      ],
+                      admin: {
+                        description: 'Use "under" for pillows, cushions — products where design is embedded in the surface.',
                       },
                     },
 

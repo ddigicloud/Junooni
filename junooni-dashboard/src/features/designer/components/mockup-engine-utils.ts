@@ -136,6 +136,11 @@ export const getMockupsForColor = (
     });
   }
 
+  // ── DEBUG ──
+  console.log('[getMockupsForColor] activeTech mockupPhotos RAW count:', activeTech.mockupPhotos?.length)
+  console.log('[getMockupsForColor] allMockups after url filter:', allMockups.map(m => ({ photoColor: m.photoColor, url: m.photo?.url?.slice(0, 40) })))
+  // ── END DEBUG ──
+
   if (!productData?.colorOptions) return allMockups;
 
   const neutralDetector = createDynamicNeutralDetector(productData);
@@ -153,19 +158,37 @@ export const getMockupsForColor = (
 
   // ── Colour-specific filtering for non-AOP mockups ─────────────────────────
   const targetColorInfo = colorMatcher.getColorInfo(colorHex);
+
+  // ── DEBUG ──
+  console.log('[getMockupsForColor] target hex:', colorHex)
+  console.log('[getMockupsForColor] targetColorInfo:', targetColorInfo)
+  console.log('[getMockupsForColor] mockup photoColors:', nonOverlayMockups.map(m => m.photoColor))
+  // ── END DEBUG ──
+
+
   let colorFiltered: DynamicMockupPhoto[] = [];
 
- if (nonOverlayMockups.length > 0) {
+  if (nonOverlayMockups.length > 0) {
     if (targetColorInfo) {
-      let colorSpecific = nonOverlayMockups.filter(m =>
+      const colorSpecific = nonOverlayMockups.filter(m =>
         colorMatcher.areColorsSimilar(m.photoColor || '', colorHex)
       );
-      colorFiltered = colorSpecific.length > 0
-        ? colorSpecific
-        : nonOverlayMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+      if (colorSpecific.length > 0) {
+        colorFiltered = colorSpecific;
+      } else {
+        const neutralFallback = nonOverlayMockups.filter(m =>
+          neutralDetector.isNeutral(m.photoColor?.toLowerCase() || '')
+        );
+        // No match → do NOT fall back to nonOverlayMockups (those belong to other colors).
+        // The #00000000 overlay mockups are already included via overlayMockups.
+        colorFiltered = neutralFallback;
+      }
     } else {
-      // Unknown colour — fall back to neutral mockups
-      colorFiltered = nonOverlayMockups.filter(m => neutralDetector.isNeutral(m.photoColor?.toLowerCase() || ''));
+      // Unknown colour — neutral only, never all
+      const neutralFallback = nonOverlayMockups.filter(m =>
+        neutralDetector.isNeutral(m.photoColor?.toLowerCase() || '')
+      );
+      colorFiltered = neutralFallback;
     }
   }
 

@@ -12,7 +12,7 @@ import {
   Stage, Layer, Image as KonvaImage, Rect, Group,
   Transformer, Text as KonvaText,
 } from 'react-konva';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 import JunooniLogo from '@/assets/junooni_logo_brand_color.png';
 import JUNO from '@/assets/JUNO.mp4';
 import {
@@ -1015,19 +1015,32 @@ useEffect(() => {
           className="bg-white border border-none rounded-lg shadow-sm touch-manipulation"
         >
           
-            <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill={activeColor} listening={false} /></Layer>
-            {canvasImage && (
-              <>
-                <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} listening={false} /></Layer>
-                <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} opacity={0.08} globalCompositeOperation="multiply" listening={false} /></Layer>
-              </>
-            )}
-            <Layer><Rect x={printableArea.x} y={printableArea.y} width={printableArea.width} height={printableArea.height} stroke={BRAND} strokeWidth={2} dash={[6, 4]} listening={false} /></Layer>
-            <Layer ref={layerRef}>
-              <Group clipFunc={ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); }}>
-                {renderDesignElements(activeArea)}
-              </Group>
-            </Layer>
+            {/* Detect layer mode from active mockup */}
+            {(() => {
+              const activeMockup = selectedHeroMockup ?? getMockupsForColor(productData, activeColor, activeTechnology)?.[0] ?? null;
+              const isDesignUnder = activeMockup?.designLayerMode === 'under';
+              const designLayer = (
+                <Layer ref={layerRef}>
+                  <Group clipFunc={ctx => { ctx.beginPath(); ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height); ctx.closePath(); }}>
+                    {renderDesignElements(activeArea)}
+                  </Group>
+                </Layer>
+              );
+              return (
+                <>
+                  <Layer><Rect x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} fill={activeColor} listening={false} /></Layer>
+                  {isDesignUnder && designLayer}
+                  {canvasImage && (
+                    <>
+                      <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} listening={false} /></Layer>
+                      <Layer><KonvaImage image={canvasImage} x={0} y={0} width={canvasConfig.width} height={canvasConfig.height} opacity={0.08} globalCompositeOperation="multiply" listening={false} /></Layer>
+                    </>
+                  )}
+                  <Layer><Rect x={printableArea.x} y={printableArea.y} width={printableArea.width} height={printableArea.height} stroke={BRAND} strokeWidth={2} dash={[6, 4]} listening={false} /></Layer>
+                  {!isDesignUnder && designLayer}
+                </>
+              );
+            })()}
             
           <Layer listening={true}>
             <Transformer

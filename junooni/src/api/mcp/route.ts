@@ -27,6 +27,9 @@ import {
   handleGenerateInlineMockup,
 } from "../../lib/ai/inline-product-handlers"
 import { uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
+import { storeDesignFile } from "../../lib/ai/inline-product-handlers"
+import { generateUploadToken, uploadTempTokens, uploadResults } from "../../lib/mcp/uploadTokenStore"
+import { UPLOAD_WIDGET_TEMPLATE } from "../../lib/mcp/uploadWidgetTemplate"
 
 // ─── CORS headers ─────────────────────────────────────────────────────────────
 
@@ -86,16 +89,51 @@ const MCP_TOOLS = [
   {
     name: "upload_artwork",
     description:
-      "PRODUCT CREATION — STEP 4. Ask the creator to share a public URL of their design artwork " +
-      "(Google Drive public link, Dropbox, Imgur, etc). Call this with that URL. " +
-      "Returns a design_session_id needed for generate_mockup.",
+    "PRODUCT CREATION — STEP 4. Upload the creator's design artwork. " +
+    "If the creator attached an image to this chat, it is available at " +
+    "/mnt/user-data/uploads/<filename>. Upload it using bash:\n" +
+    "  curl -s -X POST https://jazz-kung-cod.ngrok-free.dev/api/mcp/upload-artwork-file \\\n" +
+    "    -H 'Authorization: Bearer <token>' \\\n" +
+    "    -F 'file=@/mnt/user-data/uploads/<filename>'\n" +
+    "The response returns {ok:true, design_session_id:'...'}. " +
+    "Use that design_session_id directly in generate_mockup — do NOT call upload_artwork after this. " +
+    "Only call upload_artwork (this tool) if the creator provides a public URL themselves.",
     inputSchema: {
       type: "object",
       properties: {
-        artwork_url: { type: "string", description: "Public URL of the artwork image (PNG or JPG)" },
-        filename:    { type: "string", description: "Optional filename (e.g. my-logo.png)" },
+        artwork_url:    { type: "string", description: "Public URL of the artwork image (PNG or JPG, GIF, WebP)" },
+        artwork_base64: { type: "string", description: "Base64-encoded image data URI (data:image/png;base64,...) — use this when the creator shares an image directly in the chat" },
+        filename:       { type: "string", description: "Optional filename (e.g. my-logo.png)" },
       },
-      required: ["artwork_url"],
+      required: [],
+    },
+  },
+  {
+    name: "create_upload_session",
+    description:
+      "PRODUCT CREATION — ARTWORK UPLOAD (mobile-friendly). " +
+      "Call this when the creator wants to upload their design from their device. " +
+      "Returns a one-time upload_url and token. " +
+      "AFTER getting the result: publish an HTML Artifact widget — the widget must POST " +
+      "multipart/form-data to the upload_url with the file in a field named 'file'. " +
+      "Tell the creator: 'Tap Choose Image in the widget, pick your design, then say done.' " +
+      "Then call check_upload with the token once they confirm.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "check_upload",
+    description:
+      "PRODUCT CREATION — ARTWORK UPLOAD. Call after the creator confirms they uploaded " +
+      "via the widget. Returns design_session_id to use in generate_mockup.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: {
+          type:        "string",
+          description: "Upload token returned by create_upload_session",
+        },
+      },
+      required: ["token"],
     },
   },
   {
@@ -504,7 +542,7 @@ function formatToolResult(name: string, result: any): string {
     }
 
     // ── Blank details ───────────────────────────────────────────────────────
-        case "get_blank_details": {
+    case "get_blank_details": {
       const b = d.blank ?? d
       const imageUrl = b.image_url ?? b.thumbnail_url ?? b.image?.url ?? b.thumbnail?.url ?? null
       const colors     = (b.colors     ?? [])
@@ -513,7 +551,6 @@ function formatToolResult(name: string, result: any): string {
       const techs: any[] = b.technologies ?? (b.technology_id ? [{ id: b.technology_id, name: b.technology_name ?? b.technology_id }] : [])
 
       const lines = [
-        // ── data lines (Claude references these when calling next tools) ──
         `📋 **${b.name}** (\`${b.id}\`)`,
         imageUrl ? `image_url: ${imageUrl}` : `image_url: none`,
         `Type: ${b.product_type}`,
@@ -532,14 +569,13 @@ function formatToolResult(name: string, result: any): string {
         lines.push(`Technologies: ${techs.map((t: any) => `${t.name}(id:${t.id})`).join(", ")}`)
       }
 
-      // ── render instructions ──────────────────────────────────────────────
       lines.push(``)
       lines.push(`---`)
       lines.push(`RENDER INSTRUCTIONS — follow exactly when composing your reply:`)
       lines.push(``)
-      lines.push(`Step 1: Show the product as a visual card — image_url as the thumbnail, name, type, base cost.`)
+      lines.push(`Step 1: Show the product as a visual card — image_url as thumbnail, name, type, base cost.`)
       lines.push(``)
-      lines.push(`Step 2: Below the card, show a styled selection form. Ask ALL questions in ONE message. Format each group as shown:`)
+      lines.push(`Step 2: Below the card, ask ALL questions in ONE message. Format each group exactly as shown:`)
       lines.push(``)
       lines.push(`**🎨 Pick your colors** (you can pick more than one)`)
       lines.push(colors.map((c: any) => `● ${c.name} \`${c.hex}\``).join("   "))
@@ -645,6 +681,34 @@ function formatToolResult(name: string, result: any): string {
       return lines.join("\n")
     }
 
+    case "create_upload_session": {
+      return [
+        `🖼️ **Upload widget ready!**`,
+        ``,
+        `Token: \`${d.token}\``,
+        ``,
+        `NEXT — do all three in order:`,
+        `1. Publish the HTML below as an Artifact (do NOT modify it — the upload URL is already baked in)`,
+        `2. Tell the creator: "Tap **Choose Image** in the widget, pick your design from your gallery, then say **done** when finished."`,
+        `3. After they say done → call **check_upload** with token \`${d.token}\``,
+        ``,
+        `<!-- WIDGET_HTML_START -->`,
+        d.widget_html,
+        `<!-- WIDGET_HTML_END -->`,
+      ].join("\n")
+    }
+ 
+    case "check_upload": {
+      return [
+        `✅ **Artwork uploaded!**`,
+        ``,
+        `File: ${d.filename}`,
+        `Design session ID: \`${d.design_session_id}\``,
+        ``,
+        `Next: call **generate_mockup** with this design_session_id to preview on the garment.`,
+      ].join("\n")
+    }
+
     default:
       return JSON.stringify(d, null, 2)
   }
@@ -717,6 +781,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       error: { code: -32600, message: "Invalid request: missing method or name" },
     })
   }
+
+  // ── DEBUG: log every incoming tool call ──────────────────────────────────────
+  console.log(`[MCP] ▶ POST method=${method} tool=${toolName}`)
 
   // ── 2. Handle meta-methods BEFORE auth ──────────────────────────────────────
   if (method === "initialize") {
@@ -793,7 +860,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   // ── 5. Check scope permissions ───────────────────────────────────────────────
-  const writeTools = ["create_product", "upload_artwork", "generate_mockup"]
+  const writeTools = ["create_product", "upload_artwork", "generate_mockup", "create_upload_session"]
   if (writeTools.includes(toolName) && tokenScope === "read") {
     return res.status(403).json({
       jsonrpc: "2.0", id: rpcId,
@@ -814,28 +881,91 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     ]
 
     if (storeTools.includes(toolName)) {
+      console.log(`[MCP] store tool: ${toolName}`)
       const vendor = await getVendorContext(req.scope, vendorId)
       rawResult    = await handleTool(toolName as any, toolArgs, vendor)
+      console.log(`[MCP] store tool done: ${toolName} ok=${rawResult?.ok}`)
+
     } else if (toolName === "search_blanks") {
+      console.log(`[MCP] search_blanks query="${toolArgs.query}"`)
       rawResult = await handleSearchBlanks({
         query:         toolArgs.query,
         limit:         toolArgs.limit ?? 50,
         inline_images: true,
       })
+      console.log(`[MCP] search_blanks done ok=${rawResult?.ok}`)
+
     } else if (toolName === "get_blank_details") {
+      console.log(`[MCP] get_blank_details blank_id=${toolArgs.blank_id}`)
       rawResult = await handleGetBlankDetails({ blank_id: toolArgs.blank_id })
+      console.log(`[MCP] get_blank_details done ok=${rawResult?.ok}`)
+
     } else if (toolName === "suggest_price") {
+      console.log(`[MCP] suggest_price base_cost=${toolArgs.base_cost}`)
       rawResult = handleSuggestPrice({
         base_cost:        toolArgs.base_cost,
         product_type:     toolArgs.product_type,
         fulfillment_type: toolArgs.fulfillment_type,
       })
+      console.log(`[MCP] suggest_price done`)
+
     } else if (toolName === "upload_artwork") {
-      rawResult = await handleUploadArtworkFromUrl(
-        { artwork_url: toolArgs.artwork_url, filename: toolArgs.filename },
-        vendorId
-      )
+      const hasBase64 = !!toolArgs.artwork_base64
+      const hasUrl    = !!toolArgs.artwork_url
+      console.log(`[MCP] upload_artwork — hasBase64=${hasBase64} hasUrl=${hasUrl}`)
+
+      if (toolArgs.artwork_base64) {
+        const rawB64Len = toolArgs.artwork_base64.length
+        console.log(`[MCP] upload_artwork — base64 raw length=${rawB64Len} chars (~${Math.round(rawB64Len * 0.75 / 1024)}KB)`)
+
+        const base64Data = toolArgs.artwork_base64.includes(",")
+          ? toolArgs.artwork_base64.split(",")[1]
+          : toolArgs.artwork_base64
+        const mimeType = toolArgs.artwork_base64.startsWith("data:")
+          ? toolArgs.artwork_base64.split(";")[0].replace("data:", "")
+          : "image/png"
+        const ext      = mimeType.split("/")[1]?.split("+")[0] ?? "png"
+        const filename = toolArgs.filename ?? `artwork-${Date.now()}.${ext}`
+        const base64Full = toolArgs.artwork_base64.startsWith("data:")
+          ? toolArgs.artwork_base64
+          : `data:${mimeType};base64,${base64Data}`
+
+        console.log(`[MCP] upload_artwork — mimeType=${mimeType} ext=${ext} filename=${filename}`)
+
+        // Store directly — no Medusa round-trip needed here
+        // const { storeDesignFile } = await import("../../lib/ai/inline-product-handlers.js")
+        console.log(`[MCP] upload_artwork — calling storeDesignFile...`)
+        const sessionId = storeDesignFile(vendorId, base64Full, filename, mimeType)
+        console.log(`[MCP] upload_artwork — storeDesignFile done, sessionId=${sessionId}`)
+
+        console.log(`[MCP] upload_artwork — running sharp metadata...`)
+        const { default: sharp } = await import("sharp")
+        const meta = await sharp(Buffer.from(base64Data, "base64")).metadata()
+        console.log(`[MCP] upload_artwork — sharp done: ${meta.width}x${meta.height} format=${meta.format}`)
+
+        rawResult = {
+          ok: true,
+          data: {
+            design_session_id: sessionId,
+            filename,
+            width:      meta.width  ?? 0,
+            height:     meta.height ?? 0,
+            size_bytes: Math.round(base64Data.length * 0.75),
+            message:    "Artwork stored. Use design_session_id in generate_mockup then create_product.",
+          },
+        }
+        console.log(`[MCP] upload_artwork — base64 path complete, sessionId=${sessionId}`)
+      } else {
+        console.log(`[MCP] upload_artwork — URL path, url=${toolArgs.artwork_url}`)
+        rawResult = await handleUploadArtworkFromUrl(
+          { artwork_url: toolArgs.artwork_url, filename: toolArgs.filename },
+          vendorId
+        )
+        console.log(`[MCP] upload_artwork — URL path done ok=${rawResult?.ok}`)
+      }
+
     } else if (toolName === "generate_mockup") {
+      console.log(`[MCP] generate_mockup blank_id=${toolArgs.blank_id} color=${toolArgs.color_hex} area=${toolArgs.area} session=${toolArgs.design_session_id}`)
       rawResult = await handleGenerateInlineMockup({
         blank_id:           toolArgs.blank_id,
         technology_id:      toolArgs.technology_id,
@@ -845,11 +975,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         area:               toolArgs.area ?? "front",
         position:           toolArgs.position ?? "center",
       })
+      console.log(`[MCP] generate_mockup done ok=${rawResult?.ok} hasBase64=${!!rawResult?.data?.preview_base64}`)
+
       // Store result so create_product can reference it, and upload for public URL
       if (rawResult.ok && rawResult.data?.preview_base64) {
         const b64url   = rawResult.data.preview_base64 as string
         const sid      = storeMockupPreview(vendorId, b64url, toolArgs.area, toolArgs.color_name, toolArgs.color_hex)
         rawResult.data.mockup_session_id = sid
+        console.log(`[MCP] generate_mockup — mockup stored sid=${sid}`)
 
         // Upload to file storage → public URL so Claude can render it inline
         if (b64url.startsWith("data:")) {
@@ -858,6 +991,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             const mimeType = header.replace("data:", "").replace(";base64", "")
             const ext      = mimeType.split("/")[1]?.split("+")[0] ?? "webp"
 
+            console.log(`[MCP] generate_mockup — uploading preview to file storage, mimeType=${mimeType} b64len=${b64.length}`)
             const { result: uploaded } = await uploadFilesWorkflow(req.scope).run({
               input: {
                 files: [{
@@ -871,16 +1005,51 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             const previewUrl = (uploaded as any)?.[0]?.url
             if (previewUrl) {
               rawResult.data.preview_url = previewUrl
-              console.log(`[MCP] mockup uploaded for preview → ${previewUrl}`)
+              console.log(`[MCP] generate_mockup — preview uploaded → ${previewUrl}`)
+            } else {
+              console.warn(`[MCP] generate_mockup — uploadFilesWorkflow returned no URL`)
             }
           } catch (uploadErr: any) {
             console.warn("[MCP] mockup preview upload failed (non-fatal):", uploadErr.message)
           }
         }
       }
+
     } else if (toolName === "create_product") {
+      console.log(`[MCP] create_product title="${toolArgs.title}" blank_id=${toolArgs.blank_id} colors=${JSON.stringify(toolArgs.color_names ?? toolArgs.color_name)}`)
       rawResult = await handleCreateProduct(toolArgs, vendorId, req.scope, token)
-    } else {
+      console.log(`[MCP] create_product done ok=${rawResult?.ok} productId=${rawResult?.data?.id}`)
+
+    } else if (toolName === "create_upload_session") {
+      const token     = generateUploadToken()
+      uploadTempTokens.set(token, { vendorId, createdAt: Date.now() })
+      const baseUrl   = process.env.MEDUSA_BACKEND_URL
+        ?? process.env.NEXT_PUBLIC_BACKEND_URL
+        ?? "https://jazz-kung-cod.ngrok-free.dev"
+      const uploadUrl = `${baseUrl}/api/mcp/upload-artwork-file?token=${token}`
+      // Bake the upload URL into the widget HTML so Claude can publish it immediately
+      const widgetHtml = UPLOAD_WIDGET_TEMPLATE.replace("UPLOAD_URL_PLACEHOLDER", uploadUrl)
+      rawResult = {
+        ok: true,
+        data: { token, upload_url: uploadUrl, widget_html: widgetHtml },
+      }
+      console.log(`[MCP] create_upload_session token=${token}`)
+ 
+    } else if (toolName === "check_upload") {
+      const token  = toolArgs.token as string
+      const result = uploadResults.get(token)
+      if (!result) {
+        rawResult = {
+          ok:    false,
+          error: "No upload found for this token yet. Ask the creator to upload first, then try again.",
+        }
+      } else {
+        uploadResults.delete(token) // consume — one read only
+        rawResult = { ok: true, data: result }
+      }
+      console.log(`[MCP] check_upload token=${token} found=${!!result}`)
+    }
+    else {
       rawResult = { ok: false, error: `Tool not implemented: ${toolName}` }
     }
 
@@ -894,7 +1063,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       text += `\n\n![Mockup Preview](${rawResult.data.preview_url})`
     }
 
-    console.log(`[MCP] vendor=${vendorId} tool=${toolName} ok=${rawResult?.ok}`)
+    console.log(`[MCP] ✅ vendor=${vendorId} tool=${toolName} ok=${rawResult?.ok}`)
 
     const content: { type: string; text?: string; data?: string; mimeType?: string }[] = [
       { type: "text", text },
@@ -936,7 +1105,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       result: { content, isError },
     })
   } catch (err: any) {
-    console.error("[MCP] tool execution error:", err)
+    console.error(`[MCP] ❌ tool execution error — tool=${toolName} vendor=${vendorId ?? "?"}:`, err)
     return res.status(500).json({
       jsonrpc: "2.0", id: rpcId,
       error: { code: -32603, message: err?.message ?? "Internal error" },

@@ -158,6 +158,8 @@ export interface DynamicMockupPhoto {
   viewAngle: string;
   mockupType: string;
   photoColor: string;
+  photoSize?: string;
+  designLayerMode?: 'over' | 'under';
   priority: number;
   mocwidthpx?: number;
   mochigtpx?: number;

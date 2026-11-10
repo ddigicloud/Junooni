@@ -82,8 +82,10 @@ export const StoreImportModal: React.FC<StoreImportModalProps> = ({
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-red-800">Too Many Mockups</h3>
-                  <p className="mt-1 text-sm text-red-700">Please reduce selected colors to continue</p>
+                  <h3 className="text-lg font-semibold text-red-800">Generation Failed</h3>
+                    <p className="mt-1 text-sm text-red-700">
+                      {importData?.generation_summary?.errors?.[0] || 'Some mockups failed to generate'}
+                    </p>
                 </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">

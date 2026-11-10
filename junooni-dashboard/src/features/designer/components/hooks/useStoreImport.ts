@@ -77,8 +77,34 @@ export const useStoreImport = ({
   // ── Navigate to Create page ───────────────────────────────────────────────
   const navigateToCreatePage = useCallback(async (transformedData: any) => {
   setShowStoreImportModal(false);
-  const uploadQualityImages: Record<string, any[]> = { ...transformedData.colorSpecificImages };
   const transferQualityImages: Record<string, any[]> = { ...transformedData.colorSpecificImages };
+
+  const saveChunked = (key: string, data: unknown): boolean => {
+    try {
+      const str = JSON.stringify(data);
+      const CHUNK_SIZE = 450_000;
+      sessionStorage.removeItem(`${key}_chunks`);
+      for (let i = 0; i < 50; i++) {
+        if (!sessionStorage.getItem(`${key}_chunk_${i}`)) break;
+        sessionStorage.removeItem(`${key}_chunk_${i}`);
+      }
+      const totalChunks = Math.ceil(str.length / CHUNK_SIZE);
+      if (totalChunks === 1) {
+        sessionStorage.setItem(key, str);
+        sessionStorage.setItem(`${key}_chunks`, '1');
+        return true;
+      }
+      for (let i = 0; i < totalChunks; i++) {
+        sessionStorage.setItem(`${key}_chunk_${i}`, str.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE));
+      }
+      sessionStorage.setItem(`${key}_chunks`, String(totalChunks));
+      console.log(`✅ saveChunked "${key}": ${totalChunks} chunks (${(str.length/1024).toFixed(0)}KB)`);
+      return true;
+    } catch (e) {
+      console.error(`❌ saveChunked failed "${key}":`, e);
+      return false;
+    }
+  };
 
   try {
     const keysToDelete: string[] = [];
@@ -90,19 +116,23 @@ export const useStoreImport = ({
   } catch {}
 
   const sessionKey = `store_import_${Date.now()}`;
-  const saved1 = saveToSessionStorage(`${sessionKey}_colorSpecificImages`, transferQualityImages);
-  const saved2 = saveToSessionStorage(`${sessionKey}_colorSpecificMockups`, transformedData.designData?.mockupData?.colorSpecificMockups || []);
-
-  // ✅ FIX: Save canvas images to sessionStorage AND keep a reference
+  // Large image data goes in window — survives TanStack Router client-side navigation, no size limit
   const canvasToSave = transformedData.canvasImages || [];
-  const saved3 = saveToSessionStorage(`${sessionKey}_canvasImages`, canvasToSave);
-  const saved4 = saveToSessionStorage(`${sessionKey}_uploadQualityColorSpecificImages`, uploadQualityImages);
+  (window as any).__junooniStoreImport = {
+    sessionKey,
+    colorSpecificImages: transferQualityImages,
+    canvasImages: canvasToSave,
+  };
+  console.log(`✅ window.__junooniStoreImport set: ${Object.keys(transferQualityImages).length} colors`);
+  const saved1 = true;
+  const saved2 = saveToSessionStorage(`${sessionKey}_colorSpecificMockups`, transformedData.designData?.mockupData?.colorSpecificMockups || []);
+  const saved3 = true;
 
-  console.log('🔍 navigateToCreatePage canvas images:', {
-    count: canvasToSave.length,
-    savedToSession: saved3,
-    firstItemValid: canvasToSave[0]?.image_data?.startsWith?.('data:image/') ?? false,
-  });
+  // console.log('🔍 navigateToCreatePage canvas images:', {
+  //   count: canvasToSave.length,
+  //   savedToSession: saved3,
+  //   firstItemValid: canvasToSave[0]?.image_data?.startsWith?.('data:image/') ?? false,
+  // });
 
   console.log('🚀 Navigating to /designer/create now');
 
@@ -132,13 +162,13 @@ export const useStoreImport = ({
       storeMetadata: { ...transformedData.storeMetadata, mockup_variants: [] },
       // ✅ FIX: Pass canvas images directly in state as fallback
       // if sessionStorage failed (data too large) they still arrive here
-      canvasImages: [],
+      canvasImages: saved3 ? [] : canvasToSave,
       navigationContext: {
         sourceComponent: 'EnhancedCanvas',
         importTimestamp: new Date().toISOString(),
         sessionStorageKey: sessionKey,
-        hasUploadQualityImages: Object.keys(uploadQualityImages).length > 0,
-        totalUploadImages: Object.values(uploadQualityImages).flat().length,
+        hasUploadQualityImages: Object.keys(transferQualityImages).length > 0,
+        totalUploadImages: Object.values(transferQualityImages).flat().length,
         canvasImagesCount: canvasToSave.length,
         canvasSavedToSession: saved3,
       },
@@ -379,22 +409,34 @@ export const useStoreImport = ({
     // });
 
     const allMockupsForTech: any[] = [];
-      selectedColors.forEach(color => {
-        if (productData.size_Images) {
-          // size_Images=true: only generate for sizes where this color is available
-          selectedSizes.forEach(size => {
-            if (!isColorAvailableForSize(color.name, size)) return;
-            const mockups = getMockupsForColor(productData, color.value, activeTechnology, size);
-            mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name, photoSize: size }));
-          });
-        } else {
-          // size_Images=false: only generate if color is valid for at least one selected size
-          const validSizes = selectedSizes.filter(s => isColorAvailableForSize(color.name, s));
-          if (!validSizes.length) return;
-          const mockups = getMockupsForColor(productData, color.value, activeTechnology, undefined);
-          mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name, validSizes }));
+    selectedColors.forEach(color => {
+      if (productData.size_Images) {
+        selectedSizes.forEach(size => {
+          if (!isColorAvailableForSize(color.name, size)) return;
+          let mockups = getMockupsForColor(productData, color.value, activeTechnology, size);
+          if (!mockups.length) {
+            for (const c of selectedColors) {
+              mockups = getMockupsForColor(productData, c.value, activeTechnology, size);
+              if (mockups.length) break;
+            }
+            if (!mockups.length) mockups = allMockups;
+          }
+          mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name, photoSize: size }));
+        });
+      } else {
+        const validSizes = selectedSizes.filter(s => isColorAvailableForSize(color.name, s));
+        if (!validSizes.length) return;
+        let mockups = getMockupsForColor(productData, color.value, activeTechnology, undefined);
+        if (!mockups.length) {
+          for (const c of selectedColors) {
+            mockups = getMockupsForColor(productData, c.value, activeTechnology, undefined);
+            if (mockups.length) break;
+          }
+          if (!mockups.length) mockups = allMockups;
         }
-      });
+        mockups.forEach(m => allMockupsForTech.push({ ...m, target_color: color.value, target_color_name: color.name, validSizes }));
+      }
+    });
 
     if (allMockupsForTech.length === 0) { alert('❌ No mockups found for selected configuration.'); return; }
 
