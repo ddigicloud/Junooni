@@ -2,11 +2,29 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { storeDesignFile } from "../../../lib/ai/inline-product-handlers"
 import { uploadTempTokens, uploadResults } from "../../../lib/mcp/uploadTokenStore"
+import { UPLOAD_WIDGET_TEMPLATE } from "../../../lib/mcp/uploadWidgetTemplate"
 
 const CORS = {
   "Access-Control-Allow-Origin":  "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
+}
+
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  res.setHeader("ngrok-skip-browser-warning", "true")  // ← add this
+  const tempToken = (req.query?.token as string) ?? ""
+  if (!tempToken || !uploadTempTokens.has(tempToken)) {
+    return res.status(401).send("Invalid or expired upload link.")
+  }
+
+  const baseUrl = process.env.MEDUSA_BACKEND_URL
+    ?? process.env.NEXT_PUBLIC_BACKEND_URL
+    ?? "https://jazz-kung-cod.ngrok-free.dev"
+  const uploadUrl = `${baseUrl}/api/mcp/upload-artwork-file?token=${tempToken}`
+  const html = UPLOAD_WIDGET_TEMPLATE.replace("UPLOAD_URL_PLACEHOLDER", uploadUrl)
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8")
+  return res.status(200).send(html)
 }
 
 export async function OPTIONS(_req: MedusaRequest, res: MedusaResponse) {

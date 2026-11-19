@@ -20,6 +20,7 @@ export interface DesignElement {
   imageName?: string;
   imageUrl?: string;
   imageBase64?: string;
+  src?: string
   originalImageWidth?: number;
   originalImageHeight?: number;
   text?: string;

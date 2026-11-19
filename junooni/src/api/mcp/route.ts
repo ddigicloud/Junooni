@@ -29,7 +29,7 @@ import {
 import { uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
 import { storeDesignFile } from "../../lib/ai/inline-product-handlers"
 import { generateUploadToken, uploadTempTokens, uploadResults } from "../../lib/mcp/uploadTokenStore"
-import { UPLOAD_WIDGET_TEMPLATE } from "../../lib/mcp/uploadWidgetTemplate"
+//import { UPLOAD_WIDGET_TEMPLATE } from "../../lib/mcp/uploadWidgetTemplate"
 
 // ─── CORS headers ─────────────────────────────────────────────────────────────
 
@@ -37,6 +37,7 @@ const CORS = {
   "Access-Control-Allow-Origin":  "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "ngrok-skip-browser-warning":    "true",
 }
 
 // ─── Tool schemas (MCP inputSchema format) ────────────────────────────────────
@@ -89,21 +90,16 @@ const MCP_TOOLS = [
   {
     name: "upload_artwork",
     description:
-    "PRODUCT CREATION — STEP 4. Upload the creator's design artwork. " +
-    "If the creator attached an image to this chat, it is available at " +
-    "/mnt/user-data/uploads/<filename>. Upload it using bash:\n" +
-    "  curl -s -X POST https://jazz-kung-cod.ngrok-free.dev/api/mcp/upload-artwork-file \\\n" +
-    "    -H 'Authorization: Bearer <token>' \\\n" +
-    "    -F 'file=@/mnt/user-data/uploads/<filename>'\n" +
-    "The response returns {ok:true, design_session_id:'...'}. " +
-    "Use that design_session_id directly in generate_mockup — do NOT call upload_artwork after this. " +
-    "Only call upload_artwork (this tool) if the creator provides a public URL themselves.",
+    "PRODUCT CREATION — STEP 4. Upload the creator's design artwork.\n\n" +
+    "ALWAYS call create_upload_session — do NOT use curl or base64.\n" +
+    "create_upload_session returns a one-time browser link the creator opens to upload their file.\n" +
+    "After they confirm, call check_upload to get the design_session_id.\n\n" +
+    "Only use artwork_url if the creator explicitly pastes a public image URL themselves.",
     inputSchema: {
       type: "object",
       properties: {
-        artwork_url:    { type: "string", description: "Public URL of the artwork image (PNG or JPG, GIF, WebP)" },
-        artwork_base64: { type: "string", description: "Base64-encoded image data URI (data:image/png;base64,...) — use this when the creator shares an image directly in the chat" },
-        filename:       { type: "string", description: "Optional filename (e.g. my-logo.png)" },
+        artwork_url: { type: "string", description: "Public URL of the artwork — only if creator provides a URL themselves" },
+        filename:    { type: "string", description: "Optional filename hint" },
       },
       required: [],
     },
@@ -111,12 +107,11 @@ const MCP_TOOLS = [
   {
     name: "create_upload_session",
     description:
-      "PRODUCT CREATION — ARTWORK UPLOAD (mobile-friendly). " +
-      "Call this when the creator wants to upload their design from their device. " +
-      "Returns a one-time upload_url and token. " +
-      "AFTER getting the result: publish an HTML Artifact widget — the widget must POST " +
-      "multipart/form-data to the upload_url with the file in a field named 'file'. " +
-      "Tell the creator: 'Tap Choose Image in the widget, pick your design, then say done.' " +
+      "PRODUCT CREATION — ARTWORK UPLOAD (mobile / no attachment fallback). " +
+      "Call this ONLY when the creator cannot attach an image to the chat. " +
+      "Returns a one-time upload_url the creator opens in their browser. " +
+      "DO NOT publish an HTML artifact — just show the link and tell the creator: " +
+      "'Open this link, pick your design, tap Upload Design, then come back and say done.' " +
       "Then call check_upload with the token once they confirm.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
@@ -683,18 +678,17 @@ function formatToolResult(name: string, result: any): string {
 
     case "create_upload_session": {
       return [
-        `🖼️ **Upload widget ready!**`,
+        `🖼️ **Upload Your Design**`,
+        ``,
+        `👉 **Open this link to upload:** ${d.upload_url}`,
+        ``,
+        `Tell the creator:`,
+        `1. Open the link above in your browser`,
+        `2. Tap **Choose Image** and pick your design`,
+        `3. Tap **Upload Design**`,
+        `4. Once you see ✅, come back here and say **done**`,
         ``,
         `Token: \`${d.token}\``,
-        ``,
-        `NEXT — do all three in order:`,
-        `1. Publish the HTML below as an Artifact (do NOT modify it — the upload URL is already baked in)`,
-        `2. Tell the creator: "Tap **Choose Image** in the widget, pick your design from your gallery, then say **done** when finished."`,
-        `3. After they say done → call **check_upload** with token \`${d.token}\``,
-        ``,
-        `<!-- WIDGET_HTML_START -->`,
-        d.widget_html,
-        `<!-- WIDGET_HTML_END -->`,
       ].join("\n")
     }
  
@@ -910,59 +904,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       console.log(`[MCP] suggest_price done`)
 
     } else if (toolName === "upload_artwork") {
-      const hasBase64 = !!toolArgs.artwork_base64
-      const hasUrl    = !!toolArgs.artwork_url
-      console.log(`[MCP] upload_artwork — hasBase64=${hasBase64} hasUrl=${hasUrl}`)
-
-      if (toolArgs.artwork_base64) {
-        const rawB64Len = toolArgs.artwork_base64.length
-        console.log(`[MCP] upload_artwork — base64 raw length=${rawB64Len} chars (~${Math.round(rawB64Len * 0.75 / 1024)}KB)`)
-
-        const base64Data = toolArgs.artwork_base64.includes(",")
-          ? toolArgs.artwork_base64.split(",")[1]
-          : toolArgs.artwork_base64
-        const mimeType = toolArgs.artwork_base64.startsWith("data:")
-          ? toolArgs.artwork_base64.split(";")[0].replace("data:", "")
-          : "image/png"
-        const ext      = mimeType.split("/")[1]?.split("+")[0] ?? "png"
-        const filename = toolArgs.filename ?? `artwork-${Date.now()}.${ext}`
-        const base64Full = toolArgs.artwork_base64.startsWith("data:")
-          ? toolArgs.artwork_base64
-          : `data:${mimeType};base64,${base64Data}`
-
-        console.log(`[MCP] upload_artwork — mimeType=${mimeType} ext=${ext} filename=${filename}`)
-
-        // Store directly — no Medusa round-trip needed here
-        // const { storeDesignFile } = await import("../../lib/ai/inline-product-handlers.js")
-        console.log(`[MCP] upload_artwork — calling storeDesignFile...`)
-        const sessionId = storeDesignFile(vendorId, base64Full, filename, mimeType)
-        console.log(`[MCP] upload_artwork — storeDesignFile done, sessionId=${sessionId}`)
-
-        console.log(`[MCP] upload_artwork — running sharp metadata...`)
-        const { default: sharp } = await import("sharp")
-        const meta = await sharp(Buffer.from(base64Data, "base64")).metadata()
-        console.log(`[MCP] upload_artwork — sharp done: ${meta.width}x${meta.height} format=${meta.format}`)
-
-        rawResult = {
-          ok: true,
-          data: {
-            design_session_id: sessionId,
-            filename,
-            width:      meta.width  ?? 0,
-            height:     meta.height ?? 0,
-            size_bytes: Math.round(base64Data.length * 0.75),
-            message:    "Artwork stored. Use design_session_id in generate_mockup then create_product.",
-          },
-        }
-        console.log(`[MCP] upload_artwork — base64 path complete, sessionId=${sessionId}`)
-      } else {
-        console.log(`[MCP] upload_artwork — URL path, url=${toolArgs.artwork_url}`)
-        rawResult = await handleUploadArtworkFromUrl(
-          { artwork_url: toolArgs.artwork_url, filename: toolArgs.filename },
-          vendorId
-        )
-        console.log(`[MCP] upload_artwork — URL path done ok=${rawResult?.ok}`)
-      }
+      console.log(`[MCP] upload_artwork — URL path, url=${toolArgs.artwork_url}`)
+      rawResult = await handleUploadArtworkFromUrl(
+        { artwork_url: toolArgs.artwork_url, filename: toolArgs.filename },
+        vendorId
+      )
+      console.log(`[MCP] upload_artwork — URL path done ok=${rawResult?.ok}`)
 
     } else if (toolName === "generate_mockup") {
       console.log(`[MCP] generate_mockup blank_id=${toolArgs.blank_id} color=${toolArgs.color_hex} area=${toolArgs.area} session=${toolArgs.design_session_id}`)
@@ -1023,15 +970,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     } else if (toolName === "create_upload_session") {
       const token     = generateUploadToken()
       uploadTempTokens.set(token, { vendorId, createdAt: Date.now() })
-      const baseUrl   = process.env.MEDUSA_BACKEND_URL
+      const baseUrl   = process.env.UPLOAD_WIDGET_BASE_URL
+        ?? process.env.MEDUSA_BACKEND_URL
         ?? process.env.NEXT_PUBLIC_BACKEND_URL
-        ?? "https://jazz-kung-cod.ngrok-free.dev"
+        ?? "http://localhost:9000"
       const uploadUrl = `${baseUrl}/api/mcp/upload-artwork-file?token=${token}`
-      // Bake the upload URL into the widget HTML so Claude can publish it immediately
-      const widgetHtml = UPLOAD_WIDGET_TEMPLATE.replace("UPLOAD_URL_PLACEHOLDER", uploadUrl)
       rawResult = {
         ok: true,
-        data: { token, upload_url: uploadUrl, widget_html: widgetHtml },
+        data: { token, upload_url: uploadUrl },
       }
       console.log(`[MCP] create_upload_session token=${token}`)
  

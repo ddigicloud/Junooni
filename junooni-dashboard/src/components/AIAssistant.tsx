@@ -14,6 +14,7 @@ interface SizeOption   { name: string }
 interface MockupSlide {
   base64?:    string
   sessionId?: string
+  url?:       string
   colorHex:   string
   colorName:  string
   area:       string
@@ -48,6 +49,7 @@ interface Message {
   content:           string
   actions?:          ActionButton[]
   suggestions?:      string[]
+  showEditCTA?:      boolean
   showUpload?:       boolean
   showColorPicker?:      { colors: ColorOption[]; multiSelect: boolean }
   showSizePicker?:       { sizes: SizeOption[] }
@@ -84,7 +86,43 @@ const API_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL
   ? `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/ai-assistant`
   : "http://localhost:9000/vendors/ai-assistant"
 
+const UPLOAD_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL
+? `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/uploads`
+: "http://localhost:9000/vendors/uploads"
+
 const BRAND = "#E8621A"
+
+// ── Mockup pre-upload helper ──────────────────────────────────────────────────
+// Converts a base64 PNG to a Blob, uploads it to /vendors/uploads,
+// and returns the S3 URL — so store_mockup never carries base64 in JSON.
+async function preUploadMockup(base64: string, filename: string, token: string): Promise<string> {
+  const raw   = base64.includes(',') ? base64.split(',')[1] : base64
+  const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0))
+  const blob  = new Blob([bytes], { type: 'image/png' })
+  const fd    = new FormData()
+  fd.append('files', blob, filename)
+  const r = await fetch(UPLOAD_URL, {
+    method:      'POST',
+    headers:     { Authorization: `Bearer ${token}` },
+    credentials: 'include',
+    body:        fd,
+  })
+  if (!r.ok) throw new Error(`Pre-upload failed: ${r.status}`)
+  const data = await r.json()
+  const url  = data.files?.[0]?.url
+  if (!url) throw new Error('No URL in pre-upload response')
+  return url
+}
+
+const isCylindricalBlank = (blankData: any): boolean => {
+  if (!blankData) return false
+  for (const tech of (blankData?.printT ?? [])) {
+    for (const photo of (tech?.mockupPhotos ?? [])) {
+      if (photo?.render?.pfEngine === 'pixi') return true
+    }
+  }
+  return false
+}
 
 const TOOL_LABELS: Record<string, string> = {
   get_store_overview:    "Checking your store...",
@@ -675,16 +713,40 @@ function DesignUploader({ vendorId, onUploadComplete, onSkip }: {
     setPreview(base64); setProgress(60)
     try {
       const token = localStorage.getItem("vendorToken") ?? ""
-      const resp  = await fetch(API_URL, {
-        method:"POST",
-        headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
-        credentials:"include",
-        body: JSON.stringify({ action:"upload_design", vendorId, base64, filename: file.name, mimeType: file.type, messages:[] })
+
+      // Step 1 — upload binary to /vendors/uploads (small multipart, no base64 in JSON)
+      const formData = new FormData()
+      formData.append("files", file, file.name)
+      const uploadResp = await fetch(UPLOAD_URL, {
+        method:      "POST",
+        headers:     { Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body:        formData,
+      })
+      if (!uploadResp.ok) throw new Error("Upload failed")
+      const uploadData = await uploadResp.json()
+      const fileUrl    = uploadData.files?.[0]?.url as string
+      if (!fileUrl) throw new Error("No fileUrl in upload response")
+      setProgress(70)
+
+      // Step 2 — register with ai-assistant using the URL only, never the base64
+      const resp = await fetch(API_URL, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body: JSON.stringify({
+          action:   "upload_design",
+          vendorId,
+          fileUrl,                   // ← URL only
+          filename: file.name,
+          mimeType: file.type,
+          messages: [],
+        }),
       })
       if (!resp.ok) throw new Error("Upload failed")
       const data = await resp.json()
       setProgress(100); setState("done")
-      onUploadComplete(data.sessionId, file.name, base64)
+      onUploadComplete(data.sessionId, file.name, base64)   // base64 stays local for preview only
     } catch { setState("error") }
   }
 
@@ -799,6 +861,7 @@ function MockupSlider({ slides, onApprove, onEdit }: {
   const fetchSlide = async (idx: number, slide: MockupSlide) => {
     if (fetchedUrls[idx] || fetching[idx]) return
     if (slide.base64) { setFetchedUrls(prev => ({ ...prev, [idx]: slide.base64! })); return }
+    if (slide.url)    { setFetchedUrls(prev => ({ ...prev, [idx]: slide.url! }));    return }
     if (!slide.sessionId) return
     setFetching(prev => ({ ...prev, [idx]: true }))
     try {
@@ -1207,6 +1270,15 @@ export default function AIAssistant({ vendorId }: Props) {
   // ── Client-side mockup generation ─────────────────────────────────────────
   const generateClientMockups = async () => {
     const session = productSessionRef.current
+    if (isCylindricalBlank(session.blankData)) {
+      ;(session as any)._cylindricalPendingEdit = true
+      addAssistantMessage(
+        `✅ Design uploaded! Since this is a **${session.blankData?.productType ?? 'curved product'}**, the best way to see how it looks is inside the designer.\n\nOpen the editor to position your design — then tap **Preview** to see the final result, and **Save to JUNI** to continue. 🎨`,
+        { showEditCTA: true }
+      )
+      return false
+    }
+
     if (!session.blankData || !session.technologyId || !session.selectedColors?.length || !session.designBase64 || !session.area) {
       console.warn("[JUNI] Cannot generate client mockups — missing session data:", {
         hasBlankData: !!session.blankData,
@@ -1254,6 +1326,7 @@ export default function AIAssistant({ vendorId }: Props) {
       for (const result of results) {
         try {
           const isFirstMockup = slides.length === 0
+          const mockupUrl = await preUploadMockup(result.base64, `mockup-${result.colorName}.png`, token)
           const res = await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1261,10 +1334,10 @@ export default function AIAssistant({ vendorId }: Props) {
             body: JSON.stringify({
               action:    "store_mockup",
               vendorId,
-              base64:    result.base64,
+              mockupUrl,
               area:      (result as any).area ?? session.area ?? "front",
               colorName: result.colorName,
-              clearOld:  isFirstMockup, // ← clear old sessions only on first mockup of batch
+              clearOld:  isFirstMockup,
               messages:  [],
             }),
           })
@@ -1272,6 +1345,7 @@ export default function AIAssistant({ vendorId }: Props) {
             const data = await res.json()
             slides.push({
               sessionId: data.mockupSessionId,
+              url:       mockupUrl,
               colorHex:  result.colorHex,
               colorName: (result as any).area
                 ? `${result.colorName} / ${(result as any).area}`
@@ -1316,11 +1390,12 @@ export default function AIAssistant({ vendorId }: Props) {
           })
           console.log(`[JuniLayout] ${layoutArea}:`, layoutBase64 ? `${layoutBase64.length} chars` : "NULL")
           if (layoutBase64 && layoutBase64.length > 100) {
+            const layoutUrl = await preUploadMockup(layoutBase64, `layout-${layoutArea}.png`, token)
             const lr = await fetch(API_URL, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               credentials: "include",
-              body: JSON.stringify({ action:"store_mockup", vendorId, base64: layoutBase64, area: layoutArea, colorName:"canvas-layout", messages:[] }),
+              body: JSON.stringify({ action:"store_mockup", vendorId, mockupUrl: layoutUrl, area: layoutArea, colorName:"canvas-layout", messages:[] }),
             })
             if (lr.ok) {
               const ld = await lr.json()
@@ -1699,8 +1774,8 @@ export default function AIAssistant({ vendorId }: Props) {
                           session.pendingAreaUploads = []
                           // All areas ready — generate mockups client-side
                           const success = await generateClientMockups()
-                          if (!success) {
-                            // Fallback to Gemini
+                          if (!success && !(session as any)._cylindricalPendingEdit) {
+                            // Fallback to Gemini only for non-cylindrical failures
                             sendMessage(`Design ready for all areas. Area: ${session.area ?? "front"}. Ready to generate preview.`)
                           }
                         } else {
@@ -1716,13 +1791,30 @@ export default function AIAssistant({ vendorId }: Props) {
                           } else {
                             // All per-area uploads done — generate mockups
                             const success = await generateClientMockups()
-                            if (!success) {
+                            if (!success && !(session as any)._cylindricalPendingEdit) {
                               sendMessage(`All area designs uploaded. Areas: ${areas.join(", ")}. Ready to generate preview.`)
                             }
                           }
                         }
                       }}
                     />
+                  )}
+
+                  {/* Edit CTA for cylindrical/pixi products */}
+                  {msg.showEditCTA && (
+                    <button
+                      onClick={() => setEditorOpen(true)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        padding: "10px 18px", background: BRAND, color: "#fff",
+                        border: "none", borderRadius: "20px", fontWeight: 600,
+                        fontSize: "13px", cursor: "pointer", marginTop: "4px",
+                        boxShadow: "0 2px 10px rgba(232,98,26,0.35)",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      ✏️ Edit Design
+                    </button>
                   )}
 
                   {/* Gemini-triggered upload (fallback — should rarely appear with new flow) */}
@@ -1741,7 +1833,7 @@ export default function AIAssistant({ vendorId }: Props) {
                           productSessionRef.current.area = resolvedArea
                           // Try client-side generation first
                           const success = await generateClientMockups()
-                          if (!success) {
+                          if (!success && !(productSessionRef.current as any)._cylindricalPendingEdit) {
                             sendMessage(`Design uploaded for ${resolvedArea}. Ready to generate preview.`)
                           }
                         } else {
@@ -1865,11 +1957,12 @@ export default function AIAssistant({ vendorId }: Props) {
                                   designLayout:     (session as any)._lastEditLayout ?? undefined,
                                 })
                               if (layoutBase64 && layoutBase64.length > 100) {
+                                const layoutUrl = await preUploadMockup(layoutBase64, `layout-${layoutArea}.png`, token)
                                 const lr = await fetch(API_URL, {
                                   method:"POST",
                                   headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
                                   credentials:"include",
-                                  body: JSON.stringify({ action:"store_mockup", vendorId, base64: layoutBase64, area: layoutArea, colorName:"canvas-layout", messages:[] }),
+                                  body: JSON.stringify({ action:"store_mockup", vendorId, mockupUrl: layoutUrl, area: layoutArea, colorName:"canvas-layout", messages:[] }),
                                 })
                                 if (lr.ok) { const ld = await lr.json(); ids.push(ld.mockupSessionId) }
                               }
@@ -2071,40 +2164,53 @@ export default function AIAssistant({ vendorId }: Props) {
           })
 
           for (const mockup of result.preGeneratedMockups) {
-          try {
-            const res = await fetch(API_URL, {
-              method:  'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              credentials: 'include',
-              body: JSON.stringify({
-                action:    'store_mockup',
-                vendorId,
-                base64:    mockup.base64,
-                area:      (mockup as any).area ?? result.area ?? 'front',
-                colorName: mockup.colorName,
-                clearOld:  slides.length === 0, // ← clear old sessions on first mockup
-                messages:  [],
-              }),
+            if (!mockup.base64) continue
+
+            // Push immediately — MockupSlider uses slide.base64 directly,
+            // so the preview shows without waiting for the backend at all.
+            const tempId = `preview-${Date.now()}-${mockup.colorName}`
+            // Convert to Blob URL — keeps React state small (avoids 500KB string in state)
+            let displaySrc = mockup.base64
+            try {
+              const raw = mockup.base64.includes(',') ? mockup.base64.split(',')[1] : mockup.base64
+              const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0))
+              displaySrc = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
+            } catch { /* keep raw base64 as fallback */ }
+            slides.push({
+              sessionId: tempId,
+              base64:    displaySrc,
+              colorHex:  mockup.colorHex,
+              colorName: mockup.colorName,
+              area:      (mockup as any).area ?? result.area ?? 'front',
             })
-            console.log('[JUNI Edit] store_mockup response status:', res.status, 'colorName:', mockup.colorName)
-            if (res.ok) {
-              const data = await res.json()
-              console.log('[JUNI Edit] stored session:', data.mockupSessionId)
-              slides.push({
-                sessionId: data.mockupSessionId,
-                base64:    mockup.base64,  // ← pass base64 directly so slider shows immediately without fetching
-                colorHex:  mockup.colorHex,
-                colorName: mockup.colorName,
-                area:      (mockup as any).area ?? result.area ?? 'front',
+
+            // Fire-and-forget: store in backend for later publishing (don't await)
+            const slideIndex = slides.length - 1
+            preUploadMockup(mockup.base64, `mockup-${mockup.colorName}.png`, token)
+              .then(mockupUrl => fetch(API_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                credentials: 'include',
+                body: JSON.stringify({
+                  action:    'store_mockup',
+                  vendorId,
+                  mockupUrl,
+                  area:      (mockup as any).area ?? result.area ?? 'front',
+                  colorName: mockup.colorName,
+                  clearOld:  slideIndex === 0,
+                  messages:  [],
+                }),
+              }))
+              .then(r => r.ok ? r.json() : null)
+              .then(data => {
+                if (data?.mockupSessionId) {
+                  slides[slideIndex].sessionId = data.mockupSessionId
+                  if (slideIndex === 0) approvedMockupSessionIdRef.current = data.mockupSessionId
+                  console.log('[JUNI Edit] stored session (bg):', data.mockupSessionId)
+                }
               })
-            } else {
-              const errText = await res.text()
-              console.error('[JUNI Edit] store_mockup failed:', res.status, errText)
-            }
-          } catch (err) {
-            console.error('[JUNI Edit] Failed to store pre-generated mockup:', err)
+              .catch(() => {})
           }
-        }
 
         console.log('[JUNI Edit] Final slides array:', slides.length, slides.map(s => s.colorName))
 
@@ -2112,38 +2218,38 @@ export default function AIAssistant({ vendorId }: Props) {
           console.log('[JUNI Edit] About to show slides in chat:', slides.length)
           approvedMockupSessionIdRef.current = slides[0].sessionId ?? ''
 
-          // Store canvas layouts captured directly from canvas editor
-          // These match exactly what creator saw — captureCanvasImageForArea was called
-          // inside Canvas.tsx Save button with live canvas state
+          // Store canvas layouts in background — don't await (layout base64 can be large)
           if (result.canvasLayoutsByArea && Object.keys(result.canvasLayoutsByArea).length > 0) {
-            const layoutIds: string[] = []
-            for (const [area, layoutBase64] of Object.entries(result.canvasLayoutsByArea)) {
-              try {
-                const lr = await fetch(API_URL, {
+            const layoutEntries = Object.entries(result.canvasLayoutsByArea)
+            const layoutIds: string[] = new Array(layoutEntries.length).fill('')
+            layoutEntries.forEach(([area, layoutBase64], i) => {
+               preUploadMockup(layoutBase64 as string, `layout-${area}.png`, token)
+                .then(layoutUrl => fetch(API_URL, {
                   method:  'POST',
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                   credentials: 'include',
                   body: JSON.stringify({
                     action:    'store_mockup',
                     vendorId,
-                    base64:    layoutBase64,
+                    mockupUrl: layoutUrl,
                     area,
                     colorName: 'canvas-layout',
                     messages:  [],
                   }),
+                }))
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                  if (data?.mockupSessionId) {
+                    layoutIds[i] = data.mockupSessionId
+                    console.log(`[JuniLayout] ✅ stored (bg): ${data.mockupSessionId} area=${area}`)
+                    const filled = layoutIds.filter(Boolean)
+                    if (filled.length === layoutEntries.length) {
+                      productSessionRef.current.canvasLayoutSessionIds = filled
+                    }
+                  }
                 })
-                if (lr.ok) {
-                  const ld = await lr.json()
-                  layoutIds.push(ld.mockupSessionId)
-                  console.log(`[JuniLayout] ✅ stored from editor: ${ld.mockupSessionId} area=${area}`)
-                }
-              } catch (err: any) {
-                console.warn(`[JuniLayout] store failed for ${area}:`, err.message)
-              }
-            }
-            if (layoutIds.length > 0) {
-              productSessionRef.current.canvasLayoutSessionIds = layoutIds
-            }
+                .catch(() => {})
+            })
           }
 
           addAssistantMessage(
@@ -2163,22 +2269,45 @@ export default function AIAssistant({ vendorId }: Props) {
           // ── Fallback: regenerate if no pre-generated mockups ─────────────────
           // Upload new design first
           try {
-            const uploadRes = await fetch(API_URL, {
-              method:  'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              credentials: 'include',
-              body: JSON.stringify({
-                action:   'upload_design',
-                vendorId,
-                base64:   result.designBase64,
-                filename: 'juni-edited-design.png',
-                mimeType: 'image/png',
-                messages: [],
-              }),
-            })
-            if (uploadRes.ok) {
-              const uploadData = await uploadRes.json()
-              productSessionRef.current.designSessionId = uploadData.sessionId
+            try {
+              // Convert base64 → Blob for multipart upload (no base64 in JSON body)
+              const raw   = result.designBase64.includes(',') ? result.designBase64.split(',')[1] : result.designBase64
+              const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0))
+              const blob  = new Blob([bytes], { type: 'image/png' })
+
+              const editFormData = new FormData()
+              editFormData.append('files', blob, 'juni-edited-design.png')
+              const preUploadRes = await fetch(UPLOAD_URL, {
+                method:      'POST',
+                headers:     { Authorization: `Bearer ${token}` },
+                credentials: 'include',
+                body:        editFormData,
+              })
+              if (preUploadRes.ok) {
+                const preUploadData = await preUploadRes.json()
+                const editFileUrl   = preUploadData.files?.[0]?.url as string
+                if (editFileUrl) {
+                  const uploadRes = await fetch(API_URL, {
+                    method:      'POST',
+                    headers:     { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      action:   'upload_design',
+                      vendorId,
+                      fileUrl:  editFileUrl,          // ← URL only
+                      filename: 'juni-edited-design.png',
+                      mimeType: 'image/png',
+                      messages: [],
+                    }),
+                  })
+                  if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json()
+                    productSessionRef.current.designSessionId = uploadData.sessionId
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('[JUNI Edit] Pre-upload failed:', err)
             }
           } catch (err) {
             console.error('[JUNI Edit] Upload failed:', err)

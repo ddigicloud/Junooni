@@ -392,6 +392,64 @@ export function handleSuggestPrice(args: { base_cost: number; product_type: stri
   return { ok: true, data: { base_cost: cost, product_type: args.product_type, commission_note: "0% commission", tiers, recommended: tiers[1] } }
 }
 
+// ─── Pixi/cylindrical mockup helpers ─────────────────────────────────────────
+
+function detectsPixiEngine(mockupPhoto: any, productType: string): boolean {
+  if (mockupPhoto?.pfEngine === 'pixi') return true
+  if (mockupPhoto?.render?.pfEngine === 'pixi') return true
+  if (mockupPhoto?.dispMaps?.length)             return true
+  if (mockupPhoto?.alpMasks?.length)             return true
+  if (mockupPhoto?.area?.some((a: any) =>
+    a.surfaceWrapSettings?.enableWrap ||
+    a.perspectiveSettings?.enablePerspective))   return true
+  const t = productType.toLowerCase()
+  return ['mug', 'bottle', 'tumbler'].some(k => t.includes(k))
+}
+
+async function applyDisplacementMap(
+  designBuffer: Buffer,
+  dispMapBuffer: Buffer,
+  scale: number = 25
+): Promise<Buffer> {
+  const { data: src,  info: srcInfo } = await sharp(designBuffer)
+    .ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const { data: disp } = await sharp(dispMapBuffer)
+    .resize(srcInfo.width, srcInfo.height).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+
+  const W = srcInfo.width, H = srcInfo.height
+  const out = Buffer.alloc(W * H * 4)
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const di = (y * W + x) * 4
+      const dx = Math.round(((disp[di]     / 255) * 2 - 1) * scale)
+      const dy = Math.round(((disp[di + 1] / 255) * 2 - 1) * scale)
+      const sx = Math.max(0, Math.min(W - 1, x - dx))
+      const sy = Math.max(0, Math.min(H - 1, y - dy))
+      const si = (sy * W + sx) * 4
+      const oi = (y  * W + x)  * 4
+      out[oi]     = src[si]
+      out[oi + 1] = src[si + 1]
+      out[oi + 2] = src[si + 2]
+      out[oi + 3] = src[si + 3]
+    }
+  }
+  return sharp(out, { raw: { width: W, height: H, channels: 4 } }).png().toBuffer()
+}
+
+async function applyAlphaMask(designBuffer: Buffer, maskBuffer: Buffer): Promise<Buffer> {
+  const { data: src, info } = await sharp(designBuffer)
+    .ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const { data: mask } = await sharp(maskBuffer)
+    .resize(info.width, info.height).grayscale().raw().toBuffer({ resolveWithObject: true })
+
+  const out = Buffer.from(src)
+  for (let i = 0; i < info.width * info.height; i++) {
+    out[i * 4 + 3] = Math.round((out[i * 4 + 3] / 255) * (mask[i] / 255) * 255)
+  }
+  return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer()
+}
+
 // ─── generate_inline_mockup ───────────────────────────────────────────────────
 
 export async function handleGenerateInlineMockup(args: {
@@ -466,15 +524,58 @@ export async function handleGenerateInlineMockup(args: {
 
     const mockupPhoto = (() => {
       const pool = areaPhotos.length > 0 ? areaPhotos : allPhotos
-      // 1. Exact color match for this area
+      const isCylindricalType = ['mug', 'bottle', 'tumbler'].some(k =>
+        (doc.productType ?? '').toLowerCase().includes(k)
+      )
+      if (isCylindricalType) {
+        const neutral = pool.find((p: any) => p.photoColor === "#00000000" || !p.photoColor)
+        if (neutral) return neutral
+        const withDisp = pool.find((p: any) => p.dispMaps?.length > 0)
+        if (withDisp) return withDisp
+      }
       const exact   = pool.find((p: any) => p.photoColor?.toLowerCase() === colorLower)
       if (exact) return exact
-      // 2. Neutral (#00000000) for this area — will be tinted with color
       const neutral = pool.find((p: any) => p.photoColor === "#00000000" || !p.photoColor)
       if (neutral) return neutral
-      // 3. Any photo for this area
       return pool[0] ?? null
     })()
+
+    // ── DIAGNOSTIC: full mockup selection trace for cylindrical products ──
+    if (["mug","bottle","tumbler"].some(t => (doc.productType ?? "").toLowerCase().includes(t))) {
+      console.log("[mug-diag] ===== CYLINDRICAL PRODUCT DIAGNOSTIC =====")
+      console.log("[mug-diag] productType:", doc.productType)
+      console.log("[mug-diag] technology found:", !!tech, "tech.id:", tech?.id)
+      console.log("[mug-diag] allPhotos count:", allPhotos.length)
+      console.log("[mug-diag] allPhotos summary:", JSON.stringify(
+        allPhotos.map((p: any, i: number) => ({
+          idx:        i,
+          viewAngle:  p.viewAngle,
+          photoColor: p.photoColor,
+          hasUrl:     !!p.photo?.url,
+          url:        p.photo?.url?.slice(-40),
+          dispMaps:   p.dispMaps?.length ?? 0,
+          alpMasks:   p.alpMasks?.length ?? 0,
+          hasLight:   !!(p.light?.[0]),
+          pfEngine:   p.render?.pfEngine ?? p.pfEngine,
+          areaName:   p.area?.[0]?.areaName,
+        }))
+      ))
+      console.log("[mug-diag] areaName arg:", areaName)
+      console.log("[mug-diag] areaPhotos count:", areaPhotos.length)
+      console.log("[mug-diag] selected mockupPhoto idx:", allPhotos.indexOf(mockupPhoto))
+      console.log("[mug-diag] selected mockupPhoto:", JSON.stringify({
+        viewAngle:  mockupPhoto?.viewAngle,
+        photoColor: mockupPhoto?.photoColor,
+        hasUrl:     !!mockupPhoto?.photo?.url,
+        dispMaps:   mockupPhoto?.dispMaps?.length ?? 0,
+        alpMaps:    mockupPhoto?.alpMasks?.length ?? 0,
+        hasLight:   !!(mockupPhoto?.light?.[0]),
+        pfEngine:   mockupPhoto?.render?.pfEngine ?? mockupPhoto?.pfEngine,
+      }))
+      console.log("[mug-diag] detectsPixiEngine result:", detectsPixiEngine(mockupPhoto, doc.productType ?? ""))
+      console.log("[mug-diag] isCylindrical (post-change):", ['mug','bottle','tumbler'].some(k => (doc.productType ?? '').toLowerCase().includes(k)))
+      console.log("[mug-diag] =============================================")
+    }
 
     const designPhoto = custArea?.designCanvasPhotos?.find(
       (p: any) => p?.photoColor?.toLowerCase() === colorHex.toLowerCase()
@@ -525,28 +626,203 @@ export async function handleGenerateInlineMockup(args: {
       position: args.position ?? "center",
     }
 
-    if (!mockupPhoto?.photo?.url) {
+    // ── Cylindrical upgrade: if best photo has no dispMaps, find one that does ──
+    const isCylindrical = ['mug','bottle','tumbler'].some(t => (doc.productType ?? '').toLowerCase().includes(t))
+    let finalMockupPhoto = mockupPhoto
+    if (isCylindrical && finalMockupPhoto && !finalMockupPhoto.dispMaps?.length) {
+      const withDisp = allPhotos.find((p: any) => p.dispMaps?.length > 0)
+      if (withDisp) {
+        console.log(`[generate_inline_mockup] cylindrical: upgrading mockupPhoto to one with dispMaps`)
+        finalMockupPhoto = withDisp
+      }
+    }
+
+    // ── Debug: log mockupPhoto structure for cylindrical products ──────────
+    if (isCylindrical) {
+      console.log("[mug-diag] finalMockupPhoto === mockupPhoto:", finalMockupPhoto === mockupPhoto)
+      console.log("[mug-diag] finalMockupPhoto dispMaps:", finalMockupPhoto?.dispMaps?.length ?? 0)
+      console.log("[mug-diag] needsPixi will be:", isCylindrical || detectsPixiEngine(finalMockupPhoto, doc.productType ?? ""))
+      const ad = finalMockupPhoto?.area?.[0]?.design
+      console.log("[pixi-debug] area[0].design:", JSON.stringify({
+        coordinateX: ad?.coordinateX,
+        coordinateY: ad?.coordinateY,
+        coordinateWidth: ad?.coordinateWidth,
+        coordinateHeight: ad?.coordinateHeight,
+      }))
+      console.log("[pixi-debug] productType:", doc.productType)
+      console.log("[pixi-debug] finalMockupPhoto keys:", JSON.stringify({
+        hasPhoto:    !!finalMockupPhoto?.photo?.url,
+        photoUrl:    finalMockupPhoto?.photo?.url,
+        dispMaps:    finalMockupPhoto?.dispMaps,
+        alpMasks:    finalMockupPhoto?.alpMasks,
+        light:       finalMockupPhoto?.light,
+        pfEngine:    finalMockupPhoto?.render?.pfEngine,
+        areaKeys:    finalMockupPhoto?.area?.map((a: any) => Object.keys(a)),
+      }, null, 2))
+    }
+
+    // ── No mockup photo: solid color fallback ─────────────────────────────
+    if (!finalMockupPhoto?.photo?.url) {
       const result = await compositeOnColor({ designBuffer: designResized, designLeft, designTop, colorHex, outW, outH })
       return { ok: true, data: { preview_base64: result, render_type: "MOCKUP_PREVIEW", area: areaName, color_hex: colorHex, ...echoArgs } }
     }
 
-    const mockupResponse = await axios.get(`${PAYLOAD_API}${mockupPhoto.photo.url}`, { responseType: "arraybuffer" })
-    const rawData = mockupResponse.data
-    const mockupBuffer = Buffer.isBuffer(rawData) ? rawData : Buffer.from(rawData instanceof ArrayBuffer ? rawData : Object.values(rawData as any))
+    // Force pixi for all cylindrical products regardless of photo metadata markers
+    const needsPixi = isCylindrical || detectsPixiEngine(finalMockupPhoto, doc.productType ?? "")
+    console.log(`[generate_inline_mockup] needsPixi=${needsPixi} isCylindrical=${isCylindrical} productType=${doc.productType}`)
+
+    // ── Fetch the base mockup photo (needed for both paths) ───────────────
+    const mockupResponse = await axios.get(`${PAYLOAD_API}${finalMockupPhoto.photo.url}`, { responseType: "arraybuffer" })
+    const rawData        = mockupResponse.data
+    const mockupBuffer   = Buffer.isBuffer(rawData) ? rawData
+      : Buffer.from(rawData instanceof ArrayBuffer ? rawData : Object.values(rawData as any))
     if (mockupBuffer.length < 100) return { ok: false, error: "Mockup photo fetch returned empty data." }
 
     let result: string
-    try {
-      result = await compositeWithMockup({
-        mockupBuffer, designBuffer: designResized,
-        designLeft: Math.max(0, designLeft), designTop: Math.max(0, designTop),
-        colorHex,
-        requiresColorMasking: mockupPhoto.requiresColorMasking ?? (mockupPhoto.photoColor === "#00000000"),
-        outW, outH,
+
+    if (needsPixi) {
+      console.log("[pixi-debug] entering pixi path")
+      console.log("[pixi-debug] finalMockupPhoto.area:", JSON.stringify(finalMockupPhoto?.area?.map((a: any) => ({
+        areaName: a.areaName,
+        designKeys: Object.keys(a.design ?? {}),
+        coordinateX: a.design?.coordinateX,
+        coordinateWidth: a.design?.coordinateWidth,
+        coordinateY: a.design?.coordinateY,
+        coordinateHeight: a.design?.coordinateHeight,
+      }))))
+      console.log("[pixi-debug] dispMaps count:", finalMockupPhoto?.dispMaps?.length ?? 0)
+      console.log("[pixi-debug] alpMasks count:", finalMockupPhoto?.alpMasks?.length ?? 0)
+      console.log("[pixi-debug] light count:", finalMockupPhoto?.light?.length ?? 0)
+      console.log("[pixi-debug] dispMapUrl will be:", finalMockupPhoto?.dispMaps?.[0]?.dispImg?.url ?? "NONE")
+      console.log("[pixi-debug] alpMaskUrl will be:", finalMockupPhoto?.alpMasks?.[0]?.maskImg?.url ?? "NONE")
+      console.log("[pixi-debug] lightUrl will be:", 
+        finalMockupPhoto?.light?.[0]?.overImage?.url ?? 
+        finalMockupPhoto?.light?.[0]?.photo?.url ?? 
+        finalMockupPhoto?.light?.[0]?.url ?? "NONE"
+      )
+
+      const areaDesign = finalMockupPhoto.area?.[0]?.design
+      const areaUV     = finalMockupPhoto.area?.[0]?.uvMap
+
+      // ── Horizontal: use design/UV coords (displacement map authored for these) ──
+      // UV map = 3D texture space, NOT canvas coords — always use design coords for placement
+      const hStart    = areaDesign?.coordinateX     ?? 0.29
+      const hSpan     = areaDesign?.coordinateWidth ?? 0.9
+      const printLeft  = Math.max(0, Math.round(hStart * outW))
+      const printRight = Math.min(outW, Math.round((hStart + hSpan) * outW))
+      const printWidth = Math.max(1, printRight - printLeft)
+
+      // ── Fetch alpha mask early to get vertical extent of mug surface ──
+      const alpMaskUrl = finalMockupPhoto.alpMasks?.[0]?.maskImg?.url
+      let mBuf: Buffer | null = null
+      let printTop    = Math.max(0, Math.round((areaDesign?.coordinateY      ?? 0.2) * outH))
+      let printHeight = Math.max(1, Math.round((areaDesign?.coordinateHeight ?? 0.6) * outH))
+
+      if (alpMaskUrl && typeof alpMaskUrl === 'string') {
+        try {
+          const r = await axios.get(`${PAYLOAD_API}${alpMaskUrl}`, { responseType: "arraybuffer" })
+          mBuf = Buffer.from(r.data instanceof ArrayBuffer ? r.data : Object.values(r.data as any))
+
+          const { data: maskPx } = await sharp(mBuf)
+            .resize(outW, outH).grayscale().raw().toBuffer({ resolveWithObject: true })
+
+          let minY = outH, maxY = 0
+          for (let y = 0; y < outH; y++) {
+            for (let x = 0; x < outW; x++) {
+              if (maskPx[y * outW + x] > 64) {
+                if (y < minY) minY = y
+                if (y > maxY) maxY = y
+              }
+            }
+          }
+          if (maxY > minY) {
+            printTop    = Math.max(0, minY)
+            printHeight = Math.max(1, maxY - minY)
+          }
+          console.log(`[pixi-debug] mask vertical: top=${printTop} h=${printHeight}`)
+        } catch (e) { console.warn("[pixi-debug] alpMask bbox FAILED:", (e as any).message) }
+      }
+
+      console.log(`[pixi-debug] print area: left=${printLeft} top=${printTop} w=${printWidth} h=${printHeight} (of ${outW}x${outH})`)
+
+      // ── Scale design — position 'left top' so boxes start at left, not center-cropped ──
+      const designForPrint = await sharp(designBuffer)
+        .resize(printWidth, printHeight, { fit: 'cover', position: 'left top' })
+        .ensureAlpha().png().toBuffer()
+
+      // ── Place design on full output canvas ──
+      let processedCanvas = await sharp({
+        create: { width: outW, height: outH, channels: 4,
+                  background: { r: 0, g: 0, b: 0, alpha: 0 } }
       })
-    } catch (sharpErr: any) {
-      console.log(`[generate_inline_mockup] Sharp failed (${sharpErr.message}), solid color fallback`)
-      result = await compositeOnColor({ designBuffer: designResized, designLeft: Math.max(0, designLeft), designTop: Math.max(0, designTop), colorHex, outW, outH })
+      .composite([{ input: designForPrint, left: printLeft, top: printTop }])
+      .png().toBuffer()
+
+      // ── Displacement map ──
+      const dispMapEntry = finalMockupPhoto.dispMaps?.[0]
+      const dispMapUrl   = dispMapEntry?.dispImg?.url
+      const disint       = dispMapEntry?.disint ?? 0.5
+      const dispScale    = Math.round(disint * outW * 0.04)
+      console.log("[pixi-debug] dispMapUrl:", dispMapUrl, "dispScale:", dispScale)
+      if (dispMapUrl && typeof dispMapUrl === 'string') {
+        try {
+          const r    = await axios.get(`${PAYLOAD_API}${dispMapUrl}`, { responseType: "arraybuffer" })
+          const dBuf = Buffer.from(r.data instanceof ArrayBuffer ? r.data : Object.values(r.data as any))
+          processedCanvas = await applyDisplacementMap(processedCanvas, dBuf, dispScale)
+          console.log("[pixi-debug] displacement applied, scale:", dispScale)
+        } catch (e) { console.warn("[pixi-debug] dispMap FAILED:", (e as any).message) }
+      }
+
+      // ── Alpha mask (reuse already-fetched buffer) ──
+      if (mBuf) {
+        try {
+          processedCanvas = await applyAlphaMask(processedCanvas, mBuf)
+          console.log("[pixi-debug] alpha mask applied")
+        } catch (e) { console.warn("[pixi-debug] alpMask apply FAILED:", (e as any).message) }
+      }
+
+      // ── Composite onto mockup photo ──
+      const mockupResized = await sharp(mockupBuffer, { failOn: "none" })
+        .resize(outW, outH, { fit: "cover" }).ensureAlpha().png().toBuffer()
+
+      let withDesign = await sharp(mockupResized)
+        .composite([{ input: processedCanvas, left: 0, top: 0, blend: "over" }])
+        .png().toBuffer()
+
+      // ── Light overlay ──
+      const lightUrl = finalMockupPhoto.light?.[0]?.overImage?.url
+                    ?? finalMockupPhoto.light?.[0]?.photo?.url
+                    ?? finalMockupPhoto.light?.[0]?.url
+      console.log("[pixi-debug] lightUrl:", lightUrl)
+      if (lightUrl && typeof lightUrl === 'string') {
+        try {
+          const r    = await axios.get(`${PAYLOAD_API}${lightUrl}`, { responseType: "arraybuffer" })
+          const lBuf = Buffer.from(r.data instanceof ArrayBuffer ? r.data : Object.values(r.data as any))
+          const lightResized = await sharp(lBuf)
+            .resize(outW, outH, { fit: "cover" }).ensureAlpha().png().toBuffer()
+          withDesign = await sharp(withDesign)
+            .composite([{ input: lightResized, blend: "overlay", left: 0, top: 0 }])
+            .png().toBuffer()
+          console.log("[pixi-debug] light overlay applied")
+        } catch (e) { console.warn("[pixi-debug] light overlay FAILED:", (e as any).message) }
+      }
+
+      result = `data:image/webp;base64,${(await sharp(withDesign).webp({ quality: 85 }).toBuffer()).toString("base64")}`
+      console.log("[pixi-debug] pixi render complete, result length:", result.length)
+    }else {
+      // ── Original flat composite path (shirts, hoodies, posters, etc.) ──
+      try {
+        result = await compositeWithMockup({
+          mockupBuffer, designBuffer: designResized,
+          designLeft: Math.max(0, designLeft), designTop: Math.max(0, designTop),
+          colorHex,
+          requiresColorMasking: finalMockupPhoto.requiresColorMasking ?? (finalMockupPhoto.photoColor === "#00000000"),
+          outW, outH,
+        })
+      } catch (sharpErr: any) {
+        console.log(`[generate_inline_mockup] Sharp failed (${sharpErr.message}), solid color fallback`)
+        result = await compositeOnColor({ designBuffer: designResized, designLeft: Math.max(0, designLeft), designTop: Math.max(0, designTop), colorHex, outW, outH })
+      }
     }
 
     return { ok: true, data: { preview_base64: result, render_type: "MOCKUP_PREVIEW", area: areaName, color_hex: colorHex, ...echoArgs } }
@@ -1107,12 +1383,24 @@ export async function handleCreateProductFromChat(
       productMetadata.design_artwork = JSON.stringify(designArtworkPayloads)
     }
 
-    // Product details from blank (fabric info etc — same as create.tsx product_details)
+    // shortDescription / storyBehindDesign from CMS
+    if (blank.shortDescription) productMetadata.short_description = String(blank.shortDescription).trim()
+    if (blank.storyBehindDesign) productMetadata.story_behind_design = String(blank.storyBehindDesign).trim()
+
+    // product_details: CMS array first, materials as fallback
     const productDetails: string[] = []
-    if (blank?.materials?.material)   productDetails.push(blank.materials.material)
-    if (blank?.materials?.gsm)        productDetails.push(`${blank.materials.gsm} GSM`)
-    if (blank?.materials?.quality)    productDetails.push(blank.materials.quality)
-    if (blank?.materials?.type)       productDetails.push(blank.materials.type)
+    if (Array.isArray(blank.productDetails) && blank.productDetails.length > 0) {
+      blank.productDetails.forEach((d: any) => {
+        const text = typeof d === 'string' ? d : (d?.detail ?? d?.text ?? d?.value ?? "")
+        if (text.trim()) productDetails.push(text.trim())
+      })
+    }
+    if (productDetails.length === 0) {
+      if (blank?.materials?.material)   productDetails.push(blank.materials.material)
+      if (blank?.materials?.gsm)        productDetails.push(`${blank.materials.gsm} GSM`)
+      if (blank?.materials?.quality)    productDetails.push(blank.materials.quality)
+      if (blank?.materials?.type)       productDetails.push(blank.materials.type)
+    }
     if (productDetails.length > 0) {
       productMetadata.product_details = JSON.stringify(productDetails)
     }
@@ -1936,6 +2224,10 @@ export async function handleCreateProduct(
       { headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {} },
     )
     blank = data
+    console.log('[debug-blank] ALL blank keys:', JSON.stringify(Object.keys(blank)))
+    console.log('[debug-blank] FULL blank (top-level values):', JSON.stringify(
+      Object.fromEntries(Object.entries(blank).filter(([k, v]) => typeof v !== 'object' || v === null))
+    ))
   } catch (err: any) {
     if (err?.response?.status === 404)
       return { ok: false, error: `blank_id "${blankId}" not found in catalogue` }
@@ -1947,6 +2239,13 @@ export async function handleCreateProduct(
   const colorOptions = blank.colorOptions ?? []
   const sizeOptions  = blank.sizeOptions  ?? []
   const baseSku      = blank["Manufacturer sku"] ?? ""
+
+  // DEBUG — log blank fields we need
+  console.log('[debug-fields] blank.shortDescription:', blank.shortDescription)
+  console.log('[debug-fields] blank.description:', blank.description)
+  console.log('[debug-fields] blank.productDetails:', JSON.stringify(blank.productDetails))
+  console.log('[debug-fields] blank.storyBehindDesign:', blank.storyBehindDesign)
+  console.log('[debug-fields] blank.materials:', JSON.stringify(blank.materials))
 
   // Resolve each color name → { name, hex }
    const selectedColors: Array<{ name: string; hex: string }> = colorNames.map(cn => {
@@ -2107,12 +2406,24 @@ export async function handleCreateProduct(
     ])
   }
 
-  // product_details from materials
+  // shortDescription / storyBehindDesign from CMS
+  if (blank.shortDescription) productMetadata.short_description = String(blank.shortDescription).trim()
+  if (blank.storyBehindDesign) productMetadata.story_behind_design = String(blank.storyBehindDesign).trim()
+
+  // product_details: CMS array first, materials as fallback
   const productDetails: string[] = []
-  if (blank?.materials?.material) productDetails.push(blank.materials.material)
-  if (blank?.materials?.gsm)      productDetails.push(`${blank.materials.gsm} GSM`)
-  if (blank?.materials?.quality)  productDetails.push(blank.materials.quality)
-  if (blank?.materials?.type)     productDetails.push(blank.materials.type)
+  if (Array.isArray(blank.productDetails) && blank.productDetails.length > 0) {
+    blank.productDetails.forEach((d: any) => {
+      const text = typeof d === 'string' ? d : (d?.detail ?? d?.text ?? d?.value ?? "")
+      if (text.trim()) productDetails.push(text.trim())
+    })
+  }
+  if (productDetails.length === 0) {
+    if (blank?.materials?.material) productDetails.push(blank.materials.material)
+    if (blank?.materials?.gsm)      productDetails.push(`${blank.materials.gsm} GSM`)
+    if (blank?.materials?.quality)  productDetails.push(blank.materials.quality)
+    if (blank?.materials?.type)     productDetails.push(blank.materials.type)
+  }
   if (productDetails.length > 0) {
     productMetadata.product_details = JSON.stringify(productDetails)
   }
@@ -2131,6 +2442,11 @@ export async function handleCreateProduct(
   // ── 5. Create product ──────────────────────────────────────────────────────
   let product: any
   try {
+    // DEBUG — log what metadata we're sending
+    console.log('[debug-fields] productMetadata.short_description:', productMetadata.short_description)
+    console.log('[debug-fields] productMetadata.story_behind_design:', productMetadata.story_behind_design)
+    console.log('[debug-fields] productMetadata.product_details:', productMetadata.product_details)
+
     const { result } = await createProductsWorkflow(scope).run({
       input: {
         products: [{

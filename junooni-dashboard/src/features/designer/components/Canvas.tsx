@@ -124,16 +124,26 @@ const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMo
   const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
   const [debugMode, setDebugMode]         = useState(false);
   const [isSavingToJuni, setIsSavingToJuni] = useState(false)
+  const [hasVisitedPreview, setHasVisitedPreview] = useState(false)
   const [showTechCompare, setShowTechCompare] = useState(false);
 
   // ── Active selections ─────────────────────────────────────────────────────
-  const [activeTechnology, setActiveTechnology] = useState<string>(() =>
-    juniEditMode?.initialTechnologyId
-      || _urlTechId
-      || productData?.printT?.[0]?.id
-      || productData?.printT?.[0]?.technologyName
-      || 'dtg'
+  const [activeTechnology, setActiveTechnology] = useState<string>(() => {
+  const techs = productData?.printT ?? [];
+  const first = techs[0];
+  const candidates = [
+    juniEditMode?.initialTechnologyId,
+    _urlTechId,
+    first?.id,
+    first?.technologyName,
+  ].filter(Boolean) as string[];
+
+  // Validate: pick first candidate that actually exists in productData
+  const valid = candidates.find(c =>
+    techs.some((t: any) => t.id === c || t.technologyName === c)
   );
+  return valid || first?.id || first?.technologyName || 'dtg';
+});
 
   const [activeArea, setActiveArea] = useState<string>('front');
   const [activeColor, setActiveColor] = useState<string>(() => {
@@ -203,6 +213,8 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
   const dragStartRef = useRef({ x: 0, y: 0, panelX: 0, panelY: 0 });
   const panelRef     = useRef<HTMLDivElement>(null);
   const prevSelectedIdRef = useRef<string | null>(null);
+  const previewCapturesRef = React.useRef<Record<string, string>>({})
+  
 
   // ── Konva refs ────────────────────────────────────────────────────────────
   const stageRef     = useRef<Konva.Stage>(null);
@@ -445,6 +457,15 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
     return hasPixi ? 'pixi' : 'canvas';
   }, [productData]);
 
+  const isProductCylindrical = useMemo(() => {
+    const mockupForCheck =
+      selectedHeroMockup ??
+      getMockupsForColor(productData, activeColor, activeTechnology, productData?.size_Images ? activeSize : undefined)[0] ??
+      allMockups[0] ??
+      null
+    return mockupForCheck ? determineRequiredEngine(mockupForCheck) === 'pixi' : false
+  }, [productData, activeColor, activeTechnology, activeSize, selectedHeroMockup, allMockups, determineRequiredEngine])
+
   // ── Color management ──────────────────────────────────────────────────────
   const handleColorChange = useCallback((colorHex: string, colorName: string) => {
     const isAlreadySelected = selectedColors.some(c => c.value === colorHex);
@@ -587,9 +608,11 @@ const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
   }, [availableAreas]);
 
   useEffect(() => {
-    const currentAreas = getAvailableAreas();
-    if (!currentAreas.includes(activeArea) && currentAreas.length > 0) setActiveArea(currentAreas[0]);
-  }, [activeTechnology]);
+    if (!activeTechnology && productData?.printT?.length) {
+      const first = productData.printT[0];
+      setActiveTechnology(first?.id || first?.technologyName || 'dtg');
+    }
+  }, [productData?.printT]);
 
   useEffect(() => { if (activeView === 'preview') setUserSelectedMockupInPreview(false); }, [activeView]);
 
@@ -1274,7 +1297,7 @@ useEffect(() => {
 
               {/* Main preview image */}
               <div className="relative">
-                <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-white rounded-lg overflow-hidden">
+                <div data-preview-main className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-white rounded-lg overflow-hidden">
                   {heroMockup ? (() => {
                     const dims = getMockupDimensions(heroMockup, 'mockup');
                     const engineType = determineRequiredEngine(heroMockup);
@@ -1289,6 +1312,7 @@ useEffect(() => {
                         canvasConfigs={canvasConfigs} canvasPrintableAreas={printableAreas}
                         productColor={activeColor} displayDimensions={dims}
                         isMainPreview={true} isSelected={true} onSelect={() => {}} productData={productData}
+                        onCapture={(b64, hex) => { if (b64) previewCapturesRef.current[hex] = b64; }}
                       />
                     );
                   })() : (
@@ -1490,7 +1514,8 @@ const renderTechnologySelector = () => {
         {technologies.map((tech: any) => {
           const techKey  = tech.technologyName?.toLowerCase().trim() ?? ''
           const info     = TECH_INFO[techKey] ?? null
-          const isActive = activeTechnology === tech.id || activeTechnology === tech.technologyName
+          const isActive = activeTechnology === tech.id || activeTechnology === tech.technologyName;
+          console.log('[Tech Debug]', { activeTechnology, techId: tech.id, techName: tech.technologyName, isActive });
 
           return (
             <button
@@ -1946,7 +1971,10 @@ const renderTechnologySelector = () => {
           </div>
           <div className="flex p-0.5 bg-gray-100 border border-gray-200 rounded-lg">
             {(['design', 'preview'] as const).map(view => (
-              <button key={view} onClick={() => setActiveView(view)}
+              <button key={view} onClick={() => {
+                setActiveView(view)
+                if (view === 'preview') setHasVisitedPreview(true)
+              }}
                 className="flex items-center gap-0.5 sm:gap-2 px-2 md:px-4 py-1.5 md:py-2 text-[12px] sm:text-sm font-medium rounded-md transition-all"
                 style={{ backgroundColor: activeView === view ? BRAND : 'transparent', color: activeView === view ? 'white' : undefined }}>
                 {!isMobile && (view === 'design' ? <PenTool size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />)}
@@ -2070,56 +2098,136 @@ const renderTechnologySelector = () => {
                 })
                 // ── END DEBUG LOGS ──
 
-                const mockupResults = isMultiArea
-                  ? await generateJuniMockupsCombined({
-                      blankData:           productData,
-                      technologyId:        activeTechnology,
-                      selectedColors:      selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
-                            designsByArea: Object.fromEntries(
-                              areasWithDesigns.map(area => {
-                                const scaledElements = (positionedDesignsByArea[area] as any[] ?? []).map(
-                                  (el: any) => ({
-                                    x:        el.x,        // no scaling — already in canvas config space
-                                    y:        el.y,
-                                    width:    el.width,
-                                    height:   el.height,
-                                    rotation: el.rotation ?? 0,
-                                    opacity:  el.opacity  ?? 1,
-                                  })
-                                )
-                                return [
-                                  area,
-                                  {
-                                    sessionId: '',
-                                    base64:    getElementsForArea(area)?.[0]?.imageBase64 ?? '',
-                                    filename:  `design-${area}.png`,
-                                    elements:  scaledElements,
-                                  }
-                                ]
-                              })
-                            ),
-                      defaultDesignBase64: primaryEl?.imageBase64 ?? '',
-                      targetResolution:    1000,
+                // ── Helper: grab the live pixi WebGL canvas the user is currently seeing ──
+                // Works when pixi was initialized with preserveDrawingBuffer: true.
+                // Returns '' if the canvas is blank or not found (safe fallback).
+                const tryCaptureLivePreview = (): string => {
+                  const container = document.querySelector('[data-preview-main]')
+                  if (!container) return ''
+                  const canvas = container.querySelector('canvas')
+                  if (!canvas) return ''
+                  try {
+                    const b64 = canvas.toDataURL('image/png')
+                    return b64.length > 1000 ? b64 : '' // blank 1×1 PNG is ~100 chars
+                  } catch { return '' }
+                }
+
+                // ── Detect cylindrical (pixi) product — headless pixi is broken for mugs ──
+                const heroMockupForSave =
+                  selectedHeroMockup ??
+                  getMockupsForColor(productData, activeColor, activeTechnology, productData?.size_Images ? activeSize : undefined)[0] ??
+                  allMockups[0] ??
+                  null
+                const isCylindrical = isProductCylindrical
+
+                // For the active color: try to reuse the exact render the user SAW in Preview.
+                // The DOM canvas is live right now, so capture it before anything else runs.
+                let mockupResults: any[]
+
+                if (isCylindrical && !isMultiArea) {
+                  // Mugs / cylindrical: headless pixi never renders correctly.
+                  // • Active color → use the render the user already saw (cylindrical ✓)
+                  //   OR fall back to renderMockupDirectly (flat, but visible + correct placement)
+                  // • Other colors  → renderMockupDirectly (flat, but visible + correct placement)
+                  mockupResults = await Promise.all(
+                    selectedColors.map(async (c: any) => {
+                      let base64 = ''
+
+                      if (previewCapturesRef.current[c.value]) {
+                        // Perfect: reuse the cylindrical render the user already approved
+                        base64 = previewCapturesRef.current[c.value]
+                      } else {
+                        // Best-effort flat composite for each color
+                        const colorMockups = getMockupsForColor(
+                          productData, c.value, activeTechnology,
+                          productData?.size_Images ? activeSize : undefined,
+                        )
+                        const mockupForColor =
+                          colorMockups.find((m: any) =>
+                            m.area?.some((a: any) => a.areaName?.toLowerCase() === primaryArea.toLowerCase()),
+                          ) ??
+                          colorMockups[0] ??
+                          heroMockupForSave
+                        if (mockupForColor) {
+                          base64 = await renderMockupDirectly(
+                            mockupForColor,
+                            designHook.getVisibleDesignElements(designHook.designElements) as any,
+                            getAllCanvasConfigs,
+                            getAllPrintableAreas,
+                            c.value,
+                            1000,
+                          ) as string ?? ''
+                        }
+                      }
+
+                      return { base64, colorHex: c.value, colorName: c.name, area: primaryArea }
                     })
-                  : await generateJuniMockupsAllColors({
-                      blankData:      productData,
-                      technologyId:   activeTechnology,
-                      selectedColors: selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
-                      designBase64:   primaryEl?.imageBase64 ?? '',
-                      area:           primaryArea,
-                      position:       'center',
-                      targetResolution: 1000,
-                      designLayout: primaryEl ? {
-                        // Konva internal coordinates are already in canvas config space (500x500)
-                        // Stage scaleX/scaleY only affects display size, not coordinate values
-                        x:        primaryEl.x,
-                        y:        primaryEl.y,
-                        width:    primaryEl.width,
-                        height:   primaryEl.height,
-                        rotation: primaryEl.rotation ?? 0,
-                        opacity:  primaryEl.opacity  ?? 1,
-                      } : undefined,
-                    })
+                  )
+                } else {
+                  // Non-cylindrical (apparel, flat products): original flow unchanged
+                  mockupResults = isMultiArea
+                    ? await generateJuniMockupsCombined({
+                        blankData:           productData,
+                        technologyId:        activeTechnology,
+                        selectedColors:      selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
+                              designsByArea: Object.fromEntries(
+                                areasWithDesigns.map(area => {
+                                  const scaledElements = (positionedDesignsByArea[area] as any[] ?? []).map(
+                                    (el: any) => ({
+                                      x:        el.x,        // no scaling — already in canvas config space
+                                      y:        el.y,
+                                      width:    el.width,
+                                      height:   el.height,
+                                      rotation: el.rotation ?? 0,
+                                      opacity:  el.opacity  ?? 1,
+                                    })
+                                  )
+                                  return [
+                                    area,
+                                    {
+                                      sessionId: '',
+                                      base64:    getElementsForArea(area)?.[0]?.imageBase64 ?? '',
+                                      filename:  `design-${area}.png`,
+                                      elements:  scaledElements,
+                                    }
+                                  ]
+                                })
+                              ),
+                        defaultDesignBase64: primaryEl?.imageBase64 ?? '',
+                        targetResolution:    1000,
+                      })
+                    : await (async () => {
+                          console.log('[JUNI Save] generateJuniMockupsAllColors input', {
+                            hasImageBase64: !!primaryEl?.imageBase64,
+                            base64Len: primaryEl?.imageBase64?.length ?? 0,
+                            primaryArea,
+                            colorCount: selectedColors.length,
+                          })
+                          if (!primaryEl?.imageBase64) {
+                            console.error('[JUNI Save] ABORT — no imageBase64 on primaryEl, cannot generate mockups')
+                            return []
+                          }
+                          return await generateJuniMockupsAllColors({
+                          blankData:      productData,
+                          technologyId:   activeTechnology,
+                          selectedColors: selectedColors.map((c: any) => ({ name: c.name, hex: c.value })),
+                          designBase64:   primaryEl?.imageBase64 ?? '',
+                          area:           primaryArea,
+                          position:       'center',
+                          targetResolution: 1000,
+                          designLayout: primaryEl ? {
+                          // Konva internal coordinates are already in canvas config space (500x500)
+                          // Stage scaleX/scaleY only affects display size, not coordinate values
+                          x:        primaryEl.x,
+                          y:        primaryEl.y,
+                          width:    primaryEl.width,
+                          height:   primaryEl.height,
+                          rotation: primaryEl.rotation ?? 0,
+                          opacity:  primaryEl.opacity  ?? 1,
+                          } : undefined,
+                        })
+                      })()
+                }
 
                 // Also export the clean design base64 for each area (for re-editing later)
                 // ── Capture updatedDesignsByArea — render design at EDITED size + rotation ──
@@ -2444,7 +2552,12 @@ const renderTechnologySelector = () => {
                 setIsSavingToJuni(false)
               }
             }}
-              disabled={!designHook.hasDesignElements || isSavingToJuni}
+              title={isProductCylindrical && !hasVisitedPreview ? "Open Preview tab first to capture your mockup" : undefined}
+              disabled={
+                !designHook.hasDesignElements ||
+                isSavingToJuni ||
+                (isProductCylindrical && !hasVisitedPreview)
+              }
               className="flex items-center gap-1 px-2 py-2 text-xs font-medium text-white rounded-lg shadow-sm sm:gap-2 sm:px-4 sm:text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation ml-0.5"
               style={{ backgroundColor: '#16a34a' }}>
               {isSavingToJuni

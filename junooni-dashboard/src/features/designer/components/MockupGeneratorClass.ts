@@ -68,6 +68,14 @@ export const renderMockupDirectly = async (
 
       const mockupBaseImg = await _loadImageCached(resolveImageUrl(mockup.photo.url));
 
+        console.log('[Mockup Debug]', {
+          designLayerMode: mockup.designLayerMode,
+          isDesignUnder,
+          requiresColorMasking,
+          photoColor: mockup.photoColor,
+          mockupId: mockup.id,
+        });
+
       // ─── Draw base: for 'under' mode, only fill background (photo drawn after design) ──
       if (isDesignUnder) {
         // Design goes first → photo overlays it in Step 2.5
@@ -97,12 +105,34 @@ export const renderMockupDirectly = async (
 
         const design = mockupArea.design;
 
-        const mockupAreaX     = design.coordinateX      * renderRes;
-        const mockupAreaY     = design.coordinateY      * renderRes;
-        const mockupAreaWidth = design.coordinateWidth  * renderRes;
+        console.log('[Area Debug]', {
+          areaName,
+          coordinateX: design.coordinateX,
+          coordinateY: design.coordinateY,
+          coordinateWidth: design.coordinateWidth,
+          coordinateHeight: design.coordinateHeight,
+          printableAreaX: printableArea.x,
+          printableAreaY: printableArea.y,
+          printableAreaWidth: printableArea.width,
+          printableAreaHeight: printableArea.height,
+          canvasConfigWidth: canvasConfig.width,
+          canvasConfigHeight: canvasConfig.height,
+        });
 
-        const uniformScale          = mockupAreaWidth / printableArea.width;
-        const effectiveMockupHeight = printableArea.height * uniformScale;
+        const mockupAreaX      = design.coordinateX      * renderRes;
+        const mockupAreaY      = design.coordinateY      * renderRes;
+        const mockupAreaWidth  = design.coordinateWidth  * renderRes;
+        const mockupAreaHeight = design.coordinateHeight * renderRes;
+
+        // WITH THIS:
+        const uvMap    = (design.uvMap ?? {}) as any;
+        const effectivePAX = printableArea.x + (uvMap.uStart ?? 0) * printableArea.width;
+        const effectivePAY = printableArea.y + (uvMap.vStart ?? 0) * printableArea.height;
+        const effectivePAW = (uvMap.uSpan  ?? 1) * printableArea.width;
+        const effectivePAH = (uvMap.vSpan  ?? 1) * printableArea.height;
+
+        const uniformScale          = mockupAreaWidth / effectivePAW;
+        const effectiveMockupHeight = mockupAreaHeight || (effectivePAH * uniformScale);
 
         let nativeWidth  = Math.round(mockupAreaWidth);
         let nativeHeight = Math.round(effectiveMockupHeight);
@@ -139,8 +169,8 @@ export const renderMockupDirectly = async (
         dCtx.imageSmoothingQuality = 'high';
         dCtx.clearRect(0, 0, nativeWidth, nativeHeight);
 
-        const toNativeX = nativeWidth  / printableArea.width;
-        const toNativeY = nativeHeight / printableArea.height;
+        const toNativeX = nativeWidth  / effectivePAW;
+        const toNativeY = nativeHeight / effectivePAH;
 
         for (const element of visibleElements) {
           if (!element.image) continue;
@@ -148,8 +178,21 @@ export const renderMockupDirectly = async (
 
           const src = element.image as HTMLImageElement;
 
-          const elemLeftInPrintable = element.x - printableArea.x;
-          const elemTopInPrintable  = element.y - printableArea.y;
+          console.log('[Element Debug]', {
+            elementX: element.x,
+            elementY: element.y,
+            elementWidth: element.width,
+            elementHeight: element.height,
+            scaleX: element.scaleX,
+            scaleY: element.scaleY,
+            printableAreaX: printableArea.x,
+            printableAreaY: printableArea.y,
+            printableAreaWidth: printableArea.width,
+            printableAreaHeight: printableArea.height,
+          });
+
+          const elemLeftInPrintable = element.x - effectivePAX;
+          const elemTopInPrintable  = element.y - effectivePAY;
           const renderedWidth       = element.width  * (element.scaleX || 1);
           const renderedHeight      = element.height * (element.scaleY || 1);
 

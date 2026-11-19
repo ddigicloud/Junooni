@@ -355,7 +355,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   try {
     const {
       messages, vendorId, action, supportMessage, currentPage,
-      base64, filename, mimeType,
+     base64, fileUrl, mockupUrl, filename, mimeType,
       // FIX E3: Only session ID, never the base64 blob itself
       approvedMockupSessionId,
       productSession,
@@ -366,6 +366,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       supportMessage?:         string
       currentPage?:            string
       base64?:                 string
+      fileUrl?:                string
+      mockupUrl?:              string
       filename?:               string
       mimeType?:               string
       approvedMockupSessionId?: string
@@ -392,33 +394,54 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     // ── Design file upload ────────────────────────────────────────────────────
     if (action === "upload_design") {
-      if (!base64 || !filename) return res.status(400).json({ error: "base64 and filename are required" })
-      const sessionId = storeDesignFile(vendorId, base64, filename, mimeType ?? "image/png")
-      // Clear old mockup sessions when a new design is uploaded — new product creation starting
+      let designBase64 = base64
+
+      if (!designBase64 && fileUrl) {
+        // New path: file already in S3 — fetch it server-side, never re-sending base64 from browser
+        try {
+          const fileResp = await fetch(fileUrl)
+          if (!fileResp.ok) throw new Error(`Failed to fetch design from fileUrl: ${fileResp.status}`)
+          const buffer  = await fileResp.arrayBuffer()
+          designBase64  = Buffer.from(buffer).toString("base64")
+        } catch (fetchErr: any) {
+          console.error("[AI assistant] fetch fileUrl failed:", fetchErr.message)
+          return res.status(400).json({ error: "Could not retrieve file from fileUrl" })
+        }
+      }
+
+      if (!designBase64 || !filename) {
+        return res.status(400).json({ error: "fileUrl (or base64) and filename are required" })
+      }
+
+      const sessionId = storeDesignFile(vendorId, designBase64, filename, mimeType ?? "image/png")
       clearVendorMockupSessions(vendorId)
-      console.log(`[AI assistant] Design uploaded for vendor ${vendorId}: ${filename}, registry cleared`)
+      console.log(`[AI assistant] Design uploaded for vendor ${vendorId}: ${filename} (via ${fileUrl ? "fileUrl" : "base64"}), registry cleared`)
       return res.json({ sessionId })
     }
 
     // FIX E1+E3: Store approved mockup server-side, return session ID to frontend
     if (action === "store_mockup") {
-      if (!base64) return res.status(400).json({ error: "base64 is required" })
-      const area        = (req.body as any).area        as string | undefined
-      const colorName   = (req.body as any).colorName   as string | undefined
-      const clearOld    = (req.body as any).clearOld    as boolean | undefined
-
-      // If clearOld is true — wipe previous mockup sessions before storing new ones
-      // This ensures only the latest approved mockups go into the product
+      let mockupBase64 = base64
+      if (!mockupBase64 && mockupUrl) {
+        try {
+          const r = await fetch(mockupUrl)
+          if (!r.ok) throw new Error(`Failed to fetch mockup: ${r.status}`)
+          mockupBase64 = Buffer.from(await r.arrayBuffer()).toString("base64")
+        } catch (fetchErr: any) {
+          console.error("[AI assistant] fetch mockupUrl failed:", fetchErr.message)
+          return res.status(400).json({ error: "Could not retrieve mockup from mockupUrl" })
+        }
+      }
+      if (!mockupBase64) return res.status(400).json({ error: "mockupUrl or base64 is required" })
+      const area      = (req.body as any).area      as string | undefined
+      const colorName = (req.body as any).colorName as string | undefined
+      const clearOld  = (req.body as any).clearOld  as boolean | undefined
       if (clearOld && colorName !== "canvas-layout") {
         clearVendorMockupSessions(vendorId)
-        console.log(`[AI assistant] Cleared old mockup sessions for vendor=${vendorId}`)
       }
-
       const mockupSessionId = colorName === "canvas-layout"
-        ? storeCanvasLayout(vendorId, base64, area)
-        : storeMockupPreview(vendorId, base64, area, colorName)
-
-      console.log(`[AI assistant] ${colorName === "canvas-layout" ? "Canvas layout" : "Mockup"} stored: vendor=${vendorId}, session=${mockupSessionId}, area=${area ?? "none"}`)
+        ? storeCanvasLayout(vendorId, mockupBase64, area)
+        : storeMockupPreview(vendorId, mockupBase64, area, colorName)
       return res.json({ mockupSessionId })
     }
 

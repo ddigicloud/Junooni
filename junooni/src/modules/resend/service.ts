@@ -1,14 +1,14 @@
-import { 
-  AbstractNotificationProviderService, 
+import {
+  AbstractNotificationProviderService,
   MedusaError
 } from "@medusajs/framework/utils"
-import { 
-  ProviderSendNotificationDTO, 
+import {
+  ProviderSendNotificationDTO,
   ProviderSendNotificationResultsDTO,
   Logger
 } from "@medusajs/framework/types";
-import { 
-  CreateEmailOptions, 
+import {
+  CreateEmailOptions,
   Resend
 } from "resend";
 import { orderPlacedEmail } from "./emails/order-placed";
@@ -31,6 +31,8 @@ enum Templates {
   CREATOR_OTP = "creator-otp",
   ORDER_SHIPPED = "order-shipped",
   ORDER_CANCEL_OTP = "order-cancel-otp",
+  // ── Admin broadcast (dynamic HTML set by admin at send time) ──────────────
+  CUSTOM_HTML = "custom-html",
 }
 
 const templates: {[key in Templates]?: (props: unknown) => React.ReactNode} = {
@@ -43,6 +45,7 @@ const templates: {[key in Templates]?: (props: unknown) => React.ReactNode} = {
   [Templates.CREATOR_OTP]: creatorOtpEmail,
   [Templates.ORDER_SHIPPED]: orderShippedEmail,
   [Templates.ORDER_CANCEL_OTP]: orderCancelOtpEmail,
+  // CUSTOM_HTML is handled separately in send() — no static template needed
 }
 
 type ResendOptions = {
@@ -65,7 +68,7 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
   private logger: Logger
 
   constructor(
-    { logger }: InjectedDependencies, 
+    { logger }: InjectedDependencies,
     options: ResendOptions
   ) {
     super()
@@ -133,10 +136,45 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
   async send(
     notification: ProviderSendNotificationDTO
   ): Promise<ProviderSendNotificationResultsDTO> {
+
+    // ── CUSTOM_HTML: admin-composed broadcast email ────────────────────────
+    // Data shape: { subject: string, html_content: string, vendor_name?: string }
+    if (notification.template === Templates.CUSTOM_HTML) {
+      const data = notification.data as any
+
+      if (!data?.html_content) {
+        this.logger.error(
+          "custom-html template requires html_content in notification.data"
+        )
+        return {}
+      }
+
+      const emailOptions: CreateEmailOptions = {
+        from: this.options.from,
+        to: [notification.to],
+        subject: data.subject || "Message from JUNOONI",
+        replyTo: "support@junooni.com",
+        html: data.html_content,
+      }
+
+      const { data: resendData, error } = await this.resendClient.emails.send(emailOptions)
+
+      if (error || !resendData) {
+        this.logger.error(`custom-html send failed — to: ${notification.to}, error: ${JSON.stringify(error)}`)
+        return {}
+      }
+
+      return { id: resendData.id }
+    }
+
+    // ── Standard templates ─────────────────────────────────────────────────
     const template = this.getTemplate(notification.template as Templates)
 
     if (!template) {
-      this.logger.error(`Couldn't find an email template for ${notification.template}. The valid options are ${Object.values(Templates)}`)
+      this.logger.error(
+        `Couldn't find an email template for ${notification.template}. ` +
+        `The valid options are ${Object.values(Templates)}`
+      )
       return {}
     }
 

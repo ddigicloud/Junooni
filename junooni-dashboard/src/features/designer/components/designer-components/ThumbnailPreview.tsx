@@ -15,6 +15,7 @@ interface ThumbnailPreviewProps {
   displayDimensions?: { width: number; height: number };
   isMainPreview?: boolean;
   productData: any;
+  onCapture?: (base64: string, colorHex: string) => void;
 }
 
 export const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
@@ -28,6 +29,7 @@ export const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   displayDimensions = { width: 275, height: 275 },
   isMainPreview = false,
   productData,
+  onCapture,
 }) => {
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         const imageData = await renderMockupDirectly(
           mockup, designElements, canvasConfigs, canvasPrintableAreas, productColor, displayDimensions.width
         );
-        if (isMounted) { setPreviewImage(imageData); setIsRendering(false); }
+        if (isMounted) { setPreviewImage(imageData); setIsRendering(false); onCapture?.(imageData, productColor); }
       } catch {
         if (isMounted) { setThumbnailError('Failed to render preview'); setIsRendering(false); }
       }
@@ -152,7 +154,7 @@ export const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           canvasConfigs={canvasConfigs} canvasPrintableAreas={canvasPrintableAreas}
           displayDimensions={displayDimensions} productType={productData?.productType || 'flat'}
           productColor={productColor} renderEngine="pixi" enablePixiFeatures={true}
-          pixelRatio={isMainPreview ? 2 : 1} onRenderComplete={() => {}} onProgress={() => {}}
+          pixelRatio={isMainPreview ? 2 : 1} onRenderComplete={(b64: string) => { if (b64) onCapture?.(b64, productColor); }} onProgress={() => {}}
         />
       );
     }

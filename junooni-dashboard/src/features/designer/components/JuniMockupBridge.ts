@@ -8,7 +8,7 @@
 // ALL logic is ported directly from existing hooks — zero new logic.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { renderMockupDirectly } from './MockupGeneratorClass'
+import { renderMockupDirectly, EnhancedMockupGenerator } from './MockupGeneratorClass'
 import type { DesignElement, TotalPricingBreakdown, AreaPricingInfo } from './types'
 import { optimizeImage, cropTransparentPixels } from './utils'
 import { captureCanvasImageForArea } from './canvas-export-utils'
@@ -197,6 +197,7 @@ async function buildDesignElementFromBase64(
     image:     finalImage,
     imageName: 'JUNI Design',
     imageBase64: finalBase64,
+    src: finalBase64,
     originalImageWidth:  finalImage.naturalWidth  || finalImage.width,
     originalImageHeight: finalImage.naturalHeight || finalImage.height,
     opacity: elOpacity, visible: true, locked: false,
@@ -353,7 +354,7 @@ export interface JuniMockupOptions {
   area:              string
   position:          string
   targetResolution?: number
-  designLayout?:     DesignLayout  // optional: from canvas editor edits
+  designLayout?:     DesignLayout
 }
 
 export interface JuniMockupResult {
@@ -381,15 +382,26 @@ export async function generateJuniMockup(opts: JuniMockupOptions): Promise<JuniM
     throw new Error(`No mockup photo URL for area "${area}". Ensure blank fetched with depth=2.`)
   }
 
-  // Build design element — uses designLayout if provided (canvas editor edits)
-  // otherwise uses default centering (same as useDesignElements.addImageToCanvas)
   const designElement = await buildDesignElementFromBase64(designBase64, printableArea, designLayout)
 
   const { canvasConfigs, printableAreas } = getAllConfigs(tech)
 
   const areaKey = area.toLowerCase().trim()
   const designElements: Record<string, DesignElement[]> = { [areaKey]: [designElement] }
+  // EnhancedMockupGenerator keys design elements by the mockup photo's exact area name
+  // (e.g. 'Front' not 'front'). Add both variants so the renderer always finds the design.
+  const photoAreaName = mockupPhoto?.area?.[0]?.areaName
+  if (photoAreaName) {
+    designElements[photoAreaName] = [designElement]
+    designElements[photoAreaName.toLowerCase().trim()] = [designElement]
+  }
 
+  // Use EnhancedMockupGenerator for pixi/cylindrical products (mugs, bottles, tumblers)
+    // renderMockupDirectly handles alpha masks (mug shape) + design compositing correctly.
+  // The pixi/displacement path (EnhancedMockupGenerator) adds cylindrical warping but
+  // has an internal issue preventing design rendering in JUNI's context.
+  // For JUNI chat previews, flat composite with alpha mask is correct and sufficient.
+  // REVERT — replace the entire isCylindrical block back to this:
   const base64 = await renderMockupDirectly(
     mockupPhoto, designElements, canvasConfigs, printableAreas, selectedColorHex, targetResolution
   )
@@ -398,7 +410,6 @@ export async function generateJuniMockup(opts: JuniMockupOptions): Promise<JuniM
 
   return { base64, pricing, element: designElement }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 5: Generate all color variants (for MockupSlider)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -637,6 +648,9 @@ export async function generateJuniCanvasLayout(opts: {
 
   const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
   console.log('[JuniLayout] ⑦ mockupPhoto found:', mockupPhoto ? 'YES' : 'NULL ← FAILING HERE')
+  console.log('[JUNI Debug] mockupArea.design:', JSON.stringify(mockupPhoto?.area?.[0]?.design))
+  console.log('[JUNI Debug] designElements keys:', Object.keys(designElements))
+  console.log('[JUNI Debug] element.image naturalWidth:', (designElements[Object.keys(designElements)[0]]?.[0]?.image as any)?.naturalWidth)
 
   const canvasImages: Record<string, HTMLImageElement | null> = {}
   if (mockupPhoto?.photo?.url) {
@@ -675,18 +689,14 @@ export async function generateJuniCanvasLayout(opts: {
   const getCustomizationAreaByName = (areaId: string) =>
     getCustArea(tech, areaId)
 
-  console.log('[JuniLayout] ⑩ calling captureCanvasImageForArea...')
+    console.log('[JuniLayout] ⑩ calling captureCanvasImageForArea...')
   try {
-    const result = await captureCanvasImageForArea(
-      areaKey,
-      designElements,
-      selectedColorHex,
-      canvasImages,
-      getCanvasConfig,
-      getPrintableAreaFromPhoto,
-      getCustomizationAreaByName
-    )
-    console.log('[JuniLayout] ⑪ captureCanvasImageForArea result:', result ? `${result.length} chars` : 'NULL')
+    const captureResult = await Promise.race([
+      captureCanvasImageForArea(areaKey, designElements, selectedColorHex, canvasImages, getCanvasConfig, getPrintableAreaFromPhoto, getCustomizationAreaByName),
+      new Promise<null>((resolve) => setTimeout(() => { resolve(null) }, 10000)),
+    ])
+    const result = captureResult?.base64 ?? null
+    console.log('[JuniLayout] ⑪ captureCanvasImageForArea result:', result ? `${result.length} chars` : 'NULL/timeout')
     return result
   } catch (err: any) {
     console.error('[JuniLayout] ⑪ captureCanvasImageForArea THREW:', err.message)
