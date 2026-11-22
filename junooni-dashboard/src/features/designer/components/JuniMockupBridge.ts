@@ -301,7 +301,7 @@ export function calculateJuniPricing(
     minimumPrice, pricePerSquareInch: pricePerSqIn,
     designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
     currentImageArea: consumedPxW * consumedPxH, calculatedPrice: basePrintingCost, finalPrice: basePrintingCost,
-    consumedWidth: consumedInW, consumedHeight: consumedInH, elements: [designElement],
+    consumedWidth: consumedInW, consumedHeight: consumedInH, elements: [],
   }
 
   const breakdown: TotalPricingBreakdown = {

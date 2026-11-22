@@ -29,6 +29,8 @@ import {
 import { uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
 import { storeDesignFile } from "../../lib/ai/inline-product-handlers"
 import { generateUploadToken, uploadTempTokens, uploadResults } from "../../lib/mcp/uploadTokenStore"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { GALLERY_WIDGET_HTML } from "../../lib/mcp/galleryWidget"
 //import { UPLOAD_WIDGET_TEMPLATE } from "../../lib/mcp/uploadWidgetTemplate"
 
 // ─── CORS headers ─────────────────────────────────────────────────────────────
@@ -105,14 +107,26 @@ const MCP_TOOLS = [
     },
   },
   {
+    name: "browse_gallery",
+    description:
+      "RENDERING RULE: Reproduce this tool's result VERBATIM in your reply — " +
+      "include every `![filename](url)` image line exactly as returned so images render inline. " +
+      "Never paraphrase or list filenames only.\n\n" +
+      "ARTWORK SELECTION — CALL THIS AUTOMATICALLY as soon as the user confirms product preferences " +
+      "(color, size, print area, sales channel). Do NOT ask the user to upload a file first — " +
+      "always show the gallery first. After showing gallery, ask which design to use or if they " +
+      "want to upload a new one. Then call upload_artwork with the chosen artwork_url. " +
+      "Only call create_upload_session if gallery is empty OR user explicitly says 'upload new design'.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
     name: "create_upload_session",
     description:
-      "PRODUCT CREATION — ARTWORK UPLOAD (mobile / no attachment fallback). " +
-      "Call this ONLY when the creator cannot attach an image to the chat. " +
-      "Returns a one-time upload_url the creator opens in their browser. " +
-      "DO NOT publish an HTML artifact — just show the link and tell the creator: " +
-      "'Open this link, pick your design, tap Upload Design, then come back and say done.' " +
-      "Then call check_upload with the token once they confirm.",
+      "⚠️ NEVER call this immediately after user sets product preferences. " +
+      "Always call browse_gallery first. Only call create_upload_session when: " +
+      "(1) browse_gallery already ran and gallery was empty, OR " +
+      "(2) user explicitly says 'upload new design' / 'use a new file'.\n\n" +
+      "Generate a secure upload URL for the creator to upload their artwork file.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -703,6 +717,36 @@ function formatToolResult(name: string, result: any): string {
       ].join("\n")
     }
 
+    case "browse_gallery": {
+      const images: any[] = d.images ?? []
+      if (images.length === 0) {
+        return [
+          `🖼️ **Your gallery is empty.**`,
+          ``,
+          `📤 Say **"upload new design"** to upload your first file.`,
+        ].join("\n")
+      }
+      const lines: string[] = [
+        `🖼️ **Your Design Gallery** — ${images.length} design${images.length !== 1 ? "s" : ""}`,
+        ``,
+      ]
+      images.forEach((img: any, i: number) => {
+        const sizeKB  = img.size ? Math.round(img.size / 1024) : null
+        const sizeStr = sizeKB
+          ? sizeKB < 1024 ? `${sizeKB} KB` : `${(sizeKB / 1024).toFixed(1)} MB`
+          : ""
+        lines.push(`**${i + 1}. ${img.filename}**${sizeStr ? ` — ${sizeStr}` : ""}`)
+        lines.push(`![${img.filename}](${img.url})`)
+        lines.push(`\`artwork_url: ${img.url}\``)
+        lines.push(``)
+      })
+      lines.push(`---`)
+      lines.push(`📤 **Upload new design** — say "upload new design" to get a fresh upload link`)
+      lines.push(``)
+      lines.push(`Say the **number** or **name** of the design to use it.`)
+      return lines.join("\n")
+    }
+
     default:
       return JSON.stringify(d, null, 2)
   }
@@ -781,13 +825,60 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   // ── 2. Handle meta-methods BEFORE auth ──────────────────────────────────────
   if (method === "initialize") {
+  return res.json({
+    jsonrpc: "2.0", id: rpcId,
+    result: {
+      protocolVersion: "2025-03-26",
+      capabilities: {
+        tools: {},
+        resources: {},
+      },
+      experimental: {
+        mcpApps: { version: "1.0" },
+      },
+      serverInfo: { name: "JUNOONI Creator Store", version: "1.0.0" },
+    },
+  })
+}
+
+// ── MCP Resources — served without auth so Claude.ai host can fetch them ──
+  if (method === "resources/list") {
+    console.log(`[MCP] 🔍 resources/list called`) 
     return res.json({
       jsonrpc: "2.0", id: rpcId,
       result: {
-        protocolVersion: "2025-03-26",
-        capabilities:    { tools: {} },
-        serverInfo:      { name: "JUNOONI Creator Store", version: "1.0.0" },
+        resources: [
+          {
+            uri:         "gallery://junooni/widget",
+            name:        "JUNOONI Gallery Widget",
+            description: "Inline gallery + upload UI for the creator's design library",
+            mimeType:    "text/html",
+          },
+        ],
       },
+    })
+  }
+
+  if (method === "resources/read") {
+    const uri = body?.params?.uri ?? ""
+    console.log(`[MCP] 🔍 resources/read called uri=${uri}`)
+    if (uri === "gallery://junooni/widget") {
+      return res.json({
+        jsonrpc: "2.0", id: rpcId,
+        result: {
+          contents: [
+            {
+              uri,
+              mimeType: "text/html",
+              text: GALLERY_WIDGET_HTML,
+            },
+          ],
+        },
+      })
+    }
+    return res.json({
+      jsonrpc: "2.0", id: rpcId,
+      error: { code: -32002, message: "Resource not found: " + uri },
     })
   }
 
@@ -967,6 +1058,28 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       rawResult = await handleCreateProduct(toolArgs, vendorId, req.scope, token)
       console.log(`[MCP] create_product done ok=${rawResult?.ok} productId=${rawResult?.data?.id}`)
 
+     } else if (toolName === "browse_gallery") {
+  try {
+    const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+    const result   = await pgClient.raw(
+      `SELECT id, url, filename, size, mime_type, created_at
+       FROM vendor_gallery_image
+       WHERE vendor_id = ?
+         AND deleted_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [vendorId]
+    )
+    const rows = result.rows ?? result[0] ?? []
+    console.log(`[MCP] browse_gallery vendor=${vendorId} count=${rows.length}`)
+    const uploadToken = generateUploadToken()
+    uploadTempTokens.set(uploadToken, { vendorId, createdAt: Date.now() })
+    const uploadUrl = `https://jazz-kung-cod.ngrok-free.dev/api/mcp/widget-upload?token=${uploadToken}`
+    rawResult = { ok: true, data: { images: rows, upload_url: uploadUrl } }
+  } catch (e: any) {
+    rawResult = { ok: false, error: e.message }
+  }
+
     } else if (toolName === "create_upload_session") {
       const token     = generateUploadToken()
       uploadTempTokens.set(token, { vendorId, createdAt: Date.now() })
@@ -1048,7 +1161,15 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     return res.json({
       jsonrpc: "2.0", id: rpcId,
-      result: { content, isError },
+      result: {
+        content,
+        isError,
+        ...(toolName === "browse_gallery" ? {
+          _meta: {
+            ui: { resourceUri: "https://jazz-kung-cod.ngrok-free.dev/api/mcp/gallery-widget" }
+          }
+        } : {}),
+      },
     })
   } catch (err: any) {
     console.error(`[MCP] ❌ tool execution error — tool=${toolName} vendor=${vendorId ?? "?"}:`, err)

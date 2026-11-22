@@ -51,6 +51,8 @@ import {
   generateJuniCanvasLayout,
 } from './JuniMockupBridge'
 import { captureCanvasImageForArea } from './canvas-export-utils'
+import GalleryPickerModal from './GalleryPickerModal'
+import { calculateImageDPI, getDpiTier } from './utils'
 
 const BRAND = '#e65100';
 
@@ -126,6 +128,47 @@ const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMo
   const [isSavingToJuni, setIsSavingToJuni] = useState(false)
   const [hasVisitedPreview, setHasVisitedPreview] = useState(false)
   const [showTechCompare, setShowTechCompare] = useState(false);
+  const [showGalleryPicker, setShowGalleryPicker] = useState(false)
+
+  const handleGalleryImageUsed = async (
+    base64: string,
+    filename: string,
+    url: string,
+    fileSize?: number
+  ) => {
+    try {
+      const imageDims = await new Promise<{ width: number; height: number }>((res, rej) => {
+        const tempImg = new Image()
+        tempImg.onload  = () => res({ width: tempImg.naturalWidth, height: tempImg.naturalHeight })
+        tempImg.onerror = () => rej(new Error('Could not read image dimensions'))
+        tempImg.src = base64
+      })
+
+      const canvasCfg    = getCanvasConfig(activeArea)
+      const printable    = getPrintableAreaFromPhoto(activeArea, activeColor)
+      const printableWIn = (printable.width  / canvasCfg.width)  * canvasCfg.realWorldWidth
+      const printableHIn = (printable.height / canvasCfg.height) * canvasCfg.realWorldHeight
+      const dpi          = calculateImageDPI(imageDims.width, imageDims.height, printableWIn, printableHIn)
+      const dpiQuality   = getDpiTier(dpi)
+
+      designHook.setUploadedFiles(prev => [...prev, {
+        id: `gallery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        file: undefined as any,
+        url,
+        base64Data: base64,
+        name: filename,
+        size: fileSize ?? 0,
+        type: 'image/*',
+        uploadProgress: 100,
+        isUploading: false,
+        targetArea: activeArea,
+        dpi,
+        dpiQuality,
+      }])
+    } catch (err) {
+      console.error('[Canvas] handleGalleryImageUsed:', err)
+    }
+  }
 
   // ── Active selections ─────────────────────────────────────────────────────
   const [activeTechnology, setActiveTechnology] = useState<string>(() => {
@@ -145,7 +188,16 @@ const EnhancedCanvas: React.FC<EnhancedCanvasProps> = ({ productData, juniEditMo
   return valid || first?.id || first?.technologyName || 'dtg';
 });
 
-  const [activeArea, setActiveArea] = useState<string>('front');
+  const [activeArea, setActiveArea] = useState<string>(() => {
+  if (juniEditMode?.initialArea) return juniEditMode.initialArea;
+  const techs = productData?.printT ?? [];
+  const tech = techs.find((t: any) =>
+    t.id === (juniEditMode?.initialTechnologyId ?? _urlTechId ?? techs[0]?.id ?? techs[0]?.technologyName) ||
+    t.technologyName === (juniEditMode?.initialTechnologyId ?? _urlTechId ?? techs[0]?.id ?? techs[0]?.technologyName)
+  ) ?? techs[0];
+  const firstArea = tech?.custAreas?.find((a: any) => a?.areaName)?.areaName?.toLowerCase();
+  return firstArea ?? 'front';
+});
   const [activeColor, setActiveColor] = useState<string>(() => {
   if (juniEditMode?.initialColorHex) return juniEditMode.initialColorHex
   if (_urlColor) return _urlColor
@@ -1539,7 +1591,7 @@ const renderTechnologySelector = () => {
 
                   {/* Text */}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-bold leading-tight ${
+                    <p className={`text-sm font-bold leading-tight uppercase ${
                       isActive ? 'text-orange-700' : 'text-gray-900'
                     }`}>
                       {tech.technologyName}
@@ -1692,7 +1744,7 @@ const renderTechnologySelector = () => {
           </div>
           <h3 className="mb-2 text-base font-semibold text-gray-900 sm:text-lg">{designHook.isDragging ? 'Drop your images here' : 'Upload design images'}</h3>
           <p className="mb-4 text-xs text-gray-500 sm:mb-6">Supports PNG, JPG, GIF up to 30MB each</p>
-          <button onClick={() => designHook.fileInputRef.current?.click()}
+          <button onClick={() => setShowGalleryPicker(true)}
             className="inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-lg touch-manipulation"
             style={{ backgroundColor: BRAND }}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
@@ -2781,7 +2833,7 @@ const renderTechnologySelector = () => {
                             isActive ? 'border-orange-400 bg-orange-50' : 'border-gray-100 bg-gray-50'
                           }`}>
                             <div className="text-2xl mb-1">{info?.icon ?? '🖨️'}</div>
-                            <div className={`text-sm font-bold ${isActive ? 'text-orange-700' : 'text-gray-800'}`}>
+                            <div className={`text-sm font-bold uppercase ${isActive ? 'text-orange-700' : 'text-gray-800'}`}>
                               {tech.technologyName}
                             </div>
                             {isActive ? (
@@ -2889,6 +2941,19 @@ const renderTechnologySelector = () => {
 
       {/* Hidden debug toggle */}
       <button onClick={() => setDebugMode(!debugMode)} className="fixed w-4 h-4 transition-opacity opacity-0 bottom-4 right-4 hover:opacity-100" />
+    
+    <GalleryPickerModal
+      isOpen={showGalleryPicker}
+      onClose={() => setShowGalleryPicker(false)}
+      addImageToCanvas={designHook.addImageToCanvas}
+      activeArea={activeArea}
+      onUploadFromDevice={() => {
+        designHook.fileInputRef.current?.click()
+        setShowGalleryPicker(false)
+      }}
+      onImageUsed={handleGalleryImageUsed}
+    />
+
     </div>
   );
 };

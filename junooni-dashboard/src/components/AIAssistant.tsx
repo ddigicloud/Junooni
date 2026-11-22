@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef,useEffect } from "react"
+import { createPortal } from "react-dom"
 import JUNI from "../assets/JUNI.png"
 import JUNI2 from "../assets/JUNI-video.mp4"
 import EnhancedCanvas from '../features/designer/components/Canvas'
+import GalleryPickerModal from '../features/designer/components/GalleryPickerModal'
 import type { PayloadProductData } from '../features/designer/components/types'
 import { generateJuniMockupsAllColors, generateJuniCanvasLayout, generateJuniMockupsAllAreasAllColors, generateJuniMockupsCombined } from '../features/designer/components/JuniMockupBridge'
 
@@ -123,6 +125,22 @@ const isCylindricalBlank = (blankData: any): boolean => {
   }
   return false
 }
+
+async function urlToBase64(url: string): Promise<string> {
+  const BACKEND = import.meta.env.VITE_MEDUSA_BACKEND_URL || 'http://localhost:9000'
+  const proxyUrl = url.startsWith(BACKEND)
+    ? window.location.origin + url.slice(BACKEND.length)
+    : url
+  const res = await fetch(proxyUrl)
+  const blob = await res.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 
 const TOOL_LABELS: Record<string, string> = {
   get_store_overview:    "Checking your store...",
@@ -695,10 +713,37 @@ function DesignUploader({ vendorId, onUploadComplete, onSkip }: {
   onUploadComplete: (sessionId: string, filename: string, base64: string) => void
   onSkip: () => void
 }) {
-  const [state, setState]       = useState<"idle"|"uploading"|"done"|"error">("idle")
-  const [progress, setProgress] = useState(0)
-  const [preview, setPreview]   = useState<string|null>(null)
+  const [state, setState]         = useState<"idle"|"uploading"|"done"|"error">("idle")
+  const [progress, setProgress]   = useState(0)
+  const [preview, setPreview]     = useState<string|null>(null)
+  const [showGallery, setShowGallery] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleGallerySelect = async (image: { url: string; filename: string; size?: number | null }) => {
+    setShowGallery(false)
+    setState("uploading"); setProgress(20)
+    try {
+      const base64 = await urlToBase64(image.url)
+      setPreview(base64); setProgress(60)
+      const token = localStorage.getItem("vendorToken") ?? ""
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body: JSON.stringify({
+          action: "upload_design", vendorId,
+          fileUrl:  image.url,       // ← live URL, no re-upload needed
+          filename: image.filename,
+          mimeType: "image/*",
+          messages: [],
+        }),
+      })
+      if (!resp.ok) throw new Error("Registration failed")
+      const data = await resp.json()
+      setProgress(100); setState("done")
+      onUploadComplete(data.sessionId, image.filename, base64)
+    } catch { setState("error") }
+  }
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) { setState("error"); return }
@@ -752,18 +797,30 @@ function DesignUploader({ vendorId, onUploadComplete, onSkip }: {
 
   return (
     <div style={{ background:"#fff", border:`1.5px dashed ${state==="error"?"#e53e3e":BRAND}`, borderRadius:"14px", padding:"14px", marginTop:"4px" }}>
-      {state === "idle" && (<>
+        {state === "idle" && (<>
         <p style={{ margin:"0 0 4px", fontSize:"13px", fontWeight:600, color:"#1a1a1a" }}>Upload your design</p>
         <p style={{ margin:"0 0 10px", fontSize:"12px", color:"#888" }}>PNG or JPG · max 30MB · transparent background recommended</p>
         <div style={{ display:"flex", gap:"8px" }}>
-          <label style={{ display:"inline-flex", alignItems:"center", gap:"6px", padding:"9px 16px", background:BRAND, color:"#fff", borderRadius:"20px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
+          <button onClick={() => setShowGallery(true)}
+            style={{ display:"inline-flex", alignItems:"center", gap:"6px", padding:"9px 16px", background:BRAND, color:"#fff", borderRadius:"20px", fontSize:"13px", fontWeight:600, cursor:"pointer", border:"none" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
             Choose file
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp"
-              style={{ display:"none" }} onChange={e => { const f=e.target.files?.[0]; if(f) handleFile(f) }} />
-          </label>
+          </button>
           <button onClick={onSkip} style={{ padding:"9px 14px", background:"#f5f5f5", color:"#888", border:"none", borderRadius:"20px", fontSize:"13px", cursor:"pointer" }}>Skip for now</button>
         </div>
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp"
+          style={{ display:"none" }} onChange={e => { const f=e.target.files?.[0]; if(f) handleFile(f) }} />
+         {showGallery && createPortal(
+          <GalleryPickerModal
+            isOpen={showGallery}
+            onClose={() => setShowGallery(false)}
+            addImageToCanvas={() => {}}
+            activeArea="front"
+            onUploadFromDevice={() => { setShowGallery(false); fileRef.current?.click() }}
+            onImageSelected={handleGallerySelect}
+          />,
+          document.body
+        )}
       </>)}
       {state === "uploading" && (<div>
         {preview && <img src={preview} alt="preview" style={{ width:"52px", height:"52px", objectFit:"cover", borderRadius:"8px", marginBottom:"8px" }} />}
@@ -1139,7 +1196,7 @@ export default function AIAssistant({ vendorId }: Props) {
   const sendToBackend = async (msgs: Message[], extra?: Record<string, any>) => {
     const token   = localStorage.getItem("vendorToken") ?? ""
     const session = productSessionRef.current
-    const { blankData: _bd, designBase64: _d64, designsByArea: _dba, ...sessionForBackend } = session
+    const { blankData: _bd, designBase64: _d64, designsByArea: _dba, priceBreakdown: _pb, ...sessionForBackend } = session
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

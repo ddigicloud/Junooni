@@ -13,10 +13,28 @@ import ProductsProvider from './context/products-context'
 import { Product } from './context/product-modules/types'
 import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import { useEffect, useState, useRef } from 'react'
-import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight, ShoppingBag, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 
 // Junooni brand colors
@@ -224,10 +242,16 @@ export default function Products() {
   const [vendor, setVendor] = useState<{ plan?: string } | null>(null)
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
   //const [vendorId, setVendorId] = useState<string>("")
-  
+
+  // Delete dialog state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string>('')
+  const [reservationError, setReservationError] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   // Pagination state
- const [currentPage, setCurrentPage] = useState(1)
-const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   
   const { toast } = useToast();
 
@@ -301,51 +325,106 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
     fetchProducts();
   }, []);
 
-  const handleDeleteProduct = async (productId: string) => {
-  const token = localStorage.getItem("vendorToken");
-  
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to delete product");
-    }
-
-    // Remove the product from state
-    setProducts((prevProducts) => 
-      prevProducts.filter((product) => product.id !== productId)
-    );
-
-    // Show success message
-    toast({
-      title: "Success",
-      description: "Product deleted successfully",
-      variant: "default",
-    });
-
-    // If we deleted the last item on the current page, go to previous page
-    if (paginatedProducts.length === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  } catch (error) {
-    console.error("Error deleting product:", error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to delete product",
-      variant: "destructive",
-    });
+  // Step 1: triggered by the delete icon in the table — opens confirmation dialog
+  const handleDeleteClick = (productId: string, productName: string) => {
+    setConfirmDeleteId(productId)
+    setConfirmDeleteName(productName)
   }
-};
+
+  // Step 2: confirmed by creator — actually calls the API
+  const handleDeleteConfirmed = async () => {
+    if (!confirmDeleteId) return
+    const productId = confirmDeleteId
+    const token = localStorage.getItem("vendorToken")
+    setDeleting(true)
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const message: string = errorData.message || ""
+
+        console.debug("[delete] status:", response.status, "message:", message)
+
+        // 403 — this product belongs to a different vendor
+        if (response.status === 403) {
+          setConfirmDeleteId(null)
+          toast({
+            title: "Not allowed",
+            description: "You don't have permission to delete this product.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        // 409 — backend now returns this specifically for reservation blocks (active order)
+        if (
+          response.status === 409 ||
+          errorData.code === "PRODUCT_HAS_RESERVATIONS" ||
+          message.toLowerCase().includes("reservations")
+        ) {
+          setConfirmDeleteId(null)
+          setReservationError(true)
+          return
+        }
+
+        // 500 — unexpected server error
+        if (response.status === 500) {
+          setConfirmDeleteId(null)
+          toast({
+            title: "Server error",
+            description: "Something went wrong. Please try again.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        throw new Error(message || "Failed to delete product")
+      }
+
+      // Success — remove from local state
+      setProducts((prev) => prev.filter((p) => p.id !== productId))
+      setConfirmDeleteId(null)
+
+      toast({
+        title: "Product deleted",
+        description: "The product has been removed from your store.",
+        variant: "default",
+      })
+
+      // If last item on page, go back one page
+      if (paginatedProducts.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1)
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      setConfirmDeleteId(null)
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to delete product",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // Keep this for backward compat if DataTable calls it directly
+  const handleDeleteProduct = (productId: string) => {
+    const product = products.find((p) => p.id === productId)
+    handleDeleteClick(productId, product?.title ?? product?.name ?? "this product")
+  }
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -738,6 +817,80 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
         </div>
       </div>
       {/* <ChatwootWidget /> */}
+
+      {/* ── Confirm Delete Dialog ── */}
+      <AlertDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-500" />
+              Delete product?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-gray-800">"{confirmDeleteName}"</span> will be
+              permanently deleted — including its images and design files. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={handleDeleteConfirmed}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleting ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting…</>
+              ) : (
+                'Yes, delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Reservation Error Dialog ── */}
+      <Dialog open={reservationError} onOpenChange={setReservationError}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5" style={{ color: BRAND.primary }} />
+              Can't delete this product
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>
+                  This product has an <span className="font-semibold text-gray-800">active order</span> that
+                  hasn't been fulfilled yet. Deleting it would break that order.
+                </p>
+                <div
+                  className="p-3 rounded-lg text-sm"
+                  style={{ backgroundColor: `${BRAND.background}`, borderLeft: `3px solid ${BRAND.primary}` }}
+                >
+                  <p className="font-medium" style={{ color: BRAND.secondary }}>What you can do:</p>
+                  <ul className="mt-1 space-y-1 list-disc list-inside text-gray-600">
+                    <li>Wait for the pending order to be <strong>fulfilled</strong></li>
+                    <li>Or ask Junooni to <strong>cancel</strong> that order first</li>
+                    <li>Then try deleting again</li>
+                  </ul>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setReservationError(false)}
+              style={{ backgroundColor: BRAND.primary }}
+              className="w-full text-white sm:w-auto"
+            >
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </ProductsProvider>
   </div>
 )

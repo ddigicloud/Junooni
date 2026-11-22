@@ -61,6 +61,13 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/static/*",
+      method: ["GET", "OPTIONS"],
+      middlewares: [
+        (req, res, next) => { cors({ origin: true, credentials: true })(req, res, next) },
+      ],
+    },
+    {
       matcher: "/vendors",
       method: ["OPTIONS", "POST"],
       middlewares: [
@@ -94,6 +101,15 @@ export default defineMiddlewares({
       ],
     },
     // ─── Add after the existing /store-front/:handle entry ───────────────────────
+    {
+      matcher: "/vendors/gallery/upload",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => { cors({ origin: true, credentials: true })(req, res, next) },
+        upload.array("files"),
+        authenticate("vendor", ["session", "bearer"]),
+      ],
+    },
 
 {
   matcher: "/storefront/:handle/verify-password",

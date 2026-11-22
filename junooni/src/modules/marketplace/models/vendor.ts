@@ -2,6 +2,8 @@ import { model } from "@medusajs/framework/utils"
 import VendorAdmin from "./vendor-admin"
 import VendorStore from "./store"
 import { CreatorCategoryEnum } from "../types"
+import VendorGalleryImage from "./vendor-gallery-image"
+
 
 const Vendor = model.define("vendor", {
   id: model.id().primaryKey(),
@@ -52,8 +54,8 @@ const Vendor = model.define("vendor", {
   instagram_access_token: model.text().nullable(),
   instagram_user_id: model.text().nullable(),
   instagram_token_expires_at: model.dateTime().nullable(),
-
-   design_library: model.json().nullable(),
+  design_library: model.json().nullable(),
+  gallery_images: model.hasMany(() => VendorGalleryImage),
   // 1:1 relation — created when vendor opts into own store
   vendor_store: model.hasOne(() => VendorStore, { mappedBy: "vendor" }).nullable(),
 })

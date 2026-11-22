@@ -332,9 +332,23 @@ async function dispatchTool(
       // with creator's edits (stretch/resize/reposition) applied.
       // inline-product-handlers reads design from designFileStore which has original upload.
       // productSession.designBase64 has the correct edited version from Canvas.tsx Save button.
-      if ((productSession as any)?.designBase64 && (productSession as any).designBase64.length > 100) {
-        createArgs.session_design_base64 = (productSession as any).designBase64
-        console.log(`[create_product_from_chat] Passing edited designBase64: ${(productSession as any).designBase64.length} chars`)
+      if ((productSession as any)?.designBase64 && (productSession as any).designBase64.length > 10) {
+        const rawDesign = (productSession as any).designBase64 as string
+        if (rawDesign.startsWith('http')) {
+          try {
+            const r = await fetch(rawDesign)
+            if (r.ok) {
+              const buf = await r.arrayBuffer()
+              createArgs.session_design_base64 = Buffer.from(buf).toString('base64')
+              console.log(`[create_product_from_chat] Fetched gallery design from URL: ${rawDesign.slice(0, 80)}`)
+            }
+          } catch (e: any) {
+            console.warn(`[create_product_from_chat] Could not fetch gallery design URL:`, e.message)
+          }
+        } else {
+          createArgs.session_design_base64 = rawDesign
+          console.log(`[create_product_from_chat] Passing edited designBase64: ${rawDesign.length} chars`)
+        }
       }
       const result = await handleCreateProductFromChat(createArgs, req, vendorId)
       // Clear registry so next product creation starts fresh
