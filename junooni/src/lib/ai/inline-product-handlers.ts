@@ -983,6 +983,25 @@ export async function handleCreateProductFromChat(
         { headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {} }
       )
       blank = data
+      console.log('[debug-blank-chat] ===== FULL CMS BLANK DUMP =====')
+      console.log('[debug-blank-chat] ALL keys:', JSON.stringify(Object.keys(blank)))
+      console.log('[debug-blank-chat] SCALARS:', JSON.stringify(
+        Object.fromEntries(Object.entries(blank).filter(([, v]) => typeof v !== 'object' || v === null))
+      ))
+      console.log('[debug-blank-chat] productData:', JSON.stringify(blank.productData))
+      console.log('[debug-blank-chat] productDetails:', JSON.stringify(blank.productDetails))
+      console.log('[debug-blank-chat] materials:', JSON.stringify(blank.materials))
+      console.log('[debug-blank-chat] careInstructions:', JSON.stringify(blank.careInstructions))
+      console.log('[debug-blank-chat] shippingInfo:', JSON.stringify(blank.shippingInfo))
+      console.log('[debug-blank-chat] storyBehindDesign:', JSON.stringify(blank.storyBehindDesign))
+      console.log('[debug-blank-chat] shortDescription:', JSON.stringify(blank.shortDescription))
+      console.log('[debug-blank-chat] description:', JSON.stringify(blank.description))
+      console.log('[debug-blank-chat] HSNCode:', JSON.stringify(blank.HSNCode))
+      console.log('[debug-blank-chat] cost:', JSON.stringify(blank.cost))
+      console.log('[debug-blank-chat] colorOptions (first):', JSON.stringify(blank.colorOptions?.[0]))
+      console.log('[debug-blank-chat] sizeOptions (first):', JSON.stringify(blank.sizeOptions?.[0]))
+      console.log('[debug-blank-chat] printT (first, keys):', JSON.stringify(blank.printT?.[0] ? Object.keys(blank.printT[0]) : null))
+      console.log('[debug-blank-chat] ===== END DUMP =====')
     } catch (fetchErr: any) {
       if (fetchErr?.response?.status === 404) return { ok: false, error: `Blank ID "${blankIdStr}" not found.` }
       throw fetchErr
@@ -1047,7 +1066,7 @@ export async function handleCreateProductFromChat(
           // Same top-level fields as create.tsx variant
           hs_code:          blank?.HSNCode || undefined,
           origin_country:   "IN",
-          material:         blank?.materials?.material || undefined,
+          material:         blank?.materials?.primary || undefined,
           manage_inventory: true,
           allow_backorder:  false,
           metadata:         variantMetadata,
@@ -1389,17 +1408,17 @@ export async function handleCreateProductFromChat(
 
     // product_details: CMS array first, materials as fallback
     const productDetails: string[] = []
-    if (Array.isArray(blank.productDetails) && blank.productDetails.length > 0) {
-      blank.productDetails.forEach((d: any) => {
-        const text = typeof d === 'string' ? d : (d?.detail ?? d?.text ?? d?.value ?? "")
+    if (Array.isArray(blank.features) && blank.features.length > 0) {
+      blank.features.forEach((f: any) => {
+        const text = typeof f === 'string' ? f : (f?.feature ?? f?.text ?? f?.detail ?? f?.value ?? "")
         if (text.trim()) productDetails.push(text.trim())
       })
     }
     if (productDetails.length === 0) {
-      if (blank?.materials?.material)   productDetails.push(blank.materials.material)
-      if (blank?.materials?.gsm)        productDetails.push(`${blank.materials.gsm} GSM`)
-      if (blank?.materials?.quality)    productDetails.push(blank.materials.quality)
-      if (blank?.materials?.type)       productDetails.push(blank.materials.type)
+      if (blank?.materials?.primary)      productDetails.push(blank.materials.primary)
+      if (blank?.materials?.fabricWeight) productDetails.push(`${blank.materials.fabricWeight} GSM`)
+      if (blank?.materials?.construction) productDetails.push(blank.materials.construction)
+      if (blank?.materials?.efabType)     productDetails.push(blank.materials.efabType)
     }
     if (productDetails.length > 0) {
       productMetadata.product_details = JSON.stringify(productDetails)
@@ -1425,7 +1444,7 @@ export async function handleCreateProductFromChat(
           ...(blank?.productData?.length   ? { length: parseInt(blank.productData.length) }   : {}),
           ...(blank?.productData?.width    ? { width:  parseInt(blank.productData.width) }    : {}),
           ...(blank?.productData?.height   ? { height: parseInt(blank.productData.height) }   : {}),
-          ...(blank?.materials?.material   ? { material: blank.materials.material }           : {}),
+          ...(blank?.materials?.primary   ? { material: blank.materials.primary }           : {}),
           ...(blank?.HSNCode               ? { hs_code: blank.HSNCode }                       : {}),
           origin_country: "IN",
           // Shipping profile from blank (same as create.tsx)
@@ -2224,10 +2243,12 @@ export async function handleCreateProduct(
       { headers: PAYLOAD_SECRET ? { Authorization: `Bearer ${PAYLOAD_SECRET}` } : {} },
     )
     blank = data
-    console.log('[debug-blank] ALL blank keys:', JSON.stringify(Object.keys(blank)))
-    console.log('[debug-blank] FULL blank (top-level values):', JSON.stringify(
-      Object.fromEntries(Object.entries(blank).filter(([k, v]) => typeof v !== 'object' || v === null))
-    ))
+    console.log('[debug-blank] ===== FULL CMS BLANK DUMP =====')
+  console.log('[debug-blank] ALL keys:', JSON.stringify(Object.keys(blank)))
+  console.log('[debug-blank] SCALARS:', JSON.stringify(
+    Object.fromEntries(Object.entries(blank).filter(([, v]) => typeof v !== 'object' || v === null))
+  ))
+  console.log('[debug-blank] ===== END DUMP =====')
   } catch (err: any) {
     if (err?.response?.status === 404)
       return { ok: false, error: `blank_id "${blankId}" not found in catalogue` }
@@ -2361,7 +2382,7 @@ export async function handleCreateProduct(
         allow_backorder:  false,
         origin_country:   "IN",
         ...(blank?.HSNCode             ? { hs_code: blank.HSNCode }              : {}),
-        ...(blank?.materials?.material ? { material: blank.materials.material }  : {}),
+        ...(blank?.materials?.primary ? { material: blank.materials.primary }  : {}),
         prices:   [{ amount: priceInCents, currency_code: "inr" }],
         options:  color.name ? { Color: color.name, Size: size } : { Size: size },
         metadata: variantMetadata,
@@ -2420,7 +2441,7 @@ export async function handleCreateProduct(
   }
   if (productDetails.length === 0) {
     if (blank?.materials?.material) productDetails.push(blank.materials.material)
-    if (blank?.materials?.gsm)      productDetails.push(`${blank.materials.gsm} GSM`)
+    if (blank?.materials?.fabricWeight)      productDetails.push(`${blank.materials.gsm} GSM`)
     if (blank?.materials?.quality)  productDetails.push(blank.materials.quality)
     if (blank?.materials?.type)     productDetails.push(blank.materials.type)
   }
@@ -2456,10 +2477,10 @@ export async function handleCreateProduct(
           status:         "draft",
           discountable:   true,
           origin_country: "IN",
-          ...(blank?.productData?.weight ? { weight: parseInt(blank.productData.weight) } : {}),
-          ...(blank?.productData?.length ? { length: parseInt(blank.productData.length) } : {}),
-          ...(blank?.productData?.width  ? { width:  parseInt(blank.productData.width)  } : {}),
-          ...(blank?.productData?.height ? { height: parseInt(blank.productData.height) } : {}),
+          ...(blank?.physicalDimensions?.weight ? { weight: parseInt(blank.physicalDimensions.weight) } : {}),
+          ...(blank?.physicalDimensions?.length ? { length: parseInt(blank.physicalDimensions.length) } : {}),
+          ...(blank?.physicalDimensions?.width  ? { width:  parseInt(blank.physicalDimensions.width)  } : {}),
+          ...(blank?.physicalDimensions?.height ? { height: parseInt(blank.physicalDimensions.height) } : {}),
           ...(blank?.HSNCode             ? { hs_code:  blank.HSNCode }                    : {}),
           ...(blank?.materials?.material ? { material: blank.materials.material }         : {}),
           ...(blank?.shippingInfo?.shippingProfileID

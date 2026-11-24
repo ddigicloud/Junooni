@@ -33,6 +33,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   // Send concurrently in batches of 10 to respect Resend rate limits
   const BATCH_SIZE = 10
+  const BATCH_DELAY_MS = 1200  // Resend cap: 10 req/s — 1.2s gives headroom
+
   for (let i = 0; i < uniqueEmails.length; i += BATCH_SIZE) {
     const batch = uniqueEmails.slice(i, i + BATCH_SIZE)
     await Promise.allSettled(
@@ -55,6 +57,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         }
       })
     )
+    // Pause between batches to stay under Resend's 10 req/s limit
+    if (i + BATCH_SIZE < uniqueEmails.length) {
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+    }
   }
 
   return res.json({
