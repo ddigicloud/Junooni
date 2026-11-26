@@ -17,10 +17,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return res.status(401).send("Invalid or expired upload link.")
   }
 
-  const baseUrl = process.env.MEDUSA_BACKEND_URL
-    ?? process.env.NEXT_PUBLIC_BACKEND_URL
-    ?? "https://jazz-kung-cod.ngrok-free.dev"
-  const uploadUrl = `${baseUrl}/api/mcp/upload-artwork-file?token=${tempToken}`
+  const baseUrl = process.env.MEDUSA_BACKEND_URL?? process.env.NEXT_PUBLIC_BACKEND_URL
+    ?? "https://api.junooni.com"
+  const uploadUrl = `${baseUrl}/mcp/upload-artwork-file?token=${tempToken}`
   const html = UPLOAD_WIDGET_TEMPLATE.replace("UPLOAD_URL_PLACEHOLDER", uploadUrl)
 
   res.setHeader("Content-Type", "text/html; charset=utf-8")

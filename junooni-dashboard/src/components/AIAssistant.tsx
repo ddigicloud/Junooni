@@ -1194,34 +1194,43 @@ export default function AIAssistant({ vendorId }: Props) {
   }
 
   const sendToBackend = async (msgs: Message[], extra?: Record<string, any>) => {
-    const token   = localStorage.getItem("vendorToken") ?? ""
-    const session = productSessionRef.current
-    const { blankData: _bd, designBase64: _d64, designsByArea: _dba, priceBreakdown: _pb, ...sessionForBackend } = session
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      credentials: "include",
-      body: JSON.stringify({
-        messages: msgs.map(m => ({ role: m.role, content: m.content })),
-        vendorId,
-        currentPage: window.location.pathname,
-        approvedMockupSessionId: approvedMockupSessionIdRef.current || undefined,
-        productSession: {
-          ...sessionForBackend,
-          confirmedTitle: (session as any)._confirmedTitle || undefined,
-          artworkByArea:   (session as any).artworkByArea || undefined,
-        },
-        designContext: session.designSessionId ? {
-          sessionId: session.designSessionId,
-          area:      session.area,
-          position:  session.position ?? "center",
-        } : undefined,
-        ...extra,
-      }),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return res.json()
-  }
+  const token   = localStorage.getItem("vendorToken") ?? ""
+  const session = productSessionRef.current
+  const { blankData: _bd, designBase64: _d64, designsByArea: _dba, priceBreakdown: _pb, ...sessionForBackend } = session
+
+  // Derive current stage so backend can tell Gemini not to re-run earlier steps
+  const sessionStage =
+    session.designSessionId                        ? "design_uploaded" :
+    session.blankId && session.selectedColors.length > 0 ? "colors_selected" :
+    session.blankId                                ? "blank_selected"  :
+    "initial"
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    credentials: "include",
+    body: JSON.stringify({
+      messages: msgs.map(m => ({ role: m.role, content: m.content })),
+      vendorId,
+      currentPage: window.location.pathname,
+      sessionStage,                                             // ← ADD THIS
+      approvedMockupSessionId: approvedMockupSessionIdRef.current || undefined,
+      productSession: {
+        ...sessionForBackend,
+        confirmedTitle: (session as any)._confirmedTitle || undefined,
+        artworkByArea:  (session as any).artworkByArea   || undefined,
+      },
+      designContext: session.designSessionId ? {
+        sessionId: session.designSessionId,
+        area:      session.area,
+        position:  session.position ?? "center",
+      } : undefined,
+      ...extra,
+    }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
 
   const storeApprovedMockup = async (sessionId: string) => {
     if (!sessionId) return
