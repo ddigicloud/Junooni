@@ -447,9 +447,20 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         }
       }
       if (!mockupBase64) return res.status(400).json({ error: "mockupUrl or base64 is required" })
-      const area      = (req.body as any).area      as string | undefined
-      const colorName = (req.body as any).colorName as string | undefined
+      let area      = (req.body as any).area      as string | undefined
+      let colorName = (req.body as any).colorName as string | undefined
+      // Studio canvas sends colorName "Beige / back" with area "front" for every view.
+      // Split it so each mockup is stored with its real colour AND real area.
+      if (colorName && colorName !== "canvas-layout") {
+        const slash = colorName.lastIndexOf(" / ")
+        if (slash > 0) {
+          area      = colorName.slice(slash + 3).trim().toLowerCase()
+          colorName = colorName.slice(0, slash).trim()
+        }
+      }
       const clearOld  = (req.body as any).clearOld  as boolean | undefined
+
+            console.log(`[AI assistant] store_mockup area=${area ?? "∅ MISSING"} color=${colorName ?? "∅"} body keys=${Object.keys(req.body as any).join(",")}`)
       if (clearOld && colorName !== "canvas-layout") {
         clearVendorMockupSessions(vendorId)
       }

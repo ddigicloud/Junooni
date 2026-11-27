@@ -971,6 +971,13 @@ export async function handleCreateProductFromChat(
       JSON.stringify(priceBreakdown)?.slice(0, 1000)
     )
 
+    // Override blank_id from session if Gemini passed wrong one
+    const sessionBlankId = (req.body as any)?.productSession?.blankId?.toString()
+    if (sessionBlankId && sessionBlankId !== String(args.blank_id)) {
+      console.warn(`[create_product_from_chat] ⚠️ blank_id mismatch — Gemini: ${args.blank_id}, Session: ${sessionBlankId} — using session`)
+      args.blank_id = sessionBlankId
+    }
+
     const blankIdStr = String(args.blank_id)
     if (!blankIdStr || isNaN(Number(blankIdStr)) || Number(blankIdStr) <= 0) {
       return { ok: false, error: `Invalid blank_id "${args.blank_id}".` }
@@ -1001,6 +1008,7 @@ export async function handleCreateProductFromChat(
       console.log('[debug-blank-chat] colorOptions (first):', JSON.stringify(blank.colorOptions?.[0]))
       console.log('[debug-blank-chat] sizeOptions (first):', JSON.stringify(blank.sizeOptions?.[0]))
       console.log('[debug-blank-chat] printT (first, keys):', JSON.stringify(blank.printT?.[0] ? Object.keys(blank.printT[0]) : null))
+      console.log('[debug-blank-chat] physicalDimensions:', blank?.physicalDimensions)
       console.log('[debug-blank-chat] ===== END DUMP =====')
     } catch (fetchErr: any) {
       if (fetchErr?.response?.status === 404) return { ok: false, error: `Blank ID "${blankIdStr}" not found.` }
@@ -1440,10 +1448,10 @@ export async function handleCreateProductFromChat(
           status:       "draft",
           discountable: true,
           // Physical dimensions from blank (same as create.tsx)
-          ...(blank?.productData?.weight   ? { weight: parseInt(blank.productData.weight) }   : {}),
-          ...(blank?.productData?.length   ? { length: parseInt(blank.productData.length) }   : {}),
-          ...(blank?.productData?.width    ? { width:  parseInt(blank.productData.width) }    : {}),
-          ...(blank?.productData?.height   ? { height: parseInt(blank.productData.height) }   : {}),
+          ...(blank?.materials?.weight ? { weight: parseInt(blank.materials.weight) } : {}),
+          ...(blank?.physicalDimensions?.depthInches  ? { length: parseInt(blank.physicalDimensions.depthInches)  } : {}),
+          ...(blank?.physicalDimensions?.widthInches  ? { width:  parseInt(blank.physicalDimensions.widthInches)  } : {}),
+          ...(blank?.physicalDimensions?.heightInches ? { height: parseInt(blank.physicalDimensions.heightInches) } : {}),
           ...(blank?.materials?.primary   ? { material: blank.materials.primary }           : {}),
           ...(blank?.HSNCode               ? { hs_code: blank.HSNCode }                       : {}),
           origin_country: "IN",
@@ -1740,6 +1748,17 @@ export async function handleCreateProductFromChat(
         const normalizedArea = area.toLowerCase().replace(/_/g, "").replace(/-/g, "")
         designAreas.add(normalizedArea)
       }
+
+      // Also exclude every area that has a DESIGNED mockup in additional_mockup_sessions
+      // (JUNI chat sends the back/sleeve design mockups here, not in designs_by_area).
+      // Without this, a plain photo is added next to the designed one → duplicate back image.
+      for (const sid of args.additional_mockup_sessions ?? []) {
+        if (getMockupColorName(sid) === "canvas-layout") continue
+        const sessArea = getMockupArea(sid)
+        if (sessArea) designAreas.add(sessArea.toLowerCase().trim().replace(/_/g, "").replace(/-/g, ""))
+      }
+
+      console.log(`[create_product_from_chat] sessions → ${(args.additional_mockup_sessions ?? []).map((s: string) => `${getMockupColorName(s)}/${getMockupArea(s) ?? "∅"}`).join(", ")}`)
 
       // Get all unique areas from mockupPhotos (excluding ALL design areas)
       const allAreas = [...new Set(mockupPhotos.map(getPhotoArea))]
@@ -2477,10 +2496,10 @@ export async function handleCreateProduct(
           status:         "draft",
           discountable:   true,
           origin_country: "IN",
-          ...(blank?.physicalDimensions?.weight ? { weight: parseInt(blank.physicalDimensions.weight) } : {}),
-          ...(blank?.physicalDimensions?.length ? { length: parseInt(blank.physicalDimensions.length) } : {}),
-          ...(blank?.physicalDimensions?.width  ? { width:  parseInt(blank.physicalDimensions.width)  } : {}),
-          ...(blank?.physicalDimensions?.height ? { height: parseInt(blank.physicalDimensions.height) } : {}),
+          ...(blank?.materials?.weight ? { weight: parseInt(blank.materials.weight) } : {}),
+          ...(blank?.physicalDimensions?.depthInches  ? { length: parseInt(blank.physicalDimensions.depthInches)  } : {}),
+          ...(blank?.physicalDimensions?.widthInches  ? { width:  parseInt(blank.physicalDimensions.widthInches)  } : {}),
+          ...(blank?.physicalDimensions?.heightInches ? { height: parseInt(blank.physicalDimensions.heightInches) } : {}),
           ...(blank?.HSNCode             ? { hs_code:  blank.HSNCode }                    : {}),
           ...(blank?.materials?.material ? { material: blank.materials.material }         : {}),
           ...(blank?.shippingInfo?.shippingProfileID
@@ -2535,40 +2554,63 @@ export async function handleCreateProduct(
       .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
     const { r, g, b } = hexToRgb(color.hex)
 
-    // (i) Front design mockup — find session matching this color
-    const sessionForColor =
-      // By color name stored in session
-      allSessionIds.find(sid => {
-        const cn = getMockupColorName(sid)
-        return cn && cn.toLowerCase() === color.name.toLowerCase()
-      }) ??
-      // Fallback: by index order (first session → first color)
-      (ci < explicitSessionIds.length ? explicitSessionIds[ci] : undefined) ??
-      // Last fallback: use the first session for the first color only
-      (ci === 0 ? allSessionIds[0] : undefined)
-
-    if (sessionForColor) {
-      try {
-        const b64url = getMockupPreview(sessionForColor)
-        if (b64url && b64url.length > 100) {
-          const [header, b64] = b64url.split(",")
-          const mimeType      = header.replace("data:", "").replace(";base64", "")
-          const ext           = mimeType.split("/")[1]?.split("+")[0] ?? "webp"
-          imagesToUpload.push({
-            filename: `mockup-${colorNorm}-front-design-${ci}.${ext}`,
-            mimeType,
-            content:  b64,
-            access:   "public",
-          })
-          console.log(`[handleCreateProduct] ${color.name}: front-design from session ${sessionForColor}`)
-        }
-      } catch (e: any) {
-        console.warn(`[handleCreateProduct] ${color.name} front mockup read failed (non-fatal):`, e.message)
-      }
+    // ── Which stored mockup belongs to this colour + print area ──────────────
+    // generate_mockup stores the area with each session ("front", "Back", "left_sleeves"…)
+    const normArea = (a: any) => String(a ?? "front").toLowerCase().replace(/[_\-\s]/g, "")
+    const AREA_ALIASES: Record<string, string[]> = {
+      front: ["front"],
+      back:  ["back"],
+      left:  ["left", "leftsleeve", "leftsleeves"],
+      right: ["right", "rightsleeve", "rightsleeves"],
+    }
+    const sessionsForColor = allSessionIds.filter(sid =>
+      (getMockupColorName(sid) ?? "").toLowerCase() === color.name.toLowerCase()
+    )
+    const designedSessionFor = (area: string): string | undefined => {
+      const wanted = AREA_ALIASES[area] ?? [normArea(area)]
+      const matches = (sid: string) => wanted.includes(normArea(getMockupArea(sid) ?? "front"))
+      // Prefer the IDs Claude passed (approved), else the newest generated one
+      const explicit = explicitSessionIds.filter(sid => sessionsForColor.includes(sid) && matches(sid))
+      if (explicit.length) return explicit[explicit.length - 1]
+      const any = sessionsForColor.filter(matches)
+      return any[any.length - 1]
+    }
+    const usedSessions = new Set<string>()
+    const pushDesignMockup = (sid: string, label: string): boolean => {
+      const b64url = getMockupPreview(sid)
+      if (!b64url || b64url.length <= 100) return false
+      const [header, b64] = b64url.split(",")
+      const mimeType      = header.replace("data:", "").replace(";base64", "")
+      const ext           = mimeType.split("/")[1]?.split("+")[0] ?? "webp"
+      imagesToUpload.push({
+        filename: `mockup-${colorNorm}-${label}-design-${ci}.${ext}`,
+        mimeType,
+        content:  b64,
+        access:   "public",
+      })
+      usedSessions.add(sid)
+      console.log(`[handleCreateProduct] ${color.name}: ${label} design mockup from session ${sid}`)
+      return true
     }
 
-    // (ii) Back, left, right — download plain garment photo + tint if transparent
+    // (i) Front design mockup
+    const frontSession =
+      designedSessionFor("front") ??
+      (ci === 0 && allSessionIds.length === 1 ? allSessionIds[0] : undefined)
+    if (frontSession) {
+      try { pushDesignMockup(frontSession, "front") }
+      catch (e: any) { console.warn(`[handleCreateProduct] ${color.name} front mockup read failed (non-fatal):`, e.message) }
+    }
+
+    // (ii) Back, left, right — DESIGNED mockup if the creator designed that area,
+    //      otherwise the plain garment photo (tinted if needed) as before
     for (const area of ["back", "left", "right"] as const) {
+      const designed = designedSessionFor(area)
+      if (designed && !usedSessions.has(designed)) {
+        try { if (pushDesignMockup(designed, area)) continue }
+        catch (e: any) { console.warn(`[handleCreateProduct] ${color.name} ${area} design mockup failed, using plain photo:`, e.message) }
+      }
+
       const photo = findPhoto(allMockupPhotos, area, color.hex)
       if (!photo?.photo?.url) continue
 
@@ -2823,141 +2865,128 @@ export async function handleCreateProduct(
   // Upload design file + approved mockup, create vendor_artwork, link to product
     try {
     const artworkFiles: Array<{ filename: string; mimeType: string; content: string; access: "private" | "public" }> = []
-    // Tracks what each file is, so descriptions/categories don't depend on array position
-    const artworkFileKinds: Array<"design" | "mockup"> = []
-
-    // Declared up front so the description can be used later without `var`
-    let mockupDescription: string | undefined
-
-    // Design pixel sizes (original upload vs. trimmed ink), used for consumed-area math
-    let designOrigW = 0, designOrigH = 0
-    let designTrimW = 0, designTrimH = 0
-
-    // File 1: Original design file from session
-    const designFile = getDesignFile(args.design_session_id ?? "")
-    if (designFile && designFile.base64.length > 100) {
-      let artworkContent = designFile.base64.replace(/^data:[^;]+;base64,/, "")
-      const originalBuffer = Buffer.from(artworkContent, "base64")
-
-      try {
-        const origMeta = await sharp(originalBuffer).metadata()
-        designOrigW = origMeta.width  ?? 0
-        designOrigH = origMeta.height ?? 0
-      } catch { /* handled by fallback below */ }
-
-      try {
-        const { data: trimmed, info } = await sharp(originalBuffer)
-          .trim()
-          .png()
-          .toBuffer({ resolveWithObject: true })
-        artworkContent = trimmed.toString("base64")
-        designTrimW = info.width
-        designTrimH = info.height
-        console.log(`[handleCreateProduct] ✅ Artwork trimmed: ${designOrigW}x${designOrigH} → ${designTrimW}x${designTrimH}`)
-      } catch (trimErr: any) {
-        console.warn(`[handleCreateProduct] Trim failed (using original): ${trimErr.message}`)
-        designTrimW = designOrigW
-        designTrimH = designOrigH
+    // ── One design file + one approved mockup PER DESIGNED AREA ──────────────
+    // designs_by_area = { front: "design_…", back: "design_…" } (sent by the MCP route).
+    // Falls back to the single design_session_id on front.
+    const normAreaA = (a: any) => String(a ?? "front").toLowerCase().replace(/[_\-\s]/g, "")
+    const designsByArea: Record<string, string> = {}
+    if (args.designs_by_area && typeof args.designs_by_area === "object") {
+      for (const [a, sid] of Object.entries(args.designs_by_area as Record<string, any>)) {
+        if (sid) designsByArea[normAreaA(a)] = String(sid)
       }
-
-      artworkFiles.push({
-        filename: designFile.filename ?? "design.png",
-        mimeType: "image/png",
-        content:  artworkContent,
-        access:   "private",
-      })
-      artworkFileKinds.push("design")
     }
+    if (!Object.keys(designsByArea).length && args.design_session_id) designsByArea["front"] = String(args.design_session_id)
+    console.log(`[handleCreateProduct] artwork designs_by_area=${JSON.stringify(designsByArea)}`)
 
-        // File 2: Approved front mockup (first session for first color)
-    const firstSession = allSessionIds[0]
-    const mockupBase64 = firstSession ? getMockupPreview(firstSession) : null
-    if (mockupBase64 && mockupBase64.length > 100) {
-      const custArea   = tech?.custAreas?.[0]
-      const canvasPixW = custArea?.canvasDim?.canvasPixWid    ?? 800
-      const canvasPixH = custArea?.canvasDim?.canvasPixHeight ?? 800
-      const realWorldW = custArea?.canvasDim?.widthInch       ?? 14
-      const realWorldH = custArea?.canvasDim?.heightInch      ?? 16
+    const artworkFileMeta: Array<{ kind: "design" | "mockup"; area: string; description?: string }> = []
 
-      // ── 1. PRINTABLE AREA (real-world inches) ─────────────────────────────
-      // widthInch/heightInch already describe the printable rectangle itself
-      const printAreaW = realWorldW
-      const printAreaH = realWorldH
+    for (const [areaKey, designSid] of Object.entries(designsByArea)) {
+      const areaLabel = areaKey.charAt(0).toUpperCase() + areaKey.slice(1)
+      let designOrigW = 0, designOrigH = 0
+      let designTrimW = 0, designTrimH = 0
 
-      const rawCoord = custArea?.designCanvasPhotos?.[0]?.printAreaCoord ?? { x: 0, y: 0, width: 1, height: 1 }
-      const isNorm   = rawCoord.x <= 1 && rawCoord.y <= 1 && rawCoord.width <= 1 && rawCoord.height <= 1
-
-      // Print rectangle as a fraction of the canvas photo (used only for the fit math)
-      const printFracW = isNorm ? rawCoord.width  : rawCoord.width  / canvasPixW
-      const printFracH = isNorm ? rawCoord.height : rawCoord.height / canvasPixH
-
-      // ── 2. CONSUMED DESIGN AREA (real-world inches) ───────────────────────
-      let designFracW = 1
-      let designFracH = 1
-
-      if (designOrigW > 0 && designOrigH > 0) {
-        const printPxW = printFracW * OUTPUT_SIZE
-        const printPxH = printFracH * OUTPUT_SIZE
-
-        const fitScale = Math.min(
-          (printPxW * 0.85) / designOrigW,
-          (printPxH * 0.85) / designOrigH,
-        )
-
-        let placedPxW = designOrigW * fitScale
-        let placedPxH = designOrigH * fitScale
-
-        if (designTrimW > 0 && designTrimH > 0) {
-          placedPxW *= designTrimW / designOrigW
-          placedPxH *= designTrimH / designOrigH
+      // (a) Design file for this area
+      const designFile = getDesignFile(designSid)
+      if (designFile && designFile.base64.length > 100) {
+        let artworkContent = designFile.base64.replace(/^data:[^;]+;base64,/, "")
+        const originalBuffer = Buffer.from(artworkContent, "base64")
+        try {
+          const origMeta = await sharp(originalBuffer).metadata()
+          designOrigW = origMeta.width  ?? 0
+          designOrigH = origMeta.height ?? 0
+        } catch { /* fallback below */ }
+        try {
+          const { data: trimmed, info } = await sharp(originalBuffer).trim().png().toBuffer({ resolveWithObject: true })
+          artworkContent = trimmed.toString("base64")
+          designTrimW = info.width
+          designTrimH = info.height
+          console.log(`[handleCreateProduct] ✅ ${areaLabel} artwork trimmed: ${designOrigW}x${designOrigH} → ${designTrimW}x${designTrimH}`)
+        } catch (trimErr: any) {
+          console.warn(`[handleCreateProduct] ${areaLabel} trim failed (using original): ${trimErr.message}`)
+          designTrimW = designOrigW
+          designTrimH = designOrigH
         }
-
-        designFracW = Math.min(1, placedPxW / printPxW)
-        designFracH = Math.min(1, placedPxH / printPxH)
+        artworkFiles.push({
+          filename: `${areaKey}-${designFile.filename ?? "design.png"}`,
+          mimeType: "image/png",
+          content:  artworkContent,
+          access:   "private",
+        })
+        artworkFileMeta.push({ kind: "design", area: areaKey })
+      } else {
+        console.warn(`[handleCreateProduct] ⚠️ No design file for area "${areaKey}" (session expired?)`)
       }
 
-      const designW = Number((designFracW * printAreaW).toFixed(2))
-      const designH = Number((designFracH * printAreaH).toFixed(2))
+      // (b) Approved mockup for this area (first colour that has one)
+      const areaSession =
+        allSessionIds.find(sid => normAreaA(getMockupArea(sid) ?? "front") === areaKey) ??
+        (areaKey === "front" ? allSessionIds[0] : undefined)
+      const mockupBase64 = areaSession ? getMockupPreview(areaSession) : null
+      if (areaSession && mockupBase64 && mockupBase64.length > 100) {
+        const custArea   = tech?.custAreas?.find((c: any) => normAreaA(c.areaName) === areaKey) ?? tech?.custAreas?.[0]
+        const canvasPixW = custArea?.canvasDim?.canvasPixWid    ?? 800
+        const canvasPixH = custArea?.canvasDim?.canvasPixHeight ?? 800
+        const realWorldW = custArea?.canvasDim?.widthInch       ?? 14
+        const realWorldH = custArea?.canvasDim?.heightInch      ?? 16
+        const printAreaW = realWorldW
+        const printAreaH = realWorldH
 
-      // Effective resolution of the trimmed artwork at that physical size
-      const effectiveDpi = designW > 0 && designTrimW > 0
-        ? Math.round(designTrimW / designW)
-        : null
+        const rawCoord = custArea?.designCanvasPhotos?.[0]?.printAreaCoord ?? { x: 0, y: 0, width: 1, height: 1 }
+        const isNorm   = rawCoord.x <= 1 && rawCoord.y <= 1 && rawCoord.width <= 1 && rawCoord.height <= 1
+        const printFracW = isNorm ? rawCoord.width  : rawCoord.width  / canvasPixW
+        const printFracH = isNorm ? rawCoord.height : rawCoord.height / canvasPixH
 
-      const mockupMeta = mockupPreviewStore.get(firstSession)
-      const colorName  = mockupMeta?.colorName ?? colorNames[0] ?? "default"
+        let designFracW = 1, designFracH = 1
+        if (designOrigW > 0 && designOrigH > 0) {
+          const printPxW = printFracW * OUTPUT_SIZE
+          const printPxH = printFracH * OUTPUT_SIZE
+          const fitScale = Math.min((printPxW * 0.85) / designOrigW, (printPxH * 0.85) / designOrigH)
+          let placedPxW = designOrigW * fitScale
+          let placedPxH = designOrigH * fitScale
+          if (designTrimW > 0 && designTrimH > 0) {
+            placedPxW *= designTrimW / designOrigW
+            placedPxH *= designTrimH / designOrigH
+          }
+          designFracW = Math.min(1, placedPxW / printPxW)
+          designFracH = Math.min(1, placedPxH / printPxH)
+        }
+        const designW = Number((designFracW * printAreaW).toFixed(2))
+        const designH = Number((designFracH * printAreaH).toFixed(2))
+        const effectiveDpi = designW > 0 && designTrimW > 0 ? Math.round(designTrimW / designW) : null
 
-      artworkFiles.push({
-        filename: `mockup-${colorName.toLowerCase().replace(/\s+/g, "-")}-front.webp`,
-        mimeType: "image/webp",
-        content:  mockupBase64.replace(/^data:[^;]+;base64,/, ""),
-        access:   "public",
-      })
-      artworkFileKinds.push("mockup")
-
-      mockupDescription = [
-        `DESIGNED MOCKUP - FRONT AREA`,
-        ``,
-        `Color: ${colorName}`,
-        ``,
-        `CANVAS SPECIFICATIONS:`,
-        `- Canvas Image:     ${canvasPixW} × ${canvasPixH} pixels`,
-        `- Max Print Area:   ${realWorldW}" × ${realWorldH}"`,
-        ``,
-        `PRINT AREA DIMENSIONS (real world):`,
-        `- Printable Width:  ${printAreaW}"`,
-        `- Printable Height: ${printAreaH}"`,
-        ``,
-        `CONSUMED DESIGN AREA (real world):`,
-        `- Design Width:     ${designW}"`,
-        `- Design Height:    ${designH}"`,
-        `- Design Size:      ${designW}" × ${designH}"`,
-        ...(effectiveDpi
-          ? [`- Artwork File:     ${designTrimW} × ${designTrimH} px (~${effectiveDpi} DPI at this size)`]
-          : []),
-        ``,
-        `Generated via JUNOONI MCP — ${new Date().toISOString()}`,
-      ].join("\n")
+        const colorName = mockupPreviewStore.get(areaSession)?.colorName ?? colorNames[0] ?? "default"
+        artworkFiles.push({
+          filename: `mockup-${colorName.toLowerCase().replace(/\s+/g, "-")}-${areaKey}.webp`,
+          mimeType: "image/webp",
+          content:  mockupBase64.replace(/^data:[^;]+;base64,/, ""),
+          access:   "public",
+        })
+        artworkFileMeta.push({
+          kind: "mockup",
+          area: areaKey,
+          description: [
+            `DESIGNED MOCKUP - ${areaLabel.toUpperCase()} AREA`,
+            ``,
+            `Color: ${colorName}`,
+            ``,
+            `CANVAS SPECIFICATIONS:`,
+            `- Canvas Image:     ${canvasPixW} × ${canvasPixH} pixels`,
+            `- Max Print Area:   ${realWorldW}" × ${realWorldH}"`,
+            ``,
+            `PRINT AREA DIMENSIONS (real world):`,
+            `- Printable Width:  ${printAreaW}"`,
+            `- Printable Height: ${printAreaH}"`,
+            ``,
+            `CONSUMED DESIGN AREA (real world):`,
+            `- Design Width:     ${designW}"`,
+            `- Design Height:    ${designH}"`,
+            `- Design Size:      ${designW}" × ${designH}"`,
+            ...(effectiveDpi ? [`- Artwork File:     ${designTrimW} × ${designTrimH} px (~${effectiveDpi} DPI at this size)`] : []),
+            ``,
+            `Generated via JUNOONI MCP — ${new Date().toISOString()}`,
+          ].join("\n"),
+        })
+      }
     }
 
     if (artworkFiles.length > 0) {
@@ -2966,7 +2995,8 @@ export async function handleCreateProduct(
       })
 
       const artworkMedias = artworkUploads.map((uploaded: any, idx: number) => {
-        const isDesign = artworkFileKinds[idx] === "design"
+        const meta     = artworkFileMeta[idx]
+        const isDesign = meta?.kind === "design"
         return {
           image_url:        uploaded.url,
           filename:         artworkFiles[idx]?.filename ?? `file-${idx}`,
@@ -2975,8 +3005,8 @@ export async function handleCreateProduct(
           file_type:        "image",
           file_description: isDesign
             ? `Design artwork file — ${artworkFiles[idx]?.filename}`
-            : (mockupDescription ?? "Designed mockup front view"),
-          design_area:      "front",
+            : (meta?.description ?? `Designed mockup ${meta?.area ?? "front"} view`),
+          design_area:      meta?.area ?? "front",
           file_category:    isDesign ? "design_element" : "mockup_preview",
           fileId:           uploaded.id,
           mimeType:         artworkFiles[idx]?.mimeType ?? "image/png",
@@ -3004,9 +3034,9 @@ export async function handleCreateProduct(
       if (artworkId) {
         const designArtworkPayload = [{
           artwork_data:            { vendor_artwork: { id: artworkId, name: `${cleanTitle} - Design & Mockup` } },
-          design_areas:            ["front"],
+          design_areas:            Object.keys(designsByArea),
           image_count:             artworkFiles.length,
-          design_elements_count:   1,
+          design_elements_count:   artworkFileMeta.filter(m => m.kind === "design").length,
           canvas_images_count:     1,
           is_combined_artwork:     true,
           artwork_id:              artworkId,
